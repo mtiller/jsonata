@@ -6,3 +6,4 @@ jsonata-es5.min.js
 node_modules/
 npm-debug.log
 .idea/
+lib/
