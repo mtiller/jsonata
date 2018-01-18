@@ -10,9 +10,9 @@ import {
     createSequence,
     toSequence,
 } from "./utils";
-import { parseSignature, defineFunction } from "./signatures";
+import { defineFunction } from "./signatures";
 import { parser } from "./parser";
-import { functionBoolean, functionAppend, functionString, functionSort, bindStandardFunctions, createStandardFrame } from "./functions";
+import { functionBoolean, functionAppend, functionString, functionSort, createStandardFrame } from "./functions";
 
 /**
  * Evaluate expression against input data

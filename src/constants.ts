@@ -1,6 +1,3 @@
-import { createFrame } from "./utils";
-import { bindStandardFunctions } from './functions';
-
 export const operators = {
     ".": 75,
     "[": 80,

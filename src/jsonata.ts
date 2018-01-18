@@ -3,7 +3,6 @@ import { lookupMessage, createFrame } from './utils';
 import { evaluate } from './evaluate';
 import { defineFunction } from './signatures';
 import { createStandardFrame } from './functions';
-import { create } from 'domain';
 
 /**
  * JSONata

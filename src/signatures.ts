@@ -171,7 +171,7 @@ export function parseSignature(signature) {
         return symbol;
     };
 
-    var throwValidationError = function(badArgs, badSig) {
+    var throwValidationError = function(badArgs, badSig): never {
         // to figure out where this went wrong we need apply each component of the
         // regex to each argument until we get to the one that fails to match
         var partialPattern = "^";
@@ -291,7 +291,7 @@ export function parseSignature(signature) {
                 });
                 return validatedArgs;
             }
-            throwValidationError(args, suppliedSig);
+            return throwValidationError(args, suppliedSig);
         },
     };
 }
