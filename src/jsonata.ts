@@ -23,7 +23,7 @@ export function jsonata(expr, options) {
         err.message = lookupMessage(err);
         throw err;
     }
-    
+
     const staticFrame = createStandardFrame();
     var environment = createFrame(staticFrame);
 
@@ -45,11 +45,11 @@ export function jsonata(expr, options) {
         evaluate: function(input, bindings, callback) {
             // throw if the expression compiled with syntax errors
             if (typeof errors !== "undefined") {
-                var err = {
+                var err: any = {
                     code: "S0500",
                     position: 0,
-                    message: lookupMessage(err),
                 };
+                err.message = lookupMessage(err);
                 throw err;
             }
 

@@ -7,7 +7,7 @@ import { isNumeric } from './utils';
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
 
-export function parser(source, recover?) {
+export function parser(source, recover?: boolean) {
     var node;
     var lexer;
 
