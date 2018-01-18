@@ -1,4 +1,4 @@
-import { errorCodes } from './constants';
+import { errorCodes } from "./constants";
 
 /**
  *
@@ -136,10 +136,10 @@ export function createFrame(enclosingEnvironment) {
  * Create an empty sequence to contain query results
  * @returns {Array} - empty sequence
  */
-export function createSequence(arg?: any) {
+export function createSequence(foo?) {
     var sequence = toSequence([]);
-    if (arg && arg.length === 1) {
-        sequence.push(arg);
+    if (arguments.length === 1) {
+        sequence.push(arguments[0]);
     }
     return sequence;
 }

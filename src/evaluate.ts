@@ -10,10 +10,9 @@ import {
     createSequence,
     toSequence,
 } from "./utils";
-import { staticFrame } from "./constants";
 import { parseSignature, defineFunction } from "./signatures";
 import { parser } from "./parser";
-import { functionBoolean, functionAppend, functionString, functionSort } from "./functions";
+import { functionBoolean, functionAppend, functionString, functionSort, bindStandardFunctions, createStandardFrame } from "./functions";
 
 /**
  * Evaluate expression against input data
@@ -1090,8 +1089,6 @@ function driveGenerator(expr, input, environment) {
     return comp.value;
 }
 
-var chain = driveGenerator(parser("function($f, $g) { function($x){ $g($f($x)) } }"), null, staticFrame);
-
 /**
  * Apply the function on the RHS using the sequence on the LHS as the first argument
  * @param {Object} expr - JSONata expression
@@ -1101,6 +1098,9 @@ var chain = driveGenerator(parser("function($f, $g) { function($x){ $g($f($x)) }
  */
 function* evaluateApplyExpression(expr, input, environment) {
     var result;
+
+    const standardFrame = createStandardFrame();
+    var chain = driveGenerator(parser("function($f, $g) { function($x){ $g($f($x)) } }"), null, standardFrame);
 
     if (expr.rhs.type === "function") {
         // this is a function _invocation_; invoke it with lhs expression as the first argument

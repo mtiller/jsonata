@@ -1,8 +1,9 @@
 import { parser } from './parser';
-import { staticFrame } from './constants';
 import { lookupMessage, createFrame } from './utils';
 import { evaluate } from './evaluate';
 import { defineFunction } from './signatures';
+import { createStandardFrame } from './functions';
+import { create } from 'domain';
 
 /**
  * JSONata
@@ -22,6 +23,8 @@ export function jsonata(expr, options) {
         err.message = lookupMessage(err);
         throw err;
     }
+    
+    const staticFrame = createStandardFrame();
     var environment = createFrame(staticFrame);
 
     var timestamp = new Date(); // will be overridden on each call to evalute()

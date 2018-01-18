@@ -1,4 +1,4 @@
-import { isFunction, isNumeric, createSequence, isLambda, isArrayOfNumbers, isArrayOfStrings } from './utils';
+import { isFunction, isNumeric, createSequence, isLambda, isArrayOfNumbers, isArrayOfStrings, createFrame } from './utils';
 import { defineFunction } from './signatures';
 import { apply, evaluateName } from './evaluate';
 
@@ -1831,6 +1831,12 @@ export function functionClone(arg) {
     }
 
     return JSON.parse(functionString(arg));
+}
+
+export function createStandardFrame() {
+    const staticFrame = createFrame(null);
+    bindStandardFunctions(staticFrame);
+    return staticFrame;    
 }
 
 export function bindStandardFunctions(frame) {

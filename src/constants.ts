@@ -1,7 +1,5 @@
 import { createFrame } from "./utils";
 import { bindStandardFunctions } from './functions';
-import { start } from "repl";
-import { stat } from "fs";
 
 export const operators = {
     ".": 75,
@@ -53,9 +51,6 @@ export const escapes = {
     r: "\r",
     t: "\t",
 };
-
-export const staticFrame = createFrame(null);
-bindStandardFunctions(staticFrame);
 
 /**
  * Error codes
