@@ -31,6 +31,7 @@ export interface Symbol {
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
 export function parser(source, recover?: boolean) {
+    var current: { token: Token, symbol: Symbol };
     var node: {
         id: string;
         error?: any;
@@ -453,6 +454,14 @@ export function parser(source, recover?: boolean) {
             node = Object.create(symbol);
             node.error = err;
             node.type = "(error)";
+            current = {
+                symbol: Object.create(symbol),
+                token: {
+                    type: "(error)",
+                    value: null,
+                    position: current.token.position,
+                }
+            };
             return node;
         } else {
             err.stack = new Error().stack;
@@ -481,6 +490,14 @@ export function parser(source, recover?: boolean) {
         if (next_token === null) {
             node = symbol_table["(end)"];
             node.position = source.length;
+            current = {
+                symbol: Object.create(symbol_table["(end)"]),
+                token: {
+                    type: "(end)",
+                    value: null,
+                    position: source.length,
+                }
+            }
             return node;
         }
         var value = next_token.value;
@@ -522,6 +539,14 @@ export function parser(source, recover?: boolean) {
                 });
         }
 
+        current = {
+            symbol: Object.create(symbol),
+            token: {
+                value: value,
+                type: type,
+                position: next_token.position,
+            }
+        };
         node = Object.create(symbol);
         node.value = value;
         node.type = type;
@@ -530,15 +555,17 @@ export function parser(source, recover?: boolean) {
     };
 
     // Pratt's algorithm
-    var expression = function(rbp) {
-        var left;
+    var expression = function(rbp: number): ExprNode {
+        var left: ExprNode;
         var t = node;
+        var c = current;
         advance(null, true);
-        left = t.nud(t);
-        while (rbp < node.lbp) {
+        left = c.symbol.nud(t);
+        while (rbp < current.symbol.lbp) {
             t = node;
+            c = current;
             advance();
-            left = t.led(t, left);
+            left = c.symbol.led(t, left);
         }
         return left;
     };
@@ -551,8 +578,8 @@ export function parser(source, recover?: boolean) {
     if (node.id !== "(end)") {
         var err = {
             code: "S0201",
-            position: node.position,
-            token: node.value,
+            position: current.token.position,
+            token: current.token.value,
         };
         handleError(err);
     }
