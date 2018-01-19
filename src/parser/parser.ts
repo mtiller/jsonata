@@ -27,26 +27,27 @@ export interface Symbol {
 //     }
 // }
 
+export interface NodeType {
+    id: string;
+    error?: any;
+    type?: string;
+    position?: number;
+    value?: any;
+    nud?: NUD;
+    led?: LED;
+    lbp?: number;
+}
 // This parser implements the 'Top down operator precedence' algorithm developed by Vaughan R Pratt; http://dl.acm.org/citation.cfm?id=512931.
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
 export function parser(source, recover?: boolean) {
     var current: { token: Token, symbol: Symbol };
-    var node: {
-        id: string;
-        error?: any;
-        type?: string;
-        position?: number;
-        value?: any;
-        nud?: NUD;
-        led?: LED;
-        lbp?: number;
-    };
+    var node: NodeType;
     var lexer: Tokenizer;
 
     var remainingTokens = function() {
         var remaining: Token[] = [];
-        if (node.id !== "(end)") {
+        if (current.symbol.id !== "(end)") {
             remaining.push(current.token);
         }
         var nxt: Token = lexer(undefined);
@@ -60,7 +61,7 @@ export function parser(source, recover?: boolean) {
     function createTable(): { [id: string]: Symbol } {
         let symbol_table: { [id: string]: Symbol } = {};
 
-        let defaultNud: NUD = function(self: any) {
+        let defaultNud: NUD = function(self: NodeType) {
                 // error - symbol has been invoked as a unary operator
                 var err: any = {
                     code: "S0211",
@@ -287,9 +288,9 @@ export function parser(source, recover?: boolean) {
         // parenthesis - block expression
         prefix("(", function(self: any) {
             var expressions = [];
-            while (node.id !== ")") {
+            while (current.symbol.id !== ")") {
                 expressions.push(expression(0));
-                if (node.id !== ";") {
+                if (current.symbol.id !== ";") {
                     break;
                 }
                 advance(";");
@@ -303,19 +304,19 @@ export function parser(source, recover?: boolean) {
         // array constructor
         prefix("[", function(self: any) {
             var a = [];
-            if (node.id !== "]") {
+            if (current.symbol.id !== "]") {
                 for (;;) {
                     var item = expression(0);
-                    if (node.id === "..") {
+                    if (current.symbol.id === "..") {
                         // range operator
-                        var range = { type: "binary", value: "..", position: node.position, lhs: item };
+                        var range = { type: "binary", value: "..", position: current.token.position, lhs: item };
                         advance("..");
                         // TODO: Fix any cast
                         (range as any).rhs = expression(0);
                         item = range;
                     }
                     a.push(item);
-                    if (node.id !== ",") {
+                    if (current.symbol.id !== ",") {
                         break;
                     }
                     advance(",");
@@ -329,7 +330,7 @@ export function parser(source, recover?: boolean) {
 
         // filter - predicate or array index
         infix("[", operators["["], function(self: any, left) {
-            if (node.id === "]") {
+            if (current.symbol.id === "]") {
                 // empty predicate means maintain singleton arrays in the output
                 var step = left;
                 while (step && step.type === "binary" && step.value === "[") {
@@ -355,10 +356,10 @@ export function parser(source, recover?: boolean) {
                 var term = {
                     descending: false,
                 };
-                if (node.id === "<") {
+                if (current.symbol.id === "<") {
                     // ascending sort
                     advance("<");
-                } else if (node.id === ">") {
+                } else if (current.symbol.id === ">") {
                     // descending sort
                     term.descending = true;
                     advance(">");
@@ -368,7 +369,7 @@ export function parser(source, recover?: boolean) {
                 // TODO: Fix any cast
                 (term as any).expression = expression(0);
                 terms.push(term);
-                if (node.id !== ",") {
+                if (current.symbol.id !== ",") {
                     break;
                 }
                 advance(",");
@@ -382,13 +383,13 @@ export function parser(source, recover?: boolean) {
 
         var objectParser = function(self: any, left?) {
             var a = [];
-            if (node.id !== "}") {
+            if (current.symbol.id !== "}") {
                 for (;;) {
                     var n = expression(0);
                     advance(":");
                     var v = expression(0);
                     a.push([n, v]); // holds an array of name/value expression pairs
-                    if (node.id !== ",") {
+                    if (current.symbol.id !== ",") {
                         break;
                     }
                     advance(",");
@@ -419,7 +420,7 @@ export function parser(source, recover?: boolean) {
             self.type = "condition";
             self.condition = left;
             self.then = expression(0);
-            if (node.id === ":") {
+            if (current.symbol.id === ":") {
                 // else condition
                 advance(":");
                 self.else = expression(0);
@@ -433,7 +434,7 @@ export function parser(source, recover?: boolean) {
             self.pattern = expression(0);
             advance("|");
             self.update = expression(0);
-            if (node.id === ",") {
+            if (current.symbol.id === ",") {
                 advance(",");
                 self.delete = expression(0);
             }
@@ -455,7 +456,6 @@ export function parser(source, recover?: boolean) {
             var symbol = symbol_table["(error)"];
             node = Object.create(symbol);
             node.error = err;
-            node.type = "(error)";
             current = {
                 symbol: Object.create(symbol),
                 token: {
