@@ -746,16 +746,19 @@ export function parser(source, recover?: boolean) {
                 if (expr.value === "and" || expr.value === "or" || expr.value === "in") {
                     expr.type = "name";
                     result = ast_optimize(expr);
-                } else if (expr.value === "?") {
-                    /* istanbul ignore else */ // partial application
-                    result = expr;
                 } else {
-                    throw {
+                    /* istanbul ignore else */ 
+                    if (expr.value === "?") {
+                        // partial application
+                        result = expr;
+                    } else {
+                        throw {
                         code: "S0201",
                         stack: new Error().stack,
                         position: expr.position,
                         token: expr.value,
-                    };
+                        };
+                    }
                 }
                 break;
             case "error":
