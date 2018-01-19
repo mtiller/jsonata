@@ -1,11 +1,19 @@
 import { operators, escapes } from "./constants";
 
+export interface Token {
+    type: string;
+    value: any;
+    position: number;
+}
+
+export type Tokenizer = (prefix: string) => Token;
+
 // Tokenizer (lexer) - invoked by the parser to return one token at a time
-export function tokenizer(path) {
+export function tokenizer(path: string): Tokenizer {
     var position = 0;
     var length = path.length;
 
-    var create = function(type, value) {
+    var create = function(type: string, value: any): Token {
         var obj = { type: type, value: value, position: position };
         return obj;
     };
