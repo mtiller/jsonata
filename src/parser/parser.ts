@@ -1,9 +1,10 @@
 import { operators } from "../constants";
 import { parseSignature } from "../signatures";
-import { tokenizer } from "../tokenizer";
+import { tokenizer, Tokenizer } from "../tokenizer";
 import { isNumeric } from "../utils";
 import { ast_optimize } from "./optimize";
 import { ErrorCollector } from "./errors";
+import * as ast from './ast';
 
 export type ExprNode = any;
 
@@ -16,11 +17,18 @@ export interface Symbol {
     position?: number;
 }
 
+// export class ParserState {
+//     lexer: Tokenizer;
+//     constructor(source: string) {
+//         this.lexer = tokenizer(source);
+//     }
+// }
+
 // This parser implements the 'Top down operator precedence' algorithm developed by Vaughan R Pratt; http://dl.acm.org/citation.cfm?id=512931.
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
 export function parser(source, recover?: boolean) {
-    var node;
+    var node: any;
     var lexer;
 
     var remainingTokens = function() {
@@ -39,11 +47,7 @@ export function parser(source, recover?: boolean) {
     function createTable(): { [id: string]: Symbol } {
         let symbol_table: { [id: string]: Symbol } = {};
 
-        class BaseSymbol implements Symbol {
-            led?: (left: any) => ExprNode = undefined;
-
-            constructor(public id: string, public lbp: number, public value: any, public position?: number) {}
-            nud() {
+        let defaultNud = function(this: any) {
                 // error - symbol has been invoked as a unary operator
                 var err: any = {
                     code: "S0211",
@@ -59,12 +63,10 @@ export function parser(source, recover?: boolean) {
                 } else {
                     err.stack = new Error().stack;
                     throw err;
-                }
-            }
+                }            
         }
 
-        // TODO: Get rid of default?
-        var symbol = function(id, bp: number = 0) {
+        var symbol = function(id, bp: number): Symbol {
             bp = bp || 0;
             if (symbol_table.hasOwnProperty(id)) {
                 let s = symbol_table[id];
@@ -74,7 +76,12 @@ export function parser(source, recover?: boolean) {
                 }
                 return s;
             } else {
-                let s = new BaseSymbol(id, bp, id);
+                let s: Symbol = {
+                    id: id,
+                    lbp: bp,
+                    value: id,
+                    nud: defaultNud,
+                }
                 symbol_table[id] = s;
                 return s;
             }
@@ -126,7 +133,7 @@ export function parser(source, recover?: boolean) {
         // match prefix operators
         // <operator> <expression>
         var prefix = function(id, nud?) {
-            var s = symbol(id);
+            var s = symbol(id, 0);
             s.nud =
                 nud ||
                 function(this: any) {
@@ -141,13 +148,13 @@ export function parser(source, recover?: boolean) {
         terminal("(name)");
         terminal("(literal)");
         terminal("(regex)");
-        symbol(":");
-        symbol(";");
-        symbol(",");
-        symbol(")");
-        symbol("]");
-        symbol("}");
-        symbol(".."); // range operator
+        symbol(":", 0);
+        symbol(";", 0);
+        symbol(",", 0);
+        symbol(")", 0);
+        symbol("]", 0);
+        symbol("}", 0);
+        symbol("..", 0); // range operator
         infix("."); // field reference
         infix("+"); // numeric addition
         infix("-"); // numeric subtraction
@@ -181,7 +188,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // field wildcard (single level)
-        prefix("*", function(this: any) {
+        prefix("*", function(this: any): ast.WildcardNode {
             this.type = "wildcard";
             return this;
         });
@@ -422,7 +429,7 @@ export function parser(source, recover?: boolean) {
     var errors = [];
     let symbol_table = createTable();
 
-    var handleError = function(err) {
+    var handleError = function(err): ast.ErrorNode {
         if (recover) {
             // tokenize the rest of the buffer and add it to an error token
             err.remaining = remainingTokens();
@@ -432,6 +439,15 @@ export function parser(source, recover?: boolean) {
             node.error = err;
             node.type = "(error)";
             return node;
+            // let tmp: ast.ErrorNode = {
+            //     value: symbol.value,
+            //     type: "(error)",
+            //     error: err,
+            // }
+            // let tmp = Object.create(symbol);
+            // tmp.error = err;
+            // tmp.type = "(error)";
+            // return tmp;
         } else {
             err.stack = new Error().stack;
             throw err;
