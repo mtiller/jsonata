@@ -4,13 +4,29 @@ import { evaluate } from './evaluate';
 import { defineFunction } from './signatures';
 import { createStandardFrame } from './functions';
 
+export interface Options {
+    recover: boolean;
+}
+
+export type Callback = (err: Error, result: any) => void;
+
+export interface Expression {
+    evaluate: (input?: any, bindings?: { [name: string]: any }, callback?: Callback) => any;
+    assign: (key: string, value: any) => void;
+    registerFunction: (name: string, implementation: Function, signature?: string) => void;
+    ast: () => AST;
+    errors: () => string[];
+}
+
+export type AST = any;
+
 /**
  * JSONata
  * @param {Object} expr - JSONata expression
  * @param {boolean} options - recover: attempt to recover on parse error
  * @returns {{evaluate: evaluate, assign: assign}} Evaluated expression
  */
-export function jsonata(expr, options) {
+export function jsonata(expr: string, options?: Partial<Options>): Expression {
     var ast;
     var errors;
     try {
