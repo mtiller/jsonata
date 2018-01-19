@@ -486,17 +486,12 @@ export function functionBase64encode(str) {
         return undefined;
     }
     // Use btoa in a browser, or Buffer in Node.js
-
-    var btoa =
-        typeof window !== "undefined"
-            ? /* istanbul ignore next */ window.btoa
-            : function(str) {
-                  // Simply doing `new Buffer` at this point causes Browserify to pull
-                  // in the entire Buffer browser library, which is large and unnecessary.
-                  // Using `global.Buffer` defeats this.
-                  return new global.Buffer(str, "binary").toString("base64");
-              };
-    return btoa(str);
+    /* istanbul ignore next */
+    if (typeof window !== "undefined") {
+        return window.btoa(str);
+    } else {
+        return new global.Buffer(str, "binary").toString("base64");
+    }
 }
 
 /**
@@ -510,16 +505,12 @@ export function functionBase64decode(str) {
         return undefined;
     }
     // Use btoa in a browser, or Buffer in Node.js
-    var atob =
-        typeof window !== "undefined"
-            ? /* istanbul ignore next */ window.atob
-            : function(str) {
-                  // Simply doing `new Buffer` at this point causes Browserify to pull
-                  // in the entire Buffer browser library, which is large and unnecessary.
-                  // Using `global.Buffer` defeats this.
-                  return new global.Buffer(str, "base64").toString("binary");
-              };
-    return atob(str);
+    /* istanbul ignore next */
+    if (typeof window !== "undefined") {
+        return window.atob(str);
+    } else {
+        return new global.Buffer(str, "base64").toString("binary");
+    }
 }
 
 /**
