@@ -1,19 +1,31 @@
 import { isFunction } from './utils';
 
+export interface Signature {
+    definition: string;
+    validate: (args: any, context: any) => any[];
+}
+
+export interface Parameter {
+    regex: string;
+    type: string;
+    array: boolean;
+    context?: boolean;
+    contextRegex?: RegExp;
+    subtype?: string;
+}
+
 /**
  * Parses a function signature definition and returns a validation function
  * @param {string} signature - the signature between the <angle brackets>
  * @returns {Function} validation function
  */
-export function parseSignature(signature) {
+export function parseSignature(signature: string): Signature {
     // create a Regex that represents this signature and return a function that when invoked,
     // returns the validated (possibly fixed-up) arguments, or throws a validation error
     // step through the signature, one symbol at a time
     var position = 1;
-    var params = [];
-    // TODO: Stricter type
-    var param: any = {};
-    var prevParam = param;
+    var params: Parameter[] = [];
+    var prevParam: undefined | Parameter = undefined;
     while (position < signature.length) {
         var symbol = signature.charAt(position);
         if (symbol === ":") {
@@ -22,10 +34,9 @@ export function parseSignature(signature) {
             break;
         }
 
-        var next = function() {
+        var next = function(param: Parameter) {
             params.push(param);
             prevParam = param;
-            param = {};
         };
 
         var findClosingBracket = function(str, start, openSymbol, closeSymbol) {
@@ -55,31 +66,40 @@ export function parseSignature(signature) {
             case "b": // boolean
             case "l": // not so sure about expecting null?
             case "o": // object
-                param.regex = "[" + symbol + "m]";
-                param.type = symbol;
-                next();
+                next({
+                    regex: "[" + symbol + "m]",
+                    type: symbol,
+                    array: false,
+                });
                 break;
             case "a": // array
                 //  normally treat any value as singleton array
-                param.regex = "[asnblfom]";
-                param.type = symbol;
-                param.array = true;
-                next();
+                next({
+                    regex: "[asnblfom]",
+                    type: symbol,
+                    array: true,
+                });
                 break;
             case "f": // function
-                param.regex = "f";
-                param.type = symbol;
-                next();
+                next({
+                    regex: "f",
+                    type: symbol, 
+                    array: false,   
+                });
                 break;
             case "j": // any JSON type
-                param.regex = "[asnblom]";
-                param.type = symbol;
-                next();
+                next({
+                    regex: "[asnblom]",
+                    type: symbol, 
+                    array: false,
+                });
                 break;
             case "x": // any type
-                param.regex = "[asnblfom]";
-                param.type = symbol;
-                next();
+                next({
+                    regex: "[asnblfom]",
+                    type: symbol,
+                    array: false,
+                });
                 break;
             case "-": // use context if param not supplied
                 prevParam.context = true;
@@ -94,10 +114,7 @@ export function parseSignature(signature) {
                 // search forward for matching ')'
                 var endParen = findClosingBracket(signature, position, "(", ")");
                 var choice = signature.substring(position + 1, endParen);
-                if (choice.indexOf("<") === -1) {
-                    // no parameterized types, simple regex
-                    param.regex = "[" + choice + "m]";
-                } else {
+                if (choice.indexOf("<") !==-1) {
                     // TODO harder
                     throw {
                         code: "S0402",
@@ -106,9 +123,12 @@ export function parseSignature(signature) {
                         offset: position,
                     };
                 }
-                param.type = "(" + choice + ")";
                 position = endParen;
-                next();
+                next({
+                    regex: "[" + choice + "m]",
+                    type: "(" + choice + ")",  
+                    array: false,
+                });
                 break;
             case "<": // type parameter - can only be applied to 'a' and 'f'
                 if (prevParam.type === "a" || prevParam.type === "f") {
@@ -296,14 +316,20 @@ export function parseSignature(signature) {
     };
 }
 
+export interface FunctionDefinition {
+    _jsonata_function: boolean;
+    implementation: Function;
+    signature?: Signature;
+}
+
 /**
  * Creates a function definition
  * @param {Function} func - function implementation in Javascript
  * @param {string} signature - JSONata function signature definition
  * @returns {{implementation: *, signature: *}} function definition
  */
-export function defineFunction(func, signature) {
-    var definition = {
+export function defineFunction(func: Function, signature?: string): FunctionDefinition {
+    var definition: FunctionDefinition = {
         _jsonata_function: true,
         implementation: func,
         signature: undefined,
