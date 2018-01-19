@@ -47,7 +47,7 @@ export function parser(source, recover?: boolean) {
     var remainingTokens = function() {
         var remaining: Token[] = [];
         if (node.id !== "(end)") {
-            remaining.push({ type: node.type, value: node.value, position: node.position });
+            remaining.push(current.token);
         }
         var nxt: Token = lexer(undefined);
         while (nxt !== null) {
@@ -220,9 +220,9 @@ export function parser(source, recover?: boolean) {
             self.procedure = left;
             self.type = "function";
             self.arguments = [];
-            if (node.id !== ")") {
+            if (current.symbol.id !== ")") {
                 for (;;) {
-                    if (node.type === "operator" && node.id === "?") {
+                    if (current.token.type === "operator" && current.symbol.id === "?") {
                         // partial function application
                         self.type = "partial";
                         self.arguments.push(node);
@@ -230,7 +230,7 @@ export function parser(source, recover?: boolean) {
                     } else {
                         self.arguments.push(expression(0));
                     }
-                    if (node.id !== ",") break;
+                    if (current.symbol.id !== ",") break;
                     advance(",");
                 }
             }
@@ -251,19 +251,21 @@ export function parser(source, recover?: boolean) {
                 });
                 self.type = "lambda";
                 // is the next token a '<' - if so, parse the function signature
-                if (node.id === "<") {
-                    var sigPos = node.position;
+                if (current.symbol.id === "<") {
+                    var sigPos = current.token.position;
                     var depth = 1;
                     var sig = "<";
+                    let id = current.symbol.id;
                     // TODO: Bug in typescript compiler?...doesn't recognize side effects in advance and impact on node value
-                    while (depth > 0 && (node.id as string) !== "{" && (node.id as string) !== "(end)") {
-                        var tok = advance();
-                        if (tok.id === ">") {
+                    while (depth > 0 && id !== "{" && id !== "(end)") {
+                        advance();
+                        id = current.symbol.id;
+                        if (id === ">") {
                             depth--;
-                        } else if (tok.id === "<") {
+                        } else if (id === "<") {
                             depth++;
                         }
-                        sig += tok.value;
+                        sig += current.token.value;
                     }
                     advance(">");
                     try {
@@ -470,9 +472,9 @@ export function parser(source, recover?: boolean) {
     };
 
     var advance = function(id?, infix?) {
-        if (id && node.id !== id) {
+        if (id && current.symbol.id !== id) {
             var code;
-            if (node.id === "(end)") {
+            if (current.symbol.id === "(end)") {
                 // unexpected end of buffer
                 code = "S0203";
             } else {
@@ -480,7 +482,7 @@ export function parser(source, recover?: boolean) {
             }
             var err = {
                 code: code,
-                position: node.position,
+                position: current.token.position,
                 token: node.value,
                 value: id,
             };
@@ -575,7 +577,7 @@ export function parser(source, recover?: boolean) {
     advance();
     // parse the tokens
     var expr = expression(0);
-    if (node.id !== "(end)") {
+    if (current.symbol.id !== "(end)") {
         var err = {
             code: "S0201",
             position: current.token.position,
