@@ -24,8 +24,21 @@ export interface ErrorNode extends ASTNode {
 }
 
 export interface LiteralNode extends ASTNode {
-    type: "(literal)";
+    type: "literal";
+    value: string;
 }
+
+export interface NameNode extends ASTNode {
+    type: "name";
+    value: string;
+}
+
+export interface VariableNode extends ASTNode {
+    type: "variable";
+    value: string;
+}
+
+export type TerminalNode = LiteralNode | NameNode | VariableNode;
 
 export interface UnaryNode extends ASTNode {
     type: "unary";
@@ -38,4 +51,10 @@ export interface BinaryNode extends ASTNode {
     value: string; // Could be refined
     lhs: any;
     rhs: any;
+}
+
+export interface BlockNode extends ASTNode {
+    type: "block";
+    // TODO: refine
+    expressions: any[];
 }

@@ -101,12 +101,11 @@ export function parser(source, recover?: boolean) {
             }
         };
 
+        // A terminal could be a 'literal', 'variable', 'name'
         var terminal = function(id) {
             var s = symbol(id, 0);
-            s.nud = function(self: any) {
-                return {
-                    ...self,
-                };
+            s.nud = function(self: NodeType) /* : ast.TerminalNode */ {
+                return { ...self };
             };
         };
 
@@ -305,7 +304,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // parenthesis - block expression
-        prefix("(", function(self: any) {
+        prefix("(", function(self: NodeType): ast.BlockNode {
             var expressions = [];
             while (current.symbol.id !== ")") {
                 expressions.push(expression(0));
@@ -315,9 +314,12 @@ export function parser(source, recover?: boolean) {
                 advance(";");
             }
             advance(")", true);
-            self.type = "block";
-            self.expressions = expressions;
-            return self;
+            return {
+                id: self.id,
+                value: self.value,
+                type: "block",
+                expressions: expressions,
+            }
         });
 
         // array constructor
