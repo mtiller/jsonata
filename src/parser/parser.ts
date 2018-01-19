@@ -3,16 +3,27 @@ import { parseSignature } from '../signatures';
 import { tokenizer } from '../tokenizer';
 import { isNumeric } from '../utils';
 import { ast_optimize } from './optimize';
+import { ErrorCollector } from './errors';
+
+export type ExprNode = any;
+
+export interface Symbol {
+    id: string;
+    lbp: number;
+    nud: () => ExprNode;
+    led?: (left: any) => ExprNode;
+    value: any;
+    position?: number;
+}
 
 // This parser implements the 'Top down operator precedence' algorithm developed by Vaughan R Pratt; http://dl.acm.org/citation.cfm?id=512931.
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
-
 export function parser(source, recover?: boolean) {
     var node;
     var lexer;
 
-    var symbol_table = {};
+    var symbol_table: { [id: string]: Symbol } = {};
     var errors = [];
 
     var remainingTokens = function() {
@@ -28,8 +39,11 @@ export function parser(source, recover?: boolean) {
         return remaining;
     };
 
-    var base_symbol = {
-        nud: function(this: any) {
+    class BaseSymbol implements Symbol {
+        led?: (left: any) => ExprNode = undefined;
+
+        constructor(public id: string, public lbp: number, public value: any, public position?: number) {}
+        nud() {
             // error - symbol has been invoked as a unary operator
             var err: any = {
                 code: "S0211",
@@ -46,23 +60,24 @@ export function parser(source, recover?: boolean) {
                 err.stack = new Error().stack;
                 throw err;
             }
-        },
-    };
+        }        
+    }
 
+    // TODO: Get rid of default?
     var symbol = function(id, bp: number = 0) {
-        var s = symbol_table[id];
         bp = bp || 0;
-        if (s) {
+        if (symbol_table.hasOwnProperty(id)) {
+            let s = symbol_table[id];
+            // TODO: Should this ever happen?!?  Aren't we overwriting something?!?
             if (bp >= s.lbp) {
                 s.lbp = bp;
             }
+            return s;
         } else {
-            s = Object.create(base_symbol);
-            s.id = s.value = id;
-            s.lbp = bp;
+            let s = new BaseSymbol(id, bp, id);
             symbol_table[id] = s;
+            return s;
         }
-        return s;
     };
 
     var handleError = function(err) {
@@ -513,7 +528,7 @@ export function parser(source, recover?: boolean) {
         };
         handleError(err);
     }
-    
+
     // Decide if we want to collect errors and recover, or just throw an error
     let collect = recover ? (err) => errors.push(err) : undefined;
     expr = ast_optimize(expr, collect);
