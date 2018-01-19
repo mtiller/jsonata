@@ -8,11 +8,14 @@ import * as ast from './ast';
 
 export type ExprNode = any;
 
+export type NUD = (self: any) => ExprNode;
+export type LED = (self: any, left: any) => ExprNode;
+
 export interface Symbol {
     id: string;
     lbp: number;
-    nud: () => ExprNode;
-    led?: (left: any) => ExprNode;
+    nud: NUD;
+    led?: LED;
     value: any;
     position?: number;
 }
@@ -47,12 +50,12 @@ export function parser(source, recover?: boolean) {
     function createTable(): { [id: string]: Symbol } {
         let symbol_table: { [id: string]: Symbol } = {};
 
-        let defaultNud = function(this: any) {
+        let defaultNud: NUD = function(self: any) {
                 // error - symbol has been invoked as a unary operator
                 var err: any = {
                     code: "S0211",
-                    token: this.value,
-                    position: this.position,
+                    token: self.value,
+                    position: self.position,
                 };
 
                 if (recover) {
@@ -89,8 +92,10 @@ export function parser(source, recover?: boolean) {
 
         var terminal = function(id) {
             var s = symbol(id, 0);
-            s.nud = function() {
-                return this;
+            s.nud = function(self: any) {
+                return {
+                    ...self,
+                };
             };
         };
 
@@ -103,11 +108,11 @@ export function parser(source, recover?: boolean) {
             var s = symbol(id, bindingPower);
             s.led =
                 led ||
-                function(this: any, left) {
-                    this.lhs = left;
-                    this.rhs = expression(bindingPower);
-                    this.type = "binary";
-                    return this;
+                function(self: any, left) {
+                    self.lhs = left;
+                    self.rhs = expression(bindingPower);
+                    self.type = "binary";
+                    return self;
                 };
             return s;
         };
@@ -116,30 +121,30 @@ export function parser(source, recover?: boolean) {
         // <expression> <operator> <expression>
         // right associative
         // TODO: Add default values for bp and led
-        var infixr = function(id, bp?, led?) {
+        var infixr = function(id, bp?, led?: LED) {
             var bindingPower = bp || operators[id];
             var s = symbol(id, bindingPower);
             s.led =
                 led ||
-                function(this: any, left) {
-                    this.lhs = left;
-                    this.rhs = expression(bindingPower - 1); // subtract 1 from bindingPower for right associative operators
-                    this.type = "binary";
-                    return this;
+                function(self: any, left) {
+                    self.lhs = left;
+                    self.rhs = expression(bindingPower - 1); // subtract 1 from bindingPower for right associative operators
+                    self.type = "binary";
+                    return self;
                 };
             return s;
         };
 
         // match prefix operators
         // <operator> <expression>
-        var prefix = function(id, nud?) {
+        var prefix = function(id, nud?: (self: any) => any) {
             var s = symbol(id, 0);
             s.nud =
                 nud ||
-                function(this: any) {
-                    this.expression = expression(70);
-                    this.type = "unary";
-                    return this;
+                function(self: any) {
+                    self.expression = expression(70);
+                    self.type = "unary";
+                    return self;
                 };
             return s;
         };
@@ -178,42 +183,42 @@ export function parser(source, recover?: boolean) {
         prefix("-"); // unary numeric negation
         infix("~>"); // function application
 
-        infixr("(error)", 10, function(this: any, left) {
-            this.lhs = left;
+        infixr("(error)", 10, function(self: any, left) {
+            self.lhs = left;
 
-            this.error = node.error;
-            this.remaining = remainingTokens();
-            this.type = "error";
-            return this;
+            self.error = node.error;
+            self.remaining = remainingTokens();
+            self.type = "error";
+            return self;
         });
 
         // field wildcard (single level)
-        prefix("*", function(this: any): ast.WildcardNode {
-            this.type = "wildcard";
-            return this;
+        prefix("*", function(self: any): ast.WildcardNode {
+            self.type = "wildcard";
+            return self;
         });
 
         // descendant wildcard (multi-level)
-        prefix("**", function(this: any) {
-            this.type = "descendant";
-            return this;
+        prefix("**", function(self: any) {
+            self.type = "descendant";
+            return self;
         });
 
         // function invocation
-        infix("(", operators["("], function(this: any, left) {
+        infix("(", operators["("], function(self: any, left) {
             // left is is what we are trying to invoke
-            this.procedure = left;
-            this.type = "function";
-            this.arguments = [];
+            self.procedure = left;
+            self.type = "function";
+            self.arguments = [];
             if (node.id !== ")") {
                 for (;;) {
                     if (node.type === "operator" && node.id === "?") {
                         // partial function application
-                        this.type = "partial";
-                        this.arguments.push(node);
+                        self.type = "partial";
+                        self.arguments.push(node);
                         advance("?");
                     } else {
-                        this.arguments.push(expression(0));
+                        self.arguments.push(expression(0));
                     }
                     if (node.id !== ",") break;
                     advance(",");
@@ -223,7 +228,7 @@ export function parser(source, recover?: boolean) {
             // if the name of the function is 'function' or λ, then this is function definition (lambda function)
             if (left.type === "name" && (left.value === "function" || left.value === "\u03BB")) {
                 // all of the args must be VARIABLE tokens
-                this.arguments.forEach(function(arg, index) {
+                self.arguments.forEach(function(arg, index) {
                     if (arg.type !== "variable") {
                         return handleError({
                             code: "S0208",
@@ -234,7 +239,7 @@ export function parser(source, recover?: boolean) {
                         });
                     }
                 });
-                this.type = "lambda";
+                self.type = "lambda";
                 // is the next token a '<' - if so, parse the function signature
                 if (node.id === "<") {
                     var sigPos = node.position;
@@ -251,7 +256,7 @@ export function parser(source, recover?: boolean) {
                     }
                     advance(">");
                     try {
-                        this.signature = parseSignature(sig);
+                        self.signature = parseSignature(sig);
                     } catch (err) {
                         // insert the position into this error
                         err.position = sigPos + err.offset;
@@ -260,14 +265,14 @@ export function parser(source, recover?: boolean) {
                 }
                 // parse the function body
                 advance("{");
-                this.body = expression(0);
+                self.body = expression(0);
                 advance("}");
             }
-            return this;
+            return self;
         });
 
         // parenthesis - block expression
-        prefix("(", function(this: any) {
+        prefix("(", function(self: any) {
             var expressions = [];
             while (node.id !== ")") {
                 expressions.push(expression(0));
@@ -277,13 +282,13 @@ export function parser(source, recover?: boolean) {
                 advance(";");
             }
             advance(")", true);
-            this.type = "block";
-            this.expressions = expressions;
-            return this;
+            self.type = "block";
+            self.expressions = expressions;
+            return self;
         });
 
         // array constructor
-        prefix("[", function(this: any) {
+        prefix("[", function(self: any) {
             var a = [];
             if (node.id !== "]") {
                 for (;;) {
@@ -304,13 +309,13 @@ export function parser(source, recover?: boolean) {
                 }
             }
             advance("]", true);
-            this.expressions = a;
-            this.type = "unary";
-            return this;
+            self.expressions = a;
+            self.type = "unary";
+            return self;
         });
 
         // filter - predicate or array index
-        infix("[", operators["["], function(this: any, left) {
+        infix("[", operators["["], function(self: any, left) {
             if (node.id === "]") {
                 // empty predicate means maintain singleton arrays in the output
                 var step = left;
@@ -321,16 +326,16 @@ export function parser(source, recover?: boolean) {
                 advance("]");
                 return left;
             } else {
-                this.lhs = left;
-                this.rhs = expression(operators["]"]);
-                this.type = "binary";
+                self.lhs = left;
+                self.rhs = expression(operators["]"]);
+                self.type = "binary";
                 advance("]", true);
-                return this;
+                return self;
             }
         });
 
         // order-by
-        infix("^", operators["^"], function(this: any, left) {
+        infix("^", operators["^"], function(self: any, left) {
             advance("(");
             var terms = [];
             for (;;) {
@@ -356,13 +361,13 @@ export function parser(source, recover?: boolean) {
                 advance(",");
             }
             advance(")");
-            this.lhs = left;
-            this.rhs = terms;
-            this.type = "binary";
-            return this;
+            self.lhs = left;
+            self.rhs = terms;
+            self.type = "binary";
+            return self;
         });
 
-        var objectParser = function(this: any, left) {
+        var objectParser = function(self: any, left?) {
             var a = [];
             if (node.id !== "}") {
                 for (;;) {
@@ -379,15 +384,15 @@ export function parser(source, recover?: boolean) {
             advance("}", true);
             if (typeof left === "undefined") {
                 // NUD - unary prefix form
-                this.lhs = a;
-                this.type = "unary";
+                self.lhs = a;
+                self.type = "unary";
             } else {
                 // LED - binary infix form
-                this.lhs = left;
-                this.rhs = a;
-                this.type = "binary";
+                self.lhs = left;
+                self.rhs = a;
+                self.type = "binary";
             }
-            return this;
+            return self;
         };
 
         // object constructor
@@ -397,30 +402,30 @@ export function parser(source, recover?: boolean) {
         infix("{", operators["{"], objectParser);
 
         // if/then/else ternary operator ?:
-        infix("?", operators["?"], function(this: any, left) {
-            this.type = "condition";
-            this.condition = left;
-            this.then = expression(0);
+        infix("?", operators["?"], function(self: any, left) {
+            self.type = "condition";
+            self.condition = left;
+            self.then = expression(0);
             if (node.id === ":") {
                 // else condition
                 advance(":");
-                this.else = expression(0);
+                self.else = expression(0);
             }
-            return this;
+            return self;
         });
 
         // object transformer
-        prefix("|", function(this: any) {
-            this.type = "transform";
-            this.pattern = expression(0);
+        prefix("|", function(self: any) {
+            self.type = "transform";
+            self.pattern = expression(0);
             advance("|");
-            this.update = expression(0);
+            self.update = expression(0);
             if (node.id === ",") {
                 advance(",");
-                this.delete = expression(0);
+                self.delete = expression(0);
             }
             advance("|");
-            return this;
+            return self;
         });
 
         return symbol_table;
@@ -528,11 +533,11 @@ export function parser(source, recover?: boolean) {
         var left;
         var t = node;
         advance(null, true);
-        left = t.nud();
+        left = t.nud(t);
         while (rbp < node.lbp) {
             t = node;
             advance();
-            left = t.led(left);
+            left = t.led(t, left);
         }
         return left;
     };
