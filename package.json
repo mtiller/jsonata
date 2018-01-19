@@ -74,7 +74,9 @@
     "transform": {
       "^.+\\.tsx?$": "ts-jest"
     },
+    "collectCoverage": true,
     "testRegex": "/__tests__/.*\\.(ts|tsx)$",
+    "testPathIgnorePatterns": ["/node_modules/", "/lib/"],
     "moduleFileExtensions": [
       "ts",
       "tsx",
