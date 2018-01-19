@@ -1,7 +1,8 @@
-import { operators } from "./constants";
-import { parseSignature } from './signatures';
-import { tokenizer } from './tokenizer';
-import { isNumeric } from './utils';
+import { operators } from "../constants";
+import { parseSignature } from '../signatures';
+import { tokenizer } from '../tokenizer';
+import { isNumeric } from '../utils';
+import { ast_optimize } from './optimize';
 
 // This parser implements the 'Top down operator precedence' algorithm developed by Vaughan R Pratt; http://dl.acm.org/citation.cfm?id=512931.
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
@@ -48,8 +49,7 @@ export function parser(source, recover?: boolean) {
         },
     };
 
-    // TODO: Add default value for bp
-    var symbol = function(id, bp?) {
+    var symbol = function(id, bp: number = 0) {
         var s = symbol_table[id];
         bp = bp || 0;
         if (s) {
@@ -500,295 +500,6 @@ export function parser(source, recover?: boolean) {
         return this;
     });
 
-    // tail call optimization
-    // this is invoked by the post parser to analyse lambda functions to see
-    // if they make a tail call.  If so, it is replaced by a thunk which will
-    // be invoked by the trampoline loop during function application.
-    // This enables tail-recursive functions to be written without growing the stack
-    var tail_call_optimize = function(expr) {
-        var result;
-        if (expr.type === "function") {
-            var thunk = { type: "lambda", thunk: true, arguments: [], position: expr.position, body: expr };
-            result = thunk;
-        } else if (expr.type === "condition") {
-            // analyse both branches
-            expr.then = tail_call_optimize(expr.then);
-            if (typeof expr.else !== "undefined") {
-                expr.else = tail_call_optimize(expr.else);
-            }
-            result = expr;
-        } else if (expr.type === "block") {
-            // only the last expression in the block
-            var length = expr.expressions.length;
-            if (length > 0) {
-                expr.expressions[length - 1] = tail_call_optimize(expr.expressions[length - 1]);
-            }
-            result = expr;
-        } else {
-            result = expr;
-        }
-        return result;
-    };
-
-    // post-parse stage
-    // the purpose of this is flatten the parts of the AST representing location paths,
-    // converting them to arrays of steps which in turn may contain arrays of predicates.
-    // following this, nodes containing '.' and '[' should be eliminated from the AST.
-    var ast_optimize = function(expr) {
-        var result;
-        switch (expr.type) {
-            case "binary":
-                switch (expr.value) {
-                    case ".":
-                        var lstep = ast_optimize(expr.lhs);
-                        result = { type: "path", steps: [] };
-                        if (lstep.type === "path") {
-                            Array.prototype.push.apply(result.steps, lstep.steps);
-                        } else {
-                            result.steps = [lstep];
-                        }
-                        var rest = ast_optimize(expr.rhs);
-                        if (
-                            rest.type === "function" &&
-                            rest.procedure.type === "path" &&
-                            rest.procedure.steps.length === 1 &&
-                            rest.procedure.steps[0].type === "name" &&
-                            result.steps[result.steps.length - 1].type === "function"
-                        ) {
-                            // next function in chain of functions - will override a thenable
-                            result.steps[result.steps.length - 1].nextFunction = rest.procedure.steps[0].value;
-                        }
-                        if (rest.type !== "path") {
-                            rest = { type: "path", steps: [rest] };
-                        }
-                        Array.prototype.push.apply(result.steps, rest.steps);
-                        // any steps within a path that are literals, should be changed to 'name'
-                        result.steps
-                            .filter(function(step) {
-                                return step.type === "literal";
-                            })
-                            .forEach(function(lit) {
-                                lit.type = "name";
-                            });
-                        // any step that signals keeping a singleton array, should be flagged on the path
-                        if (
-                            result.steps.filter(function(step) {
-                                return step.keepArray === true;
-                            }).length > 0
-                        ) {
-                            result.keepSingletonArray = true;
-                        }
-                        // if first step is a path constructor, flag it for special handling
-                        var firststep = result.steps[0];
-                        if (firststep.type === "unary" && firststep.value === "[") {
-                            firststep.consarray = true;
-                        }
-                        // if the last step is an array constructor, flag it so it doesn't flatten
-                        var laststep = result.steps[result.steps.length - 1];
-                        if (laststep.type === "unary" && laststep.value === "[") {
-                            laststep.consarray = true;
-                        }
-                        break;
-                    case "[":
-                        // predicated step
-                        // LHS is a step or a predicated step
-                        // RHS is the predicate expr
-                        result = ast_optimize(expr.lhs);
-                        var step = result;
-                        if (result.type === "path") {
-                            step = result.steps[result.steps.length - 1];
-                        }
-                        if (typeof step.group !== "undefined") {
-                            throw {
-                                code: "S0209",
-                                stack: new Error().stack,
-                                position: expr.position,
-                            };
-                        }
-                        if (typeof step.predicate === "undefined") {
-                            step.predicate = [];
-                        }
-                        step.predicate.push(ast_optimize(expr.rhs));
-                        break;
-                    case "{":
-                        // group-by
-                        // LHS is a step or a predicated step
-                        // RHS is the object constructor expr
-                        result = ast_optimize(expr.lhs);
-                        if (typeof result.group !== "undefined") {
-                            throw {
-                                code: "S0210",
-                                stack: new Error().stack,
-                                position: expr.position,
-                            };
-                        }
-                        // object constructor - process each pair
-                        result.group = {
-                            lhs: expr.rhs.map(function(pair) {
-                                return [ast_optimize(pair[0]), ast_optimize(pair[1])];
-                            }),
-                            position: expr.position,
-                        };
-                        break;
-                    case "^":
-                        // order-by
-                        // LHS is the array to be ordered
-                        // RHS defines the terms
-                        result = { type: "sort", value: expr.value, position: expr.position };
-                        result.lhs = ast_optimize(expr.lhs);
-                        result.rhs = expr.rhs.map(function(terms) {
-                            return {
-                                descending: terms.descending,
-                                expression: ast_optimize(terms.expression),
-                            };
-                        });
-                        break;
-                    case ":=":
-                        result = { type: "bind", value: expr.value, position: expr.position };
-                        result.lhs = ast_optimize(expr.lhs);
-                        result.rhs = ast_optimize(expr.rhs);
-                        break;
-                    case "~>":
-                        result = { type: "apply", value: expr.value, position: expr.position };
-                        result.lhs = ast_optimize(expr.lhs);
-                        result.rhs = ast_optimize(expr.rhs);
-                        break;
-                    default:
-                        result = { type: expr.type, value: expr.value, position: expr.position };
-                        result.lhs = ast_optimize(expr.lhs);
-                        result.rhs = ast_optimize(expr.rhs);
-                }
-                break;
-            case "unary":
-                result = { type: expr.type, value: expr.value, position: expr.position };
-                if (expr.value === "[") {
-                    // array constructor - process each item
-                    result.expressions = expr.expressions.map(function(item) {
-                        return ast_optimize(item);
-                    });
-                } else if (expr.value === "{") {
-                    // object constructor - process each pair
-                    result.lhs = expr.lhs.map(function(pair) {
-                        return [ast_optimize(pair[0]), ast_optimize(pair[1])];
-                    });
-                } else {
-                    // all other unary expressions - just process the expression
-                    result.expression = ast_optimize(expr.expression);
-                    // if unary minus on a number, then pre-process
-                    if (
-                        expr.value === "-" &&
-                        result.expression.type === "literal" &&
-                        isNumeric(result.expression.value)
-                    ) {
-                        result = result.expression;
-                        result.value = -result.value;
-                    }
-                }
-                break;
-            case "function":
-            case "partial":
-                result = { type: expr.type, name: expr.name, value: expr.value, position: expr.position };
-                result.arguments = expr.arguments.map(function(arg) {
-                    return ast_optimize(arg);
-                });
-                result.procedure = ast_optimize(expr.procedure);
-                break;
-            case "lambda":
-                result = {
-                    type: expr.type,
-                    arguments: expr.arguments,
-                    signature: expr.signature,
-                    position: expr.position,
-                };
-                var body = ast_optimize(expr.body);
-                result.body = tail_call_optimize(body);
-                break;
-            case "condition":
-                result = { type: expr.type, position: expr.position };
-                result.condition = ast_optimize(expr.condition);
-                result.then = ast_optimize(expr.then);
-                if (typeof expr.else !== "undefined") {
-                    result.else = ast_optimize(expr.else);
-                }
-                break;
-            case "transform":
-                result = { type: expr.type, position: expr.position };
-                result.pattern = ast_optimize(expr.pattern);
-                result.update = ast_optimize(expr.update);
-                if (typeof expr.delete !== "undefined") {
-                    result.delete = ast_optimize(expr.delete);
-                }
-                break;
-            case "block":
-                result = { type: expr.type, position: expr.position };
-                // array of expressions - process each one
-                result.expressions = expr.expressions.map(function(item) {
-                    return ast_optimize(item);
-                });
-                // TODO scan the array of expressions to see if any of them assign variables
-                // if so, need to mark the block as one that needs to create a new frame
-                break;
-            case "name":
-                result = { type: "path", steps: [expr] };
-                if (expr.keepArray) {
-                    result.keepSingletonArray = true;
-                }
-                break;
-            case "literal":
-            case "wildcard":
-            case "descendant":
-            case "variable":
-            case "regex":
-                result = expr;
-                break;
-            case "operator":
-                // the tokens 'and' and 'or' might have been used as a name rather than an operator
-                if (expr.value === "and" || expr.value === "or" || expr.value === "in") {
-                    expr.type = "name";
-                    result = ast_optimize(expr);
-                } else {
-                    /* istanbul ignore else */ 
-                    if (expr.value === "?") {
-                        // partial application
-                        result = expr;
-                    } else {
-                        throw {
-                        code: "S0201",
-                        stack: new Error().stack,
-                        position: expr.position,
-                        token: expr.value,
-                        };
-                    }
-                }
-                break;
-            case "error":
-                result = expr;
-                if (expr.lhs) {
-                    result = ast_optimize(expr.lhs);
-                }
-                break;
-            default:
-                var code = "S0206";
-                /* istanbul ignore else */
-                if (expr.id === "(end)") {
-                    code = "S0207";
-                }
-                var err = {
-                    code: code,
-                    position: expr.position,
-                    token: expr.value,
-                };
-                if (recover) {
-                    errors.push(err);
-                    return { type: "error", error: err };
-                } else {
-                    (err as any).stack = new Error().stack;
-                    throw err;
-                }
-        }
-        return result;
-    };
-
     // now invoke the tokenizer and the parser and return the syntax tree
     lexer = tokenizer(source);
     advance();
@@ -802,7 +513,10 @@ export function parser(source, recover?: boolean) {
         };
         handleError(err);
     }
-    expr = ast_optimize(expr);
+    
+    // Decide if we want to collect errors and recover, or just throw an error
+    let collect = recover ? (err) => errors.push(err) : undefined;
+    expr = ast_optimize(expr, collect);
 
     if (errors.length > 0) {
         expr.errors = errors;
