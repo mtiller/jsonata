@@ -194,7 +194,7 @@ export function parser(source, recover?: boolean) {
         prefix("-"); // unary numeric negation
         infix("~>"); // function application
 
-        infixr("(error)", 10, function(self: any, left) {
+        infixr("(error)", 10, function(self: any, left: ExprNode) {
             self.lhs = left;
 
             self.error = node.error;
@@ -216,7 +216,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // function invocation
-        infix("(", operators["("], function(self: any, left) {
+        infix("(", operators["("], function(self: any, left: ExprNode) {
             // left is is what we are trying to invoke
             self.procedure = left;
             self.type = "function";
@@ -448,7 +448,7 @@ export function parser(source, recover?: boolean) {
     var errors = [];
     let symbol_table = createTable();
 
-    var handleError = function(err) {
+    var handleError = function(err): void {
         if (recover) {
             // tokenize the rest of the buffer and add it to an error token
             err.remaining = remainingTokens();
@@ -464,14 +464,13 @@ export function parser(source, recover?: boolean) {
                     position: current.token.position,
                 }
             };
-            return node;
         } else {
             err.stack = new Error().stack;
             throw err;
         }
     };
 
-    var advance = function(id?, infix?) {
+    var advance = function(id?, infix?): void {
         if (id && current.symbol.id !== id) {
             var code;
             if (current.symbol.id === "(end)") {
@@ -500,7 +499,7 @@ export function parser(source, recover?: boolean) {
                     position: source.length,
                 }
             }
-            return node;
+            return;
         }
         var value = next_token.value;
         var type = next_token.type;
@@ -553,7 +552,7 @@ export function parser(source, recover?: boolean) {
         node.value = value;
         node.type = type;
         node.position = next_token.position;
-        return node;
+        return;
     };
 
     // Pratt's algorithm
