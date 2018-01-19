@@ -38,10 +38,6 @@
   ],
   "devDependencies": {
     "@types/jest": "^22.0.1",
-    "babel-cli": "^6.24.1",
-    "babel-plugin-transform-runtime": "^6.23.0",
-    "babel-preset-env": "^1.5.2",
-    "babel-runtime": "^6.23.0",
     "browserify": "^15.2.0",
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
@@ -64,7 +60,6 @@
     "@types/node": "^9.3.0",
     "typescript": "^2.6.2"
   },
-  
   "jest": {
     "globals": {
       "ts-jest": {
@@ -76,7 +71,10 @@
     },
     "collectCoverage": true,
     "testRegex": "/__tests__/.*\\.(ts|tsx)$",
-    "testPathIgnorePatterns": ["/node_modules/", "/lib/"],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/lib/"
+    ],
     "moduleFileExtensions": [
       "ts",
       "tsx",
