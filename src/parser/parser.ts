@@ -1,6 +1,6 @@
 import { operators } from "../constants";
 import { parseSignature } from "../signatures";
-import { tokenizer, Tokenizer } from "../tokenizer";
+import { tokenizer, Tokenizer, Token } from "../tokenizer";
 import { isNumeric } from "../utils";
 import { ast_optimize } from "./optimize";
 import { ErrorCollector } from "./errors";
@@ -16,8 +16,8 @@ export interface Symbol {
     lbp: number;
     nud: NUD;
     led?: LED;
-    value: any;
     position?: number;
+    value: any;
 }
 
 // export class ParserState {
@@ -31,18 +31,27 @@ export interface Symbol {
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
 export function parser(source, recover?: boolean) {
-    var node: any;
-    var lexer;
+    var node: {
+        id: string;
+        error?: any;
+        type?: string;
+        position?: number;
+        value?: any;
+        nud?: NUD;
+        led?: LED;
+        lbp?: number;
+    };
+    var lexer: Tokenizer;
 
     var remainingTokens = function() {
-        var remaining = [];
+        var remaining: Token[] = [];
         if (node.id !== "(end)") {
             remaining.push({ type: node.type, value: node.value, position: node.position });
         }
-        var nxt = lexer();
+        var nxt: Token = lexer(undefined);
         while (nxt !== null) {
             remaining.push(nxt);
-            nxt = lexer();
+            nxt = lexer(undefined);
         }
         return remaining;
     };
@@ -245,7 +254,8 @@ export function parser(source, recover?: boolean) {
                     var sigPos = node.position;
                     var depth = 1;
                     var sig = "<";
-                    while (depth > 0 && node.id !== "{" && node.id !== "(end)") {
+                    // TODO: Bug in typescript compiler?...doesn't recognize side effects in advance and impact on node value
+                    while (depth > 0 && (node.id as string) !== "{" && (node.id as string) !== "(end)") {
                         var tok = advance();
                         if (tok.id === ">") {
                             depth--;
@@ -434,7 +444,7 @@ export function parser(source, recover?: boolean) {
     var errors = [];
     let symbol_table = createTable();
 
-    var handleError = function(err): ast.ErrorNode {
+    var handleError = function(err) {
         if (recover) {
             // tokenize the rest of the buffer and add it to an error token
             err.remaining = remainingTokens();
@@ -444,15 +454,6 @@ export function parser(source, recover?: boolean) {
             node.error = err;
             node.type = "(error)";
             return node;
-            // let tmp: ast.ErrorNode = {
-            //     value: symbol.value,
-            //     type: "(error)",
-            //     error: err,
-            // }
-            // let tmp = Object.create(symbol);
-            // tmp.error = err;
-            // tmp.type = "(error)";
-            // return tmp;
         } else {
             err.stack = new Error().stack;
             throw err;
@@ -476,7 +477,7 @@ export function parser(source, recover?: boolean) {
             };
             return handleError(err);
         }
-        var next_token = lexer(infix);
+        var next_token: Token = lexer(infix);
         if (next_token === null) {
             node = symbol_table["(end)"];
             node.position = source.length;

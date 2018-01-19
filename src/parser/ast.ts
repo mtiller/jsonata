@@ -1,4 +1,5 @@
 export interface ASTNode {
+    id: string; // Symbol id this came from
     type: string;
     value: any;
 }
