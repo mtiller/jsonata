@@ -1,3 +1,5 @@
+import { Token } from '../tokenizer';
+
 export interface ASTNode {
     id: string; // Symbol id this came from
     type: string;
@@ -13,10 +15,27 @@ export interface DescendantNode extends ASTNode {
 }
 
 export interface ErrorNode extends ASTNode {
-    type: "(error)";
+    type: "error";
+    // TODO: refine
     error: any;
+    // TODO: refine
+    lhs: any;
+    remaining: Token[],
 }
 
 export interface LiteralNode extends ASTNode {
     type: "(literal)";
+}
+
+export interface UnaryNode extends ASTNode {
+    type: "unary";
+    // TODO: refine
+    expression: any;
+}
+
+export interface BinaryNode extends ASTNode {
+    type: "binary";
+    value: string; // Could be refined
+    lhs: any;
+    rhs: any;
 }

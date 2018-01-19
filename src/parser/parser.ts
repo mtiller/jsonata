@@ -119,11 +119,15 @@ export function parser(source, recover?: boolean) {
             var s = symbol(id, bindingPower);
             s.led =
                 led ||
-                function(self: any, left) {
-                    self.lhs = left;
-                    self.rhs = expression(bindingPower);
-                    self.type = "binary";
-                    return self;
+                function(self: NodeType, left): ast.BinaryNode {
+                    let rhs = expression(bindingPower);
+                    return {
+                        id: self.id,
+                        value: self.value,
+                        type: "binary",
+                        lhs: left,
+                        rhs: rhs,
+                    }
                 };
             return s;
         };
@@ -137,11 +141,15 @@ export function parser(source, recover?: boolean) {
             var s = symbol(id, bindingPower);
             s.led =
                 led ||
-                function(self: any, left) {
-                    self.lhs = left;
-                    self.rhs = expression(bindingPower - 1); // subtract 1 from bindingPower for right associative operators
-                    self.type = "binary";
-                    return self;
+                function(self: NodeType, left): ast.BinaryNode {
+                    let rhs = expression(bindingPower - 1); // subtract 1 from bindingPower for right associative operators
+                    return {
+                        id: self.id,
+                        value: self.value,
+                        type: "binary",
+                        lhs: left,
+                        rhs: rhs,
+                    }
                 };
             return s;
         };
@@ -152,10 +160,13 @@ export function parser(source, recover?: boolean) {
             var s = symbol(id, 0);
             s.nud =
                 nud ||
-                function(self: any) {
-                    self.expression = expression(70);
-                    self.type = "unary";
-                    return self;
+                function(self: any): ast.UnaryNode {
+                    return {
+                        id: self.id,
+                        value: self.value,
+                        type: "unary",
+                        expression: expression(70),
+                    }
                 };
             return s;
         };
@@ -194,25 +205,33 @@ export function parser(source, recover?: boolean) {
         prefix("-"); // unary numeric negation
         infix("~>"); // function application
 
-        infixr("(error)", 10, function(self: any, left: ExprNode) {
-            self.lhs = left;
-
-            self.error = node.error;
-            self.remaining = remainingTokens();
-            self.type = "error";
-            return self;
+        infixr("(error)", 10, function(self: any, left: ExprNode): ast.ErrorNode {
+            return {
+                id: self.id,
+                value: self.value,
+                lhs: left,
+                error: node.error,
+                remaining: remainingTokens(),
+                type: "error",
+            }
         });
 
         // field wildcard (single level)
-        prefix("*", function(self: any): ast.WildcardNode {
-            self.type = "wildcard";
-            return self;
+        prefix("*", function(self: NodeType): ast.WildcardNode {
+            return {
+                id: self.id,
+                value: self.value,
+                type: "wildcard",
+            }
         });
 
         // descendant wildcard (multi-level)
-        prefix("**", function(self: any) {
-            self.type = "descendant";
-            return self;
+        prefix("**", function(self: NodeType): ast.DescendantNode {
+            return {
+                id: self.id,
+                value: self.value,
+                type: "descendant",
+            }
         });
 
         // function invocation
