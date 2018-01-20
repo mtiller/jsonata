@@ -5,42 +5,10 @@ import { isNumeric } from "../utils";
 import { ast_optimize } from "./optimize";
 import { ErrorCollector } from "./errors";
 import * as ast from "./ast";
+import * as nuds from './nuds';
+import * as leds from './leds';
 
-export type NUD = (state: ParserState) => ast.ASTNode;
-export type LED = (state: ParserState, left: ast.ASTNode) => ast.ASTNode;
-
-export interface Symbol {
-    id: string;
-    lbp: number;
-    nud: NUD;
-    led?: LED;
-    position?: number;
-    value: any;
-}
-
-// export class ParserState {
-//     lexer: Tokenizer;
-//     constructor(source: string) {
-//         this.lexer = tokenizer(source);
-//     }
-// }
-
-export interface NodeType {
-    id: string;
-    error?: any;
-    type?: string;
-    position?: number;
-    value?: any;
-}
-
-export interface ParserState {
-    symbol: Symbol;
-    token: Token;
-    error: any;
-    advance: (id?: string, infix?: boolean) => void;
-    expression: (rbp: number) => ast.ASTNode;
-    handleError: (err) => void;
-}
+import { NUD, LED, Symbol, ParserState } from './types';
 
 // This parser implements the 'Top down operator precedence' algorithm developed by Vaughan R Pratt; http://dl.acm.org/citation.cfm?id=512931.
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
@@ -108,51 +76,7 @@ export function parser(source, recover?: boolean) {
         // A terminal could be a 'literal', 'variable', 'name'
         var terminal = (id) => {
             var s = getSymbol(id, 0);
-            s.nud = (state: ParserState): ast.TerminalNode => {
-                let token = state.token;
-                switch (state.token.type) {
-                    case "variable":
-                        return {
-                            type: "variable",
-                            value: token.value,
-                            position: token.position,
-                        };
-                    case "name":
-                        return {
-                            type: "name",
-                            value: token.value,
-                            position: token.position,
-                        };
-                    case "literal":
-                        return {
-                            type: "literal",
-                            value: token.value,
-                            position: token.position,
-                        };
-                    case "regex":
-                        return {
-                            type: "regex",
-                            value: token.value,
-                            position: token.position,
-                        };
-                    case "operator":
-                        return {
-                            type: "operator",
-                            value: token.value,
-                            position: token.position,
-                        };
-                    default:
-                        /* istanbul ignore next */
-                        if (state.symbol.id !== "(end)") {
-                            throw new Error("Unexpected terminal: " + JSON.stringify(self));
-                        }
-                        return {
-                            type: "end",
-                            value: "(end)",
-                            position: token.position,
-                        }
-                }
-            };
+            s.nud = nuds.terminalNUD;
         };
 
         // match infix operators
@@ -162,15 +86,7 @@ export function parser(source, recover?: boolean) {
         var infix = (id: string, bp?: number, led?: LED) => {
             var bindingPower = bp || operators[id];
             var s = getSymbol(id, bindingPower);
-            let defaultLED: LED = (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
-                let rhs = state.expression(bindingPower);
-                return {
-                    value: state.token.value,
-                    type: "binary",
-                    lhs: left,
-                    rhs: rhs,
-                };
-            };
+            let defaultLED: LED = leds.infixDefaultLED(bindingPower);
             s.led = led || defaultLED;
             return s;
         };
@@ -182,18 +98,8 @@ export function parser(source, recover?: boolean) {
         var infixr = (id, bp?, led?: LED) => {
             var bindingPower = bp || operators[id];
             var s = getSymbol(id, bindingPower);
-            let defaultLED: LED = (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
-                let rhs = state.expression(bindingPower - 1); // subtract 1 from bindingPower for right associative operators
-                return {
-                    value: state.token.value,
-                    type: "binary",
-                    lhs: left,
-                    rhs: rhs,
-                };
-            };
-            s.led =
-                led ||
-                defaultLED;
+            let defaultLED: LED = leds.infixDefaultLED(bindingPower - 1); // subtract 1 from bindingPower for right associative operators
+            s.led = led || defaultLED;
             return s;
         };
 
@@ -201,16 +107,8 @@ export function parser(source, recover?: boolean) {
         // <operator> <expression>
         var prefix = (id, nud?: NUD) => {
             var s = getSymbol(id, 0);
-            let defaultNUD: NUD = (state: ParserState): ast.UnaryNode => {
-                return {
-                    value: state.token.value,
-                    type: "unary",
-                    expression: state.expression(70),
-                };
-            };
-            s.nud =
-                nud ||
-                defaultNUD;
+            let defaultNUD: NUD = nuds.prefixDefaultNUD(70);
+            s.nud = nud || defaultNUD;
             return s;
         };
 
@@ -259,20 +157,10 @@ export function parser(source, recover?: boolean) {
         });
 
         // field wildcard (single level)
-        prefix("*", (state: ParserState): ast.WildcardNode => {
-            return {
-                value: state.token.value,
-                type: "wildcard",
-            };
-        });
+        prefix("*", nuds.wildcardNUD);
 
         // descendant wildcard (multi-level)
-        prefix("**", (state: ParserState): ast.DescendantNode => {
-            return {
-                value: state.token.value,
-                type: "descendant",
-            };
-        });
+        prefix("**", nuds.descendantNUD);
 
         // function invocation
         infix("(", operators["("], (
