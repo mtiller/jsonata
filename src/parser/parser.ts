@@ -102,7 +102,7 @@ export function parser(source, recover?: boolean) {
         // A terminal could be a 'literal', 'variable', 'name'
         var terminal = (id) => {
             var s = symbol(id, 0);
-            s.nud = (self: NodeType): ast.TerminalNode => {
+            s.nud = (self: NodeType, token: Token): ast.TerminalNode => {
                 switch (self.type) {
                     case "variable":
                         return {
@@ -194,7 +194,7 @@ export function parser(source, recover?: boolean) {
         // <operator> <expression>
         var prefix = (id, nud?: NUD) => {
             var s = symbol(id, 0);
-            let defaultNUD: NUD = (self: NodeType): ast.UnaryNode => {
+            let defaultNUD: NUD = (self: NodeType, token: Token): ast.UnaryNode => {
                 return {
                     value: self.value,
                     type: "unary",
@@ -252,7 +252,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // field wildcard (single level)
-        prefix("*", (self: NodeType): ast.WildcardNode => {
+        prefix("*", (self: NodeType, token: Token): ast.WildcardNode => {
             return {
                 value: self.value,
                 type: "wildcard",
@@ -260,7 +260,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // descendant wildcard (multi-level)
-        prefix("**", (self: NodeType): ast.DescendantNode => {
+        prefix("**", (self: NodeType, token: Token): ast.DescendantNode => {
             return {
                 value: self.value,
                 type: "descendant",
@@ -363,7 +363,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // parenthesis - block expression
-        prefix("(", (self: NodeType): ast.BlockNode => {
+        prefix("(", (self: NodeType, token: Token): ast.BlockNode => {
             var expressions = [];
             while (current.symbol.id !== ")") {
                 expressions.push(expression(0));
@@ -381,7 +381,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // array constructor
-        prefix("[", (self: NodeType): ast.UnaryNode => {
+        prefix("[", (self: NodeType, token: Token): ast.UnaryNode => {
             var a = [];
             if (current.symbol.id !== "]") {
                 for (;;) {
@@ -472,7 +472,7 @@ export function parser(source, recover?: boolean) {
             };
         });
 
-        var objectParserNUD = (self: NodeType): ast.UnaryNode => {
+        var objectParserNUD = (self: NodeType, token: Token): ast.UnaryNode => {
             var a = [];
             /* istanbul ignore else */
             if (current.symbol.id !== "}") {
@@ -546,7 +546,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // object transformer
-        prefix("|", (self: NodeType): ast.TransformNode => {
+        prefix("|", (self: NodeType, token: Token): ast.TransformNode => {
             let expr = expression(0);
             advance("|");
             let update = expression(0);
