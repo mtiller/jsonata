@@ -680,12 +680,10 @@ export function parser(source, recover?: boolean) {
 
     // Pratt's algorithm
     var expression = (rbp: number): ast.ASTNode => {
-        var left: ast.ASTNode;
-        var t = node;
         var c = current;
+        var t = node;
         advance(null, true);
-        let l = c.symbol.nud(t, c.token);
-        left = l;
+        var left: ast.ASTNode = c.symbol.nud(t, c.token);
         while (rbp < current.symbol.lbp) {
             t = node;
             c = current;
