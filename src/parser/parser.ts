@@ -411,8 +411,9 @@ export function parser(source, recover?: boolean) {
             return self;
         });
 
-        var objectParser = function(self: any, left?) {
+        var objectParserNUD = function(self: any): ast.UnaryNode {
             var a = [];
+            /* istanbul ignore else */
             if (current.symbol.id !== "}") {
                 for (;;) {
                     var n = expression(0);
@@ -426,24 +427,46 @@ export function parser(source, recover?: boolean) {
                 }
             }
             advance("}", true);
-            if (typeof left === "undefined") {
-                // NUD - unary prefix form
-                self.lhs = a;
-                self.type = "unary";
-            } else {
-                // LED - binary infix form
-                self.lhs = left;
-                self.rhs = a;
-                self.type = "binary";
+            // NUD - unary prefix form
+            return {
+                id: self.id,
+                value: self.value,
+                type: "unary",
+                lhs: a, // TODO: use expression
             }
-            return self;
+        };
+
+        var objectParserLED = function(self: any, left: ExprNode): ast.BinaryNode {
+            var a = [];
+            /* istanbul ignore else */
+            if (current.symbol.id !== "}") {
+                for (;;) {
+                    var n = expression(0);
+                    advance(":");
+                    var v = expression(0);
+                    a.push([n, v]); // holds an array of name/value expression pairs
+                    if (current.symbol.id !== ",") {
+                        break;
+                    }
+                    advance(",");
+                }
+            }
+            advance("}", true);
+            // LED - binary infix form
+            return {
+                id: self.id,
+                value: self.value,
+                type: "binary",
+                lhs: left,
+                rhs: a,
+            }
         };
 
         // object constructor
-        prefix("{", objectParser);
+        prefix("{", objectParserNUD);
 
         // object grouping
-        infix("{", operators["{"], objectParser);
+        infix("{", operators["{"], objectParserLED);
 
         // if/then/else ternary operator ?:
         infix("?", operators["?"], function(self: any, left): ast.TernaryNode {

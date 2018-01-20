@@ -43,7 +43,9 @@ export type TerminalNode = LiteralNode | NameNode | VariableNode;
 export interface UnaryNode extends ASTNode {
     type: "unary";
     // TODO: refine
-    expression: any;
+    expression?: any;
+    // TODO: Used by objectParser (should get rid of this eventually)
+    lhs?: any;
 }
 
 export interface BinaryNode extends ASTNode {
