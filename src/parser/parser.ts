@@ -6,8 +6,8 @@ import { ast_optimize } from "./optimize";
 import { ErrorCollector } from "./errors";
 import * as ast from "./ast";
 
-export type NUD = (self: any) => ast.ASTNode;
-export type LED = (self: any, left: ast.ASTNode) => ast.ASTNode;
+export type NUD = (self: NodeType) => ast.ASTNode;
+export type LED = (self: NodeType, left: ast.ASTNode) => ast.ASTNode;
 
 export interface Symbol {
     id: string;
@@ -192,11 +192,11 @@ export function parser(source, recover?: boolean) {
 
         // match prefix operators
         // <operator> <expression>
-        var prefix = function(id, nud?: (self: any) => any) {
+        var prefix = function(id, nud?: NUD) {
             var s = symbol(id, 0);
             s.nud =
                 nud ||
-                function(self: any): ast.UnaryNode {
+                function(self: NodeType): ast.UnaryNode {
                     return {
                         value: self.value,
                         type: "unary",
@@ -240,7 +240,7 @@ export function parser(source, recover?: boolean) {
         prefix("-"); // unary numeric negation
         infix("~>"); // function application
 
-        infixr("(error)", 10, function(self: any, left: ast.ASTNode): ast.ErrorNode {
+        infixr("(error)", 10, function(self: NodeType, left: ast.ASTNode): ast.ErrorNode {
             return {
                 value: self.value,
                 lhs: left,
@@ -268,7 +268,7 @@ export function parser(source, recover?: boolean) {
 
         // function invocation
         infix("(", operators["("], function(
-            self: any,
+            self: NodeType,
             left: ast.ASTNode,
         ): ast.FunctionInvocationNode | ast.LambdaDefinitionNode {
             // left is is what we are trying to invoke
@@ -380,7 +380,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // array constructor
-        prefix("[", function(self: any): ast.UnaryNode {
+        prefix("[", function(self: NodeType): ast.UnaryNode {
             var a = [];
             if (current.symbol.id !== "]") {
                 for (;;) {
@@ -411,7 +411,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // filter - predicate or array index
-        infix("[", operators["["], function<T extends ast.ASTNode>(self: any, left: T): T | ast.BinaryNode {
+        infix("[", operators["["], (self: NodeType, left: ast.ASTNode): ast.ASTNode | ast.BinaryNode => {
             if (current.symbol.id === "]") {
                 // empty predicate means maintain singleton arrays in the output
                 var step = left;
@@ -436,7 +436,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // order-by
-        infix("^", operators["^"], function(self: any, left: ast.ASTNode): ast.BinaryNode {
+        infix("^", operators["^"], function(self: NodeType, left: ast.ASTNode): ast.BinaryNode {
             advance("(");
             var terms = [];
             for (;;) {
@@ -467,11 +467,11 @@ export function parser(source, recover?: boolean) {
                 value: self.value,
                 type: "binary",
                 lhs: left,
-                rhs: terms,
+                rhs: terms, // TODO: Not an expression node...different node type recommended
             };
         });
 
-        var objectParserNUD = function(self: any): ast.UnaryNode {
+        var objectParserNUD = function(self: NodeType): ast.UnaryNode {
             var a = [];
             /* istanbul ignore else */
             if (current.symbol.id !== "}") {
@@ -495,7 +495,7 @@ export function parser(source, recover?: boolean) {
             };
         };
 
-        var objectParserLED = function(self: any, left: ast.ASTNode): ast.BinaryNode {
+        var objectParserLED = function(self: NodeType, left: ast.ASTNode): ast.BinaryNode {
             var a = [];
             /* istanbul ignore else */
             if (current.symbol.id !== "}") {
@@ -527,7 +527,7 @@ export function parser(source, recover?: boolean) {
         infix("{", operators["{"], objectParserLED);
 
         // if/then/else ternary operator ?:
-        infix("?", operators["?"], function(self: any, left): ast.TernaryNode {
+        infix("?", operators["?"], function(self: NodeType, left): ast.TernaryNode {
             let then = expression(0);
             let otherwise = undefined;
             if (current.symbol.id === ":") {
@@ -545,7 +545,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // object transformer
-        prefix("|", function(self: any): ast.TransformNode {
+        prefix("|", function(self: NodeType): ast.TransformNode {
             let expr = expression(0);
             advance("|");
             let update = expression(0);

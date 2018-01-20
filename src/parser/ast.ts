@@ -4,6 +4,7 @@ export interface BaseNode {
     type: string;
     value: any;
     keepArray?: boolean;
+    // TODO: This is only added to the root expression node...should probably be a separate return value from parser
     errors?: string[];
 }
 
