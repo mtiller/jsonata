@@ -63,8 +63,8 @@ export function parser(source, recover?: boolean) {
             // error - symbol has been invoked as a unary operator
             var err: any = {
                 code: "S0211",
-                token: self.value,
-                position: self.position,
+                token: token.value,
+                position: token.position,
             };
 
             if (recover) {
@@ -107,32 +107,32 @@ export function parser(source, recover?: boolean) {
                     case "variable":
                         return {
                             type: "variable",
-                            value: self.value,
-                            position: self.position,
+                            value: token.value,
+                            position: token.position,
                         };
                     case "name":
                         return {
                             type: "name",
-                            value: self.value,
-                            position: self.position,
+                            value: token.value,
+                            position: token.position,
                         };
                     case "literal":
                         return {
                             type: "literal",
-                            value: self.value,
-                            position: self.position,
+                            value: token.value,
+                            position: token.position,
                         };
                     case "regex":
                         return {
                             type: "regex",
-                            value: self.value,
-                            position: self.position,
+                            value: token.value,
+                            position: token.position,
                         };
                     case "operator":
                         return {
                             type: "operator",
-                            value: self.value,
-                            position: self.position,
+                            value: token.value,
+                            position: token.position,
                         };
                     default:
                         /* istanbul ignore next */
@@ -142,7 +142,7 @@ export function parser(source, recover?: boolean) {
                         return {
                             type: "end",
                             value: "(end)",
-                            position: self.position,
+                            position: token.position,
                         }
                 }
             };
@@ -196,7 +196,7 @@ export function parser(source, recover?: boolean) {
             var s = symbol(id, 0);
             let defaultNUD: NUD = (self: NodeType, token: Token): ast.UnaryNode => {
                 return {
-                    value: self.value,
+                    value: token.value,
                     type: "unary",
                     expression: expression(70),
                 };
@@ -254,7 +254,7 @@ export function parser(source, recover?: boolean) {
         // field wildcard (single level)
         prefix("*", (self: NodeType, token: Token): ast.WildcardNode => {
             return {
-                value: self.value,
+                value: token.value,
                 type: "wildcard",
             };
         });
@@ -262,7 +262,7 @@ export function parser(source, recover?: boolean) {
         // descendant wildcard (multi-level)
         prefix("**", (self: NodeType, token: Token): ast.DescendantNode => {
             return {
-                value: self.value,
+                value: token.value,
                 type: "descendant",
             };
         });
@@ -374,7 +374,7 @@ export function parser(source, recover?: boolean) {
             }
             advance(")", true);
             return {
-                value: self.value,
+                value: token.value,
                 type: "block",
                 expressions: expressions,
             };
@@ -405,7 +405,7 @@ export function parser(source, recover?: boolean) {
             advance("]", true);
             // TODO: Should this be a different type...? (not unary)
             return {
-                value: self.value,
+                value: token.value,
                 type: "unary",
                 expressions: a,
             };
@@ -490,7 +490,7 @@ export function parser(source, recover?: boolean) {
             advance("}", true);
             // NUD - unary prefix form
             return {
-                value: self.value,
+                value: token.value,
                 type: "unary",
                 lhs: a, // TODO: use expression
             };
@@ -557,7 +557,7 @@ export function parser(source, recover?: boolean) {
             }
             advance("|");
             return {
-                value: self.value,
+                value: token.value,
                 type: "transform",
                 pattern: expr,
                 update: update,
