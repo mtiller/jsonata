@@ -44,7 +44,6 @@ export interface ParserState {
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
 export function parser(source, recover?: boolean) {
     var current: ParserState;
-    var node: NodeType;
     var lexer: Tokenizer;
 
     var remainingTokens = () => {
@@ -284,7 +283,11 @@ export function parser(source, recover?: boolean) {
                     if (current.token.type === "operator" && current.symbol.id === "?") {
                         // partial function application
                         type = "partial";
-                        args.push(node);
+                        args.push({
+                            type: "operator",
+                            position: current.token.position,
+                            value: current.token.value,
+                        });
                         advance("?");
                     } else {
                         args.push(expression(0));
@@ -581,8 +584,6 @@ export function parser(source, recover?: boolean) {
             err.remaining = remainingTokens();
             errors.push(err);
             var symbol = symbol_table["(error)"];
-            node = Object.create(symbol);
-            node.error = err;
             current = {
                 symbol: Object.create(symbol),
                 token: {
@@ -619,8 +620,6 @@ export function parser(source, recover?: boolean) {
         var next_token: Token = lexer(infix);
         if (next_token === null) {
             let symbol = symbol_table["(end)"]
-            node = symbol;
-            node.position = source.length;
             current = {
                 symbol: Object.create(symbol),
                 token: {
@@ -680,21 +679,15 @@ export function parser(source, recover?: boolean) {
             },
             error: undefined,
         };
-        node = Object.create(symbol);
-        node.value = value;
-        node.type = type;
-        node.position = next_token.position;
         return;
     };
 
     // Pratt's algorithm
     var expression = (rbp: number): ast.ASTNode => {
         var c = current;
-        var t = node;
         advance(null, true);
         var left: ast.ASTNode = c.symbol.nud(c, c.token);
         while (rbp < current.symbol.lbp) {
-            t = node;
             c = current;
             advance();
             left = c.symbol.led(c, left);
