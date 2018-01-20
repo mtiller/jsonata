@@ -6,7 +6,7 @@ import { ast_optimize } from "./optimize";
 import { ErrorCollector } from "./errors";
 import * as ast from "./ast";
 
-export type NUD = (state: ParserState, token: Token) => ast.ASTNode;
+export type NUD = (state: ParserState) => ast.ASTNode;
 export type LED = (state: ParserState, left: ast.ASTNode) => ast.ASTNode;
 
 export interface Symbol {
@@ -62,12 +62,12 @@ export function parser(source, recover?: boolean) {
     function createTable(): { [id: string]: Symbol } {
         let symbol_table: { [id: string]: Symbol } = {};
 
-        let defaultNud: NUD = (state: ParserState, token: Token): ast.ErrorNode => {
+        let defaultNud: NUD = (state: ParserState): ast.ErrorNode => {
             // error - symbol has been invoked as a unary operator
             var err: any = {
                 code: "S0211",
-                token: token.value,
-                position: token.position,
+                token: state.token.value,
+                position: state.token.position,
             };
 
             if (recover) {
@@ -81,7 +81,7 @@ export function parser(source, recover?: boolean) {
             }
         };
 
-        var symbol = (id, bp: number): Symbol => {
+        var getSymbol = (id, bp: number): Symbol => {
             bp = bp || 0;
             if (symbol_table.hasOwnProperty(id)) {
                 let s = symbol_table[id];
@@ -104,8 +104,9 @@ export function parser(source, recover?: boolean) {
 
         // A terminal could be a 'literal', 'variable', 'name'
         var terminal = (id) => {
-            var s = symbol(id, 0);
-            s.nud = (state: ParserState, token: Token): ast.TerminalNode => {
+            var s = getSymbol(id, 0);
+            s.nud = (state: ParserState): ast.TerminalNode => {
+                let token = state.token;
                 switch (state.token.type) {
                     case "variable":
                         return {
@@ -157,7 +158,7 @@ export function parser(source, recover?: boolean) {
         // TODO: Add default values for bp and led
         var infix = (id: string, bp?: number, led?: LED) => {
             var bindingPower = bp || operators[id];
-            var s = symbol(id, bindingPower);
+            var s = getSymbol(id, bindingPower);
             let defaultLED: LED = (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
                 let rhs = expression(bindingPower);
                 return {
@@ -177,7 +178,7 @@ export function parser(source, recover?: boolean) {
         // TODO: Add default values for bp and led
         var infixr = (id, bp?, led?: LED) => {
             var bindingPower = bp || operators[id];
-            var s = symbol(id, bindingPower);
+            var s = getSymbol(id, bindingPower);
             let defaultLED: LED = (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
                 let rhs = expression(bindingPower - 1); // subtract 1 from bindingPower for right associative operators
                 return {
@@ -196,10 +197,10 @@ export function parser(source, recover?: boolean) {
         // match prefix operators
         // <operator> <expression>
         var prefix = (id, nud?: NUD) => {
-            var s = symbol(id, 0);
-            let defaultNUD: NUD = (state: ParserState, token: Token): ast.UnaryNode => {
+            var s = getSymbol(id, 0);
+            let defaultNUD: NUD = (state: ParserState): ast.UnaryNode => {
                 return {
-                    value: token.value,
+                    value: state.token.value,
                     type: "unary",
                     expression: expression(70),
                 };
@@ -214,13 +215,13 @@ export function parser(source, recover?: boolean) {
         terminal("(name)");
         terminal("(literal)");
         terminal("(regex)");
-        symbol(":", 0);
-        symbol(";", 0);
-        symbol(",", 0);
-        symbol(")", 0);
-        symbol("]", 0);
-        symbol("}", 0);
-        symbol("..", 0); // range operator
+        getSymbol(":", 0);
+        getSymbol(";", 0);
+        getSymbol(",", 0);
+        getSymbol(")", 0);
+        getSymbol("]", 0);
+        getSymbol("}", 0);
+        getSymbol("..", 0); // range operator
         infix("."); // field reference
         infix("+"); // numeric addition
         infix("-"); // numeric subtraction
@@ -255,17 +256,17 @@ export function parser(source, recover?: boolean) {
         });
 
         // field wildcard (single level)
-        prefix("*", (state: ParserState, token: Token): ast.WildcardNode => {
+        prefix("*", (state: ParserState): ast.WildcardNode => {
             return {
-                value: token.value,
+                value: state.token.value,
                 type: "wildcard",
             };
         });
 
         // descendant wildcard (multi-level)
-        prefix("**", (state: ParserState, token: Token): ast.DescendantNode => {
+        prefix("**", (state: ParserState): ast.DescendantNode => {
             return {
-                value: token.value,
+                value: state.token.value,
                 type: "descendant",
             };
         });
@@ -370,7 +371,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // parenthesis - block expression
-        prefix("(", (state: ParserState, token: Token): ast.BlockNode => {
+        prefix("(", (state: ParserState): ast.BlockNode => {
             var expressions = [];
             while (current.symbol.id !== ")") {
                 expressions.push(expression(0));
@@ -381,14 +382,14 @@ export function parser(source, recover?: boolean) {
             }
             advance(")", true);
             return {
-                value: token.value,
+                value: state.token.value,
                 type: "block",
                 expressions: expressions,
             };
         });
 
         // array constructor
-        prefix("[", (state: ParserState, token: Token): ast.UnaryNode => {
+        prefix("[", (state: ParserState): ast.UnaryNode => {
             var a = [];
             if (current.symbol.id !== "]") {
                 for (;;) {
@@ -412,7 +413,7 @@ export function parser(source, recover?: boolean) {
             advance("]", true);
             // TODO: Should this be a different type...? (not unary)
             return {
-                value: token.value,
+                value: state.token.value,
                 type: "unary",
                 expressions: a,
             };
@@ -479,7 +480,7 @@ export function parser(source, recover?: boolean) {
             };
         });
 
-        var objectParserNUD = (state: ParserState, token: Token): ast.UnaryNode => {
+        var objectParserNUD = (state: ParserState): ast.UnaryNode => {
             var a = [];
             /* istanbul ignore else */
             if (current.symbol.id !== "}") {
@@ -497,7 +498,7 @@ export function parser(source, recover?: boolean) {
             advance("}", true);
             // NUD - unary prefix form
             return {
-                value: token.value,
+                value: state.token.value,
                 type: "unary",
                 lhs: a, // TODO: use expression
             };
@@ -553,7 +554,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // object transformer
-        prefix("|", (state: ParserState, token: Token): ast.TransformNode => {
+        prefix("|", (state: ParserState): ast.TransformNode => {
             let expr = expression(0);
             advance("|");
             let update = expression(0);
@@ -564,7 +565,7 @@ export function parser(source, recover?: boolean) {
             }
             advance("|");
             return {
-                value: token.value,
+                value: state.token.value,
                 type: "transform",
                 pattern: expr,
                 update: update,
@@ -686,7 +687,7 @@ export function parser(source, recover?: boolean) {
     var expression = (rbp: number): ast.ASTNode => {
         var c = current;
         advance(null, true);
-        var left: ast.ASTNode = c.symbol.nud(c, c.token);
+        var left: ast.ASTNode = c.symbol.nud(c);
         while (rbp < current.symbol.lbp) {
             c = current;
             advance();
