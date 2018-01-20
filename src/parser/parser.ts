@@ -31,10 +31,8 @@ export interface NodeType {
     type?: string;
     position?: number;
     value?: any;
-    nud?: NUD;
-    led?: LED;
-    lbp?: number;
 }
+
 // This parser implements the 'Top down operator precedence' algorithm developed by Vaughan R Pratt; http://dl.acm.org/citation.cfm?id=512931.
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
@@ -245,7 +243,7 @@ export function parser(source, recover?: boolean) {
             return {
                 value: self.value,
                 lhs: left,
-                error: node.error,
+                error: self.error,
                 remaining: remainingTokens(),
                 type: "error",
             };
@@ -606,20 +604,21 @@ export function parser(source, recover?: boolean) {
             var err = {
                 code: code,
                 position: current.token.position,
-                token: node.value,
+                token: current.token.value,
                 value: id,
             };
             return handleError(err);
         }
         var next_token: Token = lexer(infix);
         if (next_token === null) {
-            node = symbol_table["(end)"];
+            let symbol = symbol_table["(end)"]
+            node = symbol;
             node.position = source.length;
             current = {
-                symbol: Object.create(symbol_table["(end)"]),
+                symbol: Object.create(symbol),
                 token: {
                     type: "(end)",
-                    value: null,
+                    value: symbol.value,
                     position: source.length,
                 },
             };
