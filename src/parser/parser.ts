@@ -331,7 +331,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // array constructor
-        prefix("[", function(self: any) {
+        prefix("[", function(self: any): ast.UnaryNode {
             var a = [];
             if (current.symbol.id !== "]") {
                 for (;;) {
@@ -353,9 +353,12 @@ export function parser(source, recover?: boolean) {
             }
             advance("]", true);
             // TODO: Should this be a different type...? (not unary)
-            self.expressions = a;
-            self.type = "unary";
-            return self;
+            return {
+                id: self.id,
+                value: self.value,
+                type: "unary",
+                expressions: a,
+            }
         });
 
         // filter - predicate or array index
@@ -379,7 +382,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // order-by
-        infix("^", operators["^"], function(self: any, left): ast.BinaryNode {
+        infix("^", operators["^"], function(self: any, left: ExprNode): ast.BinaryNode {
             advance("(");
             var terms = [];
             for (;;) {

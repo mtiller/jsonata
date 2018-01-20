@@ -46,6 +46,8 @@ export interface UnaryNode extends ASTNode {
     expression?: any;
     // TODO: Used by objectParser (should get rid of this eventually)
     lhs?: any;
+    // TODO: Used by array constructor
+    expressions?: any;
 }
 
 export interface BinaryNode extends ASTNode {
