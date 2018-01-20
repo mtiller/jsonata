@@ -24,22 +24,31 @@ export interface ErrorNode extends BaseNode {
     remaining: Token[],
 }
 
-export interface LiteralNode extends BaseNode {
-    type: "literal";
-    value: string;
+export interface VariableNode extends BaseNode {
+    type: "variable";
+    position: number;
 }
 
 export interface NameNode extends BaseNode {
     type: "name";
-    value: string;
+    position: number;
+}
+export interface LiteralNode extends BaseNode {
+    type: "literal";
+    position: number;
 }
 
-export interface VariableNode extends BaseNode {
-    type: "variable";
-    value: string;
+export interface RegexNode extends BaseNode {
+    type: "regex";
+    position: number;
 }
 
-export type TerminalNode = LiteralNode | NameNode | VariableNode;
+export interface OperatorNode extends BaseNode {
+    type: "operator";
+    position: number;
+}
+
+export type TerminalNode = VariableNode | NameNode | LiteralNode | RegexNode | OperatorNode;
 
 export interface UnaryNode extends BaseNode {
     type: "unary";

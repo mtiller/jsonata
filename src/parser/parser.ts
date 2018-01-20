@@ -105,59 +105,53 @@ export function parser(source, recover?: boolean) {
         var terminal = function(id) {
             var s = symbol(id, 0);
             s.nud = function(self: NodeType) /* : ast.TerminalNode */ {
-                //console.log("keys = ", Object.keys(self));
-                let alt = {
-                    type: self.type,
-                    value: self.value,
-                    position: self.position,
+                switch (self.type) {
+                    case "variable":
+                        return {
+                            //id: self.id,
+                            type: "variable",
+                            value: self.value,
+                            position: self.position,
+                        };
+                    case "name":
+                        return {
+                            //id: self.id,
+                            type: "name",
+                            value: self.value,
+                            position: self.position,
+                        };
+                    case "literal":
+                        return {
+                            //id: self.id,
+                            type: "literal",
+                            value: self.value,
+                            position: self.position,
+                        };
+                    case "regex":
+                        return {
+                            //id: self.id,
+                            type: "regex",
+                            value: self.value,
+                            position: self.position,
+                        };
+                    case "operator":
+                        return {
+                            type: "operator",
+                            value: self.value,
+                            position: self.position,
+                        };
+                    default:
+                        /* istanbul ignore next */
+                        if (self.id !== "(end)") {
+                            throw new Error("Unexpected terminal: " + JSON.stringify(self));
+                        }
+                        return {
+                            id: "(end)",
+                            lbp: 0,
+                            value: "(end)",
+                            position: self.position,
+                        };
                 }
-                let ret = { ...self };
-                if (self.type=="variable") {
-                    return {
-                        type: "variable",
-                        value: self.value,
-                        position: self.position,
-                    }
-                }
-                if (self.type=="name") {
-                    return {
-                        type: "name",
-                        value: self.value,
-                        position: self.position,
-                    }
-                }
-                if (self.type=="literal") {
-                    return {
-                        type: "literal",
-                        value: self.value,
-                        position: self.position,
-                    }
-                }
-                if (self.type=="regex") {
-                    return {
-                        type: "regex",
-                        value: self.value,
-                        position: self.position,
-                    }
-                }
-                if (self.type=="operator") {
-                    return {
-                        type: "operator",
-                        value: self.value,
-                        position: self.position,
-                    }
-                }
-                /* istanbul ignore else */
-                if (self.id=="(end)") {
-                    return {
-                        id: "(end)",
-                        lbp: 0,
-                        value: '(end)',
-                        position: self.position,
-                    }
-                }
-                /* istanbul ignore next */
-                throw new Error("Unexpected terminal: "+JSON.stringify(self));
             };
         };
 
@@ -286,7 +280,10 @@ export function parser(source, recover?: boolean) {
         });
 
         // function invocation
-        infix("(", operators["("], function(self: any, left: ExprNode): ast.FunctionInvocationNode | ast.LambdaDefinitionNode {
+        infix("(", operators["("], function(
+            self: any,
+            left: ExprNode,
+        ): ast.FunctionInvocationNode | ast.LambdaDefinitionNode {
             // left is is what we are trying to invoke
             let type: "function" | "partial" = "function";
             let args = [];
@@ -450,7 +447,7 @@ export function parser(source, recover?: boolean) {
                     type: "binary",
                     lhs: left,
                     rhs: rhs,
-                }
+                };
                 return ret;
             }
         });
