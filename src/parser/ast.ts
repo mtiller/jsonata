@@ -1,20 +1,21 @@
 import { Token } from '../tokenizer';
 
-export interface ASTNode {
+export interface BaseNode {
     id: string; // Symbol id this came from
     type: string;
     value: any;
+    keepArray?: boolean;
 }
 
-export interface WildcardNode extends ASTNode {
+export interface WildcardNode extends BaseNode {
     type: "wildcard";
 }
 
-export interface DescendantNode extends ASTNode {
+export interface DescendantNode extends BaseNode {
     type: "descendant";
 }
 
-export interface ErrorNode extends ASTNode {
+export interface ErrorNode extends BaseNode {
     type: "error";
     // TODO: refine
     error: any;
@@ -23,24 +24,24 @@ export interface ErrorNode extends ASTNode {
     remaining: Token[],
 }
 
-export interface LiteralNode extends ASTNode {
+export interface LiteralNode extends BaseNode {
     type: "literal";
     value: string;
 }
 
-export interface NameNode extends ASTNode {
+export interface NameNode extends BaseNode {
     type: "name";
     value: string;
 }
 
-export interface VariableNode extends ASTNode {
+export interface VariableNode extends BaseNode {
     type: "variable";
     value: string;
 }
 
 export type TerminalNode = LiteralNode | NameNode | VariableNode;
 
-export interface UnaryNode extends ASTNode {
+export interface UnaryNode extends BaseNode {
     type: "unary";
     // TODO: refine
     expression?: any;
@@ -50,7 +51,7 @@ export interface UnaryNode extends ASTNode {
     expressions?: any;
 }
 
-export interface BinaryNode extends ASTNode {
+export interface BinaryNode extends BaseNode {
     type: "binary";
     value: string; // Could be refined
     lhs: any;
@@ -58,20 +59,20 @@ export interface BinaryNode extends ASTNode {
     position?: number; // Required for sort operator!?!
 }
 
-export interface BlockNode extends ASTNode {
-    type: "block";
-    // TODO: refine
-    expressions: any[];
-}
-
-export interface TernaryNode extends ASTNode {
+export interface TernaryNode extends BaseNode {
     type: "condition",
     condition: any;
     then: any;
     else: any;
 }
 
-export interface TransformNode extends ASTNode {
+export interface BlockNode extends BaseNode {
+    type: "block";
+    // TODO: refine
+    expressions: any[];
+}
+
+export interface TransformNode extends BaseNode {
     type: "transform",
     // TODO: Refine these
     pattern: any;
@@ -79,17 +80,33 @@ export interface TransformNode extends ASTNode {
     delete?: any;
 }
 
-export interface FunctionInvocation extends ASTNode {
+export interface FunctionInvocationNode extends BaseNode {
     type: "function" | "partial";
     procedure: any;
     arguments: any;
     position: number;
 }
 
-export interface LambdaDefinition extends ASTNode {
+export interface LambdaDefinitionNode extends BaseNode {
     type: "lambda";
     body: any;
     signature: any;
     procedure: any;
     arguments: any;
 }
+
+export type ASTNode
+  = WildcardNode
+  | DescendantNode
+  | ErrorNode
+  | LiteralNode
+  | NameNode
+  | VariableNode
+  | UnaryNode
+  | BinaryNode
+  | TernaryNode
+  | BlockNode
+  | TransformNode
+  | FunctionInvocationNode
+  | LambdaDefinitionNode
+  ;

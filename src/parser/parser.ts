@@ -4,7 +4,7 @@ import { tokenizer, Tokenizer, Token } from "../tokenizer";
 import { isNumeric } from "../utils";
 import { ast_optimize } from "./optimize";
 import { ErrorCollector } from "./errors";
-import * as ast from './ast';
+import * as ast from "./ast";
 
 export type ExprNode = any;
 
@@ -41,7 +41,7 @@ export interface NodeType {
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
 export function parser(source, recover?: boolean) {
-    var current: { token: Token, symbol: Symbol };
+    var current: { token: Token; symbol: Symbol };
     var node: NodeType;
     var lexer: Tokenizer;
 
@@ -62,23 +62,23 @@ export function parser(source, recover?: boolean) {
         let symbol_table: { [id: string]: Symbol } = {};
 
         let defaultNud: NUD = function(self: NodeType): ast.ErrorNode {
-                // error - symbol has been invoked as a unary operator
-                var err: any = {
-                    code: "S0211",
-                    token: self.value,
-                    position: self.position,
-                };
+            // error - symbol has been invoked as a unary operator
+            var err: any = {
+                code: "S0211",
+                token: self.value,
+                position: self.position,
+            };
 
-                if (recover) {
-                    err.remaining = remainingTokens();
-                    err.type = "error";
-                    errors.push(err);
-                    return err;
-                } else {
-                    err.stack = new Error().stack;
-                    throw err;
-                }            
-        }
+            if (recover) {
+                err.remaining = remainingTokens();
+                err.type = "error";
+                errors.push(err);
+                return err;
+            } else {
+                err.stack = new Error().stack;
+                throw err;
+            }
+        };
 
         var symbol = function(id, bp: number): Symbol {
             bp = bp || 0;
@@ -95,7 +95,7 @@ export function parser(source, recover?: boolean) {
                     lbp: bp,
                     value: id,
                     nud: defaultNud,
-                }
+                };
                 symbol_table[id] = s;
                 return s;
             }
@@ -134,7 +134,7 @@ export function parser(source, recover?: boolean) {
                         type: "binary",
                         lhs: left,
                         rhs: rhs,
-                    }
+                    };
                 };
             return s;
         };
@@ -156,7 +156,7 @@ export function parser(source, recover?: boolean) {
                         type: "binary",
                         lhs: left,
                         rhs: rhs,
-                    }
+                    };
                 };
             return s;
         };
@@ -173,7 +173,7 @@ export function parser(source, recover?: boolean) {
                         value: self.value,
                         type: "unary",
                         expression: expression(70),
-                    }
+                    };
                 };
             return s;
         };
@@ -220,7 +220,7 @@ export function parser(source, recover?: boolean) {
                 error: node.error,
                 remaining: remainingTokens(),
                 type: "error",
-            }
+            };
         });
 
         // field wildcard (single level)
@@ -229,7 +229,7 @@ export function parser(source, recover?: boolean) {
                 id: self.id,
                 value: self.value,
                 type: "wildcard",
-            }
+            };
         });
 
         // descendant wildcard (multi-level)
@@ -238,11 +238,11 @@ export function parser(source, recover?: boolean) {
                 id: self.id,
                 value: self.value,
                 type: "descendant",
-            }
+            };
         });
 
         // function invocation
-        infix("(", operators["("], function(self: any, left: ExprNode): ast.FunctionInvocation | ast.LambdaDefinition {
+        infix("(", operators["("], function(self: any, left: ExprNode): ast.FunctionInvocationNode | ast.LambdaDefinitionNode {
             // left is is what we are trying to invoke
             let type: "function" | "partial" = "function";
             let args = [];
@@ -266,7 +266,7 @@ export function parser(source, recover?: boolean) {
             let isLambda = left.type === "name" && (left.value === "function" || left.value === "\u03BB");
 
             if (!isLambda) {
-                let alt: ast.FunctionInvocation = {
+                let alt: ast.FunctionInvocationNode = {
                     id: self.id,
                     position: self.position,
                     value: self.value,
@@ -276,63 +276,63 @@ export function parser(source, recover?: boolean) {
                 };
                 return alt;
             }
-                // all of the args must be VARIABLE tokens
-                args.forEach(function(arg, index) {
-                    if (arg.type !== "variable") {
-                        return handleError({
-                            code: "S0208",
-                            stack: new Error().stack,
-                            position: arg.position,
-                            token: arg.value,
-                            value: index + 1,
-                        });
-                    }
-                });
-                // is the next token a '<' - if so, parse the function signature
-                let signature = undefined;
-                if (current.symbol.id === "<") {
-                    var sigPos = current.token.position;
-                    var depth = 1;
-                    var sig = "<";
-                    let id = current.symbol.id;
-                    // TODO: Bug in typescript compiler?...doesn't recognize side effects in advance and impact on node value
-                    while (depth > 0 && id !== "{" && id !== "(end)") {
-                        advance();
-                        id = current.symbol.id;
-                        if (id === ">") {
-                            depth--;
-                        } else if (id === "<") {
-                            depth++;
-                        }
-                        sig += current.token.value;
-                    }
-                    advance(">");
-                    try {
-                        signature = parseSignature(sig);
-                    } catch (err) {
-                        // insert the position into this error
-                        err.position = sigPos + err.offset;
-                        // TODO: If recover is true, we need to force the return of an
-                        // error node here.  In the tests, recover is never set so this
-                        // always throws.
-                        handleError(err);
-                        /* istanbul ignore next */
-                        throw err;
-                    }
+            // all of the args must be VARIABLE tokens
+            args.forEach(function(arg, index) {
+                if (arg.type !== "variable") {
+                    return handleError({
+                        code: "S0208",
+                        stack: new Error().stack,
+                        position: arg.position,
+                        token: arg.value,
+                        value: index + 1,
+                    });
                 }
-                // parse the function body
-                advance("{");
-                let body = expression(0);
-                advance("}");
-                return {
-                    id: self.id,
-                    value: self.value,
-                    type: "lambda",
-                    body: body,
-                    signature: signature,
-                    procedure: left,
-                    arguments: args,
+            });
+            // is the next token a '<' - if so, parse the function signature
+            let signature = undefined;
+            if (current.symbol.id === "<") {
+                var sigPos = current.token.position;
+                var depth = 1;
+                var sig = "<";
+                let id = current.symbol.id;
+                // TODO: Bug in typescript compiler?...doesn't recognize side effects in advance and impact on node value
+                while (depth > 0 && id !== "{" && id !== "(end)") {
+                    advance();
+                    id = current.symbol.id;
+                    if (id === ">") {
+                        depth--;
+                    } else if (id === "<") {
+                        depth++;
+                    }
+                    sig += current.token.value;
                 }
+                advance(">");
+                try {
+                    signature = parseSignature(sig);
+                } catch (err) {
+                    // insert the position into this error
+                    err.position = sigPos + err.offset;
+                    // TODO: If recover is true, we need to force the return of an
+                    // error node here.  In the tests, recover is never set so this
+                    // always throws.
+                    handleError(err);
+                    /* istanbul ignore next */
+                    throw err;
+                }
+            }
+            // parse the function body
+            advance("{");
+            let body = expression(0);
+            advance("}");
+            return {
+                id: self.id,
+                value: self.value,
+                type: "lambda",
+                body: body,
+                signature: signature,
+                procedure: left,
+                arguments: args,
+            };
         });
 
         // parenthesis - block expression
@@ -351,7 +351,7 @@ export function parser(source, recover?: boolean) {
                 value: self.value,
                 type: "block",
                 expressions: expressions,
-            }
+            };
         });
 
         // array constructor
@@ -382,26 +382,32 @@ export function parser(source, recover?: boolean) {
                 value: self.value,
                 type: "unary",
                 expressions: a,
-            }
+            };
         });
 
         // filter - predicate or array index
-        infix("[", operators["["], function(self: any, left) {
+        infix("[", operators["["], function<T extends ast.ASTNode>(self: any, left: T): T | ast.BinaryNode {
             if (current.symbol.id === "]") {
                 // empty predicate means maintain singleton arrays in the output
                 var step = left;
                 while (step && step.type === "binary" && step.value === "[") {
-                    step = step.lhs;
+                    let s = step as ast.BinaryNode;
+                    step = s.lhs;
                 }
                 step.keepArray = true;
                 advance("]");
                 return left;
             } else {
-                self.lhs = left;
-                self.rhs = expression(operators["]"]);
-                self.type = "binary";
+                let rhs = expression(operators["]"]);
                 advance("]", true);
-                return self;
+                let ret: ast.BinaryNode = {
+                    id: self.id,
+                    value: self.value,
+                    type: "binary",
+                    lhs: left,
+                    rhs: rhs,
+                }
+                return ret;
             }
         });
 
@@ -439,7 +445,7 @@ export function parser(source, recover?: boolean) {
                 type: "binary",
                 lhs: left,
                 rhs: terms,
-            }
+            };
         });
 
         var objectParserNUD = function(self: any): ast.UnaryNode {
@@ -464,7 +470,7 @@ export function parser(source, recover?: boolean) {
                 value: self.value,
                 type: "unary",
                 lhs: a, // TODO: use expression
-            }
+            };
         };
 
         var objectParserLED = function(self: any, left: ExprNode): ast.BinaryNode {
@@ -490,7 +496,7 @@ export function parser(source, recover?: boolean) {
                 type: "binary",
                 lhs: left,
                 rhs: a,
-            }
+            };
         };
 
         // object constructor
@@ -515,22 +521,18 @@ export function parser(source, recover?: boolean) {
                 condition: left,
                 then: then,
                 else: otherwise,
-            }
+            };
         });
 
         // object transformer
         prefix("|", function(self: any): ast.TransformNode {
             let expr = expression(0);
-            self.type = "transform";
-            self.pattern = expr;
             advance("|");
             let update = expression(0);
-            self.update = update;
             let del = undefined;
             if (current.symbol.id === ",") {
                 advance(",");
                 del = expression(0);
-                self.delete = del;
             }
             advance("|");
             return {
@@ -541,7 +543,6 @@ export function parser(source, recover?: boolean) {
                 update: update,
                 delete: del,
             };
-            // return self;
         });
 
         return symbol_table;
@@ -564,7 +565,7 @@ export function parser(source, recover?: boolean) {
                     type: "(error)",
                     value: null,
                     position: current.token.position,
-                }
+                },
             };
         } else {
             err.stack = new Error().stack;
@@ -599,8 +600,8 @@ export function parser(source, recover?: boolean) {
                     type: "(end)",
                     value: null,
                     position: source.length,
-                }
-            }
+                },
+            };
             return;
         }
         var value = next_token.value;
@@ -648,7 +649,7 @@ export function parser(source, recover?: boolean) {
                 value: value,
                 type: type,
                 position: next_token.position,
-            }
+            },
         };
         node = Object.create(symbol);
         node.value = value;
