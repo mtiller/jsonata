@@ -106,14 +106,58 @@ export function parser(source, recover?: boolean) {
             var s = symbol(id, 0);
             s.nud = function(self: NodeType) /* : ast.TerminalNode */ {
                 //console.log("keys = ", Object.keys(self));
-                return {
-                    ...self,
-                    //id: self.id,
-                    //lbp: self.lbp,
+                let alt = {
                     type: self.type,
                     value: self.value,
                     position: self.position,
-                };
+                }
+                let ret = { ...self };
+                if (self.type=="variable") {
+                    return {
+                        type: "variable",
+                        value: self.value,
+                        position: self.position,
+                    }
+                }
+                if (self.type=="name") {
+                    return {
+                        type: "name",
+                        value: self.value,
+                        position: self.position,
+                    }
+                }
+                if (self.type=="literal") {
+                    return {
+                        type: "literal",
+                        value: self.value,
+                        position: self.position,
+                    }
+                }
+                if (self.type=="regex") {
+                    return {
+                        type: "regex",
+                        value: self.value,
+                        position: self.position,
+                    }
+                }
+                if (self.type=="operator") {
+                    return {
+                        type: "operator",
+                        value: self.value,
+                        position: self.position,
+                    }
+                }
+                /* istanbul ignore else */
+                if (self.id=="(end)") {
+                    return {
+                        id: "(end)",
+                        lbp: 0,
+                        value: '(end)',
+                        position: self.position,
+                    }
+                }
+                /* istanbul ignore next */
+                throw new Error("Unexpected terminal: "+JSON.stringify(self));
             };
         };
 
