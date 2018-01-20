@@ -242,7 +242,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // function invocation
-        infix("(", operators["("], function(self: any, left: ExprNode) {
+        infix("(", operators["("], function(self: any, left: ExprNode): ast.FunctionInvocation | ast.LambdaDefinition {
             // left is is what we are trying to invoke
             let type: "function" | "partial" = "function";
             let args = [];
@@ -261,9 +261,6 @@ export function parser(source, recover?: boolean) {
                 }
             }
             advance(")", true);
-            self.type = type;
-            self.arguments = args;
-            self.procedure = left;
 
             // if the name of the function is 'function' or λ, then this is function definition (lambda function)
             let isLambda = left.type === "name" && (left.value === "function" || left.value === "\u03BB");
@@ -280,7 +277,7 @@ export function parser(source, recover?: boolean) {
                 return alt;
             }
                 // all of the args must be VARIABLE tokens
-                self.arguments.forEach(function(arg, index) {
+                args.forEach(function(arg, index) {
                     if (arg.type !== "variable") {
                         return handleError({
                             code: "S0208",
@@ -291,8 +288,8 @@ export function parser(source, recover?: boolean) {
                         });
                     }
                 });
-                self.type = "lambda";
                 // is the next token a '<' - if so, parse the function signature
+                let signature = undefined;
                 if (current.symbol.id === "<") {
                     var sigPos = current.token.position;
                     var depth = 1;
@@ -311,18 +308,31 @@ export function parser(source, recover?: boolean) {
                     }
                     advance(">");
                     try {
-                        self.signature = parseSignature(sig);
+                        signature = parseSignature(sig);
                     } catch (err) {
                         // insert the position into this error
                         err.position = sigPos + err.offset;
-                        return handleError(err);
+                        // TODO: If recover is true, we need to force the return of an
+                        // error node here.  In the tests, recover is never set so this
+                        // always throws.
+                        handleError(err);
+                        /* istanbul ignore next */
+                        throw err;
                     }
                 }
                 // parse the function body
                 advance("{");
-                self.body = expression(0);
+                let body = expression(0);
                 advance("}");
-            return self;
+                return {
+                    id: self.id,
+                    value: self.value,
+                    type: "lambda",
+                    body: body,
+                    signature: signature,
+                    procedure: left,
+                    arguments: args,
+                }
         });
 
         // parenthesis - block expression

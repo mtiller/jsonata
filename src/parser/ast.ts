@@ -88,7 +88,8 @@ export interface FunctionInvocation extends ASTNode {
 
 export interface LambdaDefinition extends ASTNode {
     type: "lambda";
+    body: any;
+    signature: any;
     procedure: any;
     arguments: any;
-    body: any;
 }
