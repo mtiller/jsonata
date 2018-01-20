@@ -6,7 +6,7 @@ export interface Token {
     position: number;
 }
 
-export type Tokenizer = (prefix: string) => Token;
+export type Tokenizer = (prefix: boolean) => Token;
 
 // Tokenizer (lexer) - invoked by the parser to return one token at a time
 export function tokenizer(path: string): Tokenizer {
@@ -70,7 +70,7 @@ export function tokenizer(path: string): Tokenizer {
         };
     };
 
-    var next = function(prefix) {
+    var next = (prefix: boolean) => {
         if (position >= length) return null;
         var currentChar = path.charAt(position);
         // skip whitespace

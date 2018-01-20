@@ -601,7 +601,7 @@ export function parser(source, recover?: boolean) {
     };
 
     // TODO: Add types
-    var advance = (id?, infix?): void => {
+    var advance = (id?: string, infix?: boolean): void => {
         if (id && current.symbol.id !== id) {
             var code;
             if (current.symbol.id === "(end)") {
