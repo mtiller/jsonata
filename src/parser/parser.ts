@@ -104,7 +104,7 @@ export function parser(source, recover?: boolean) {
         // A terminal could be a 'literal', 'variable', 'name'
         var terminal = function(id) {
             var s = symbol(id, 0);
-            s.nud = function(self: NodeType) /* : ast.TerminalNode */ {
+            s.nud = function(self: NodeType): ast.TerminalNode {
                 switch (self.type) {
                     case "variable":
                         return {

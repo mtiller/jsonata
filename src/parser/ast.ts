@@ -47,7 +47,13 @@ export interface OperatorNode extends BaseNode {
     position: number;
 }
 
-export type TerminalNode = VariableNode | NameNode | LiteralNode | RegexNode | OperatorNode;
+export interface EndNode extends BaseNode {
+    type: "end";
+    value: "(end)";
+    position: number;
+}
+
+export type TerminalNode = VariableNode | NameNode | LiteralNode | RegexNode | OperatorNode | EndNode;
 
 export interface UnaryNode extends BaseNode {
     type: "unary";
@@ -101,10 +107,6 @@ export interface LambdaDefinitionNode extends BaseNode {
     signature: any;
     procedure: any;
     arguments: any;
-}
-
-export interface EndNode extends BaseNode {
-    type: "end";
 }
 
 export type ASTNode
