@@ -104,6 +104,10 @@ export interface LambdaDefinitionNode extends BaseNode {
     arguments: any;
 }
 
+export interface EndNode extends BaseNode {
+    type: "end";
+}
+
 export type ASTNode
   = WildcardNode
   | DescendantNode

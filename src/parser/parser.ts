@@ -146,11 +146,10 @@ export function parser(source, recover?: boolean) {
                             throw new Error("Unexpected terminal: " + JSON.stringify(self));
                         }
                         return {
-                            id: "(end)",
-                            lbp: 0,
+                            type: "end",
                             value: "(end)",
                             position: self.position,
-                        };
+                        }
                 }
             };
         };
@@ -705,7 +704,8 @@ export function parser(source, recover?: boolean) {
         var t = node;
         var c = current;
         advance(null, true);
-        left = c.symbol.nud(t);
+        let l = c.symbol.nud(t);
+        left = l;
         while (rbp < current.symbol.lbp) {
             t = node;
             c = current;

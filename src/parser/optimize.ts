@@ -240,7 +240,7 @@ export function ast_optimize(expr, collect: undefined | ErrorCollector) {
         default:
             var code = "S0206";
             /* istanbul ignore else */
-            if (expr.id === "(end)") {
+            if (expr.type=="end") {
                 code = "S0207";
             }
             var err = {
