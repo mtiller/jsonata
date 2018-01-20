@@ -379,7 +379,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // order-by
-        infix("^", operators["^"], function(self: any, left) {
+        infix("^", operators["^"], function(self: any, left): ast.BinaryNode {
             advance("(");
             var terms = [];
             for (;;) {
@@ -405,10 +405,14 @@ export function parser(source, recover?: boolean) {
                 advance(",");
             }
             advance(")");
-            self.lhs = left;
-            self.rhs = terms;
-            self.type = "binary";
-            return self;
+            return {
+                id: self.id,
+                position: self.position, // REQUIRED?!?
+                value: self.value,
+                type: "binary",
+                lhs: left,
+                rhs: terms,
+            }
         });
 
         var objectParserNUD = function(self: any): ast.UnaryNode {

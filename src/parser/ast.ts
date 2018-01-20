@@ -53,6 +53,7 @@ export interface BinaryNode extends ASTNode {
     value: string; // Could be refined
     lhs: any;
     rhs: any;
+    position?: number; // Required for sort operator!?!
 }
 
 export interface BlockNode extends ASTNode {
