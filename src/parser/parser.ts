@@ -244,26 +244,41 @@ export function parser(source, recover?: boolean) {
         // function invocation
         infix("(", operators["("], function(self: any, left: ExprNode) {
             // left is is what we are trying to invoke
-            self.procedure = left;
-            self.type = "function";
-            self.arguments = [];
+            let type: "function" | "partial" = "function";
+            let args = [];
             if (current.symbol.id !== ")") {
                 for (;;) {
                     if (current.token.type === "operator" && current.symbol.id === "?") {
                         // partial function application
-                        self.type = "partial";
-                        self.arguments.push(node);
+                        type = "partial";
+                        args.push(node);
                         advance("?");
                     } else {
-                        self.arguments.push(expression(0));
+                        args.push(expression(0));
                     }
                     if (current.symbol.id !== ",") break;
                     advance(",");
                 }
             }
             advance(")", true);
+            self.type = type;
+            self.arguments = args;
+            self.procedure = left;
+
             // if the name of the function is 'function' or λ, then this is function definition (lambda function)
-            if (left.type === "name" && (left.value === "function" || left.value === "\u03BB")) {
+            let isLambda = left.type === "name" && (left.value === "function" || left.value === "\u03BB");
+
+            if (!isLambda) {
+                let alt: ast.FunctionInvocation = {
+                    id: self.id,
+                    position: self.position,
+                    value: self.value,
+                    type: type,
+                    arguments: args,
+                    procedure: left,
+                };
+                return alt;
+            }
                 // all of the args must be VARIABLE tokens
                 self.arguments.forEach(function(arg, index) {
                     if (arg.type !== "variable") {
@@ -307,7 +322,6 @@ export function parser(source, recover?: boolean) {
                 advance("{");
                 self.body = expression(0);
                 advance("}");
-            }
             return self;
         });
 

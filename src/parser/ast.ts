@@ -78,3 +78,17 @@ export interface TransformNode extends ASTNode {
     update: any;
     delete?: any;
 }
+
+export interface FunctionInvocation extends ASTNode {
+    type: "function" | "partial";
+    procedure: any;
+    arguments: any;
+    position: number;
+}
+
+export interface LambdaDefinition extends ASTNode {
+    type: "lambda";
+    procedure: any;
+    arguments: any;
+    body: any;
+}
