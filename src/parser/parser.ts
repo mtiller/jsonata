@@ -6,7 +6,7 @@ import { ast_optimize } from "./optimize";
 import { ErrorCollector } from "./errors";
 import * as ast from "./ast";
 
-export type NUD = (self: NodeType) => ast.ASTNode;
+export type NUD = (self: NodeType, token: Token) => ast.ASTNode;
 export type LED = (self: NodeType, left: ast.ASTNode) => ast.ASTNode;
 
 export interface Symbol {
@@ -43,7 +43,7 @@ export function parser(source, recover?: boolean) {
     var node: NodeType;
     var lexer: Tokenizer;
 
-    var remainingTokens = function() {
+    var remainingTokens = () => {
         var remaining: Token[] = [];
         if (current.symbol.id !== "(end)") {
             remaining.push(current.token);
@@ -59,7 +59,7 @@ export function parser(source, recover?: boolean) {
     function createTable(): { [id: string]: Symbol } {
         let symbol_table: { [id: string]: Symbol } = {};
 
-        let defaultNud: NUD = function(self: NodeType): ast.ErrorNode {
+        let defaultNud: NUD = (self: NodeType, token: Token): ast.ErrorNode => {
             // error - symbol has been invoked as a unary operator
             var err: any = {
                 code: "S0211",
@@ -78,7 +78,7 @@ export function parser(source, recover?: boolean) {
             }
         };
 
-        var symbol = function(id, bp: number): Symbol {
+        var symbol = (id, bp: number): Symbol => {
             bp = bp || 0;
             if (symbol_table.hasOwnProperty(id)) {
                 let s = symbol_table[id];
@@ -100,9 +100,9 @@ export function parser(source, recover?: boolean) {
         };
 
         // A terminal could be a 'literal', 'variable', 'name'
-        var terminal = function(id) {
+        var terminal = (id) => {
             var s = symbol(id, 0);
-            s.nud = function(self: NodeType): ast.TerminalNode {
+            s.nud = (self: NodeType): ast.TerminalNode => {
                 switch (self.type) {
                     case "variable":
                         return {
@@ -152,20 +152,19 @@ export function parser(source, recover?: boolean) {
         // <expression> <operator> <expression>
         // left associative
         // TODO: Add default values for bp and led
-        var infix = function(id: string, bp?: number, led?) {
+        var infix = (id: string, bp?: number, led?: LED) => {
             var bindingPower = bp || operators[id];
             var s = symbol(id, bindingPower);
-            s.led =
-                led ||
-                function(self: NodeType, left): ast.BinaryNode {
-                    let rhs = expression(bindingPower);
-                    return {
-                        value: self.value,
-                        type: "binary",
-                        lhs: left,
-                        rhs: rhs,
-                    };
+            let defaultLED: LED = (self: NodeType, left: ast.ASTNode): ast.BinaryNode => {
+                let rhs = expression(bindingPower);
+                return {
+                    value: self.value,
+                    type: "binary",
+                    lhs: left,
+                    rhs: rhs,
                 };
+            };
+            s.led = led || defaultLED;
             return s;
         };
 
@@ -173,36 +172,38 @@ export function parser(source, recover?: boolean) {
         // <expression> <operator> <expression>
         // right associative
         // TODO: Add default values for bp and led
-        var infixr = function(id, bp?, led?: LED) {
+        var infixr = (id, bp?, led?: LED) => {
             var bindingPower = bp || operators[id];
             var s = symbol(id, bindingPower);
+            let defaultLED: LED = (self: NodeType, left: ast.ASTNode): ast.BinaryNode => {
+                let rhs = expression(bindingPower - 1); // subtract 1 from bindingPower for right associative operators
+                return {
+                    value: self.value,
+                    type: "binary",
+                    lhs: left,
+                    rhs: rhs,
+                };
+            };
             s.led =
                 led ||
-                function(self: NodeType, left): ast.BinaryNode {
-                    let rhs = expression(bindingPower - 1); // subtract 1 from bindingPower for right associative operators
-                    return {
-                        value: self.value,
-                        type: "binary",
-                        lhs: left,
-                        rhs: rhs,
-                    };
-                };
+                defaultLED;
             return s;
         };
 
         // match prefix operators
         // <operator> <expression>
-        var prefix = function(id, nud?: NUD) {
+        var prefix = (id, nud?: NUD) => {
             var s = symbol(id, 0);
+            let defaultNUD: NUD = (self: NodeType): ast.UnaryNode => {
+                return {
+                    value: self.value,
+                    type: "unary",
+                    expression: expression(70),
+                };
+            };
             s.nud =
                 nud ||
-                function(self: NodeType): ast.UnaryNode {
-                    return {
-                        value: self.value,
-                        type: "unary",
-                        expression: expression(70),
-                    };
-                };
+                defaultNUD;
             return s;
         };
 
@@ -240,7 +241,7 @@ export function parser(source, recover?: boolean) {
         prefix("-"); // unary numeric negation
         infix("~>"); // function application
 
-        infixr("(error)", 10, function(self: NodeType, left: ast.ASTNode): ast.ErrorNode {
+        infixr("(error)", 10, (self: NodeType, left: ast.ASTNode): ast.ErrorNode => {
             return {
                 value: self.value,
                 lhs: left,
@@ -251,7 +252,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // field wildcard (single level)
-        prefix("*", function(self: NodeType): ast.WildcardNode {
+        prefix("*", (self: NodeType): ast.WildcardNode => {
             return {
                 value: self.value,
                 type: "wildcard",
@@ -259,7 +260,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // descendant wildcard (multi-level)
-        prefix("**", function(self: NodeType): ast.DescendantNode {
+        prefix("**", (self: NodeType): ast.DescendantNode => {
             return {
                 value: self.value,
                 type: "descendant",
@@ -267,10 +268,10 @@ export function parser(source, recover?: boolean) {
         });
 
         // function invocation
-        infix("(", operators["("], function(
+        infix("(", operators["("], (
             self: NodeType,
             left: ast.ASTNode,
-        ): ast.FunctionInvocationNode | ast.LambdaDefinitionNode {
+        ): ast.FunctionInvocationNode | ast.LambdaDefinitionNode => {
             // left is is what we are trying to invoke
             let type: "function" | "partial" = "function";
             let args = [];
@@ -304,7 +305,7 @@ export function parser(source, recover?: boolean) {
                 return alt;
             }
             // all of the args must be VARIABLE tokens
-            args.forEach(function(arg, index) {
+            args.forEach((arg, index) => {
                 if (arg.type !== "variable") {
                     return handleError({
                         code: "S0208",
@@ -362,7 +363,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // parenthesis - block expression
-        prefix("(", function(self: NodeType): ast.BlockNode {
+        prefix("(", (self: NodeType): ast.BlockNode => {
             var expressions = [];
             while (current.symbol.id !== ")") {
                 expressions.push(expression(0));
@@ -380,7 +381,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // array constructor
-        prefix("[", function(self: NodeType): ast.UnaryNode {
+        prefix("[", (self: NodeType): ast.UnaryNode => {
             var a = [];
             if (current.symbol.id !== "]") {
                 for (;;) {
@@ -436,7 +437,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // order-by
-        infix("^", operators["^"], function(self: NodeType, left: ast.ASTNode): ast.BinaryNode {
+        infix("^", operators["^"], (self: NodeType, left: ast.ASTNode): ast.BinaryNode => {
             advance("(");
             var terms = [];
             for (;;) {
@@ -471,7 +472,7 @@ export function parser(source, recover?: boolean) {
             };
         });
 
-        var objectParserNUD = function(self: NodeType): ast.UnaryNode {
+        var objectParserNUD = (self: NodeType): ast.UnaryNode => {
             var a = [];
             /* istanbul ignore else */
             if (current.symbol.id !== "}") {
@@ -495,7 +496,7 @@ export function parser(source, recover?: boolean) {
             };
         };
 
-        var objectParserLED = function(self: NodeType, left: ast.ASTNode): ast.BinaryNode {
+        var objectParserLED = (self: NodeType, left: ast.ASTNode): ast.BinaryNode => {
             var a = [];
             /* istanbul ignore else */
             if (current.symbol.id !== "}") {
@@ -527,7 +528,7 @@ export function parser(source, recover?: boolean) {
         infix("{", operators["{"], objectParserLED);
 
         // if/then/else ternary operator ?:
-        infix("?", operators["?"], function(self: NodeType, left): ast.TernaryNode {
+        infix("?", operators["?"], (self: NodeType, left): ast.TernaryNode => {
             let then = expression(0);
             let otherwise = undefined;
             if (current.symbol.id === ":") {
@@ -545,7 +546,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // object transformer
-        prefix("|", function(self: NodeType): ast.TransformNode {
+        prefix("|", (self: NodeType): ast.TransformNode => {
             let expr = expression(0);
             advance("|");
             let update = expression(0);
@@ -570,7 +571,7 @@ export function parser(source, recover?: boolean) {
     var errors = [];
     let symbol_table = createTable();
 
-    var handleError = function(err): void {
+    var handleError = (err): void => {
         if (recover) {
             // tokenize the rest of the buffer and add it to an error token
             err.remaining = remainingTokens();
@@ -592,7 +593,8 @@ export function parser(source, recover?: boolean) {
         }
     };
 
-    var advance = function(id?, infix?): void {
+    // TODO: Add types
+    var advance = (id?, infix?): void => {
         if (id && current.symbol.id !== id) {
             var code;
             if (current.symbol.id === "(end)") {
@@ -678,12 +680,12 @@ export function parser(source, recover?: boolean) {
     };
 
     // Pratt's algorithm
-    var expression = function(rbp: number): ast.ASTNode {
+    var expression = (rbp: number): ast.ASTNode => {
         var left: ast.ASTNode;
         var t = node;
         var c = current;
         advance(null, true);
-        let l = c.symbol.nud(t);
+        let l = c.symbol.nud(t, c.token);
         left = l;
         while (rbp < current.symbol.lbp) {
             t = node;
