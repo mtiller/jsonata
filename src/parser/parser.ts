@@ -108,28 +108,24 @@ export function parser(source, recover?: boolean) {
                 switch (self.type) {
                     case "variable":
                         return {
-                            //id: self.id,
                             type: "variable",
                             value: self.value,
                             position: self.position,
                         };
                     case "name":
                         return {
-                            //id: self.id,
                             type: "name",
                             value: self.value,
                             position: self.position,
                         };
                     case "literal":
                         return {
-                            //id: self.id,
                             type: "literal",
                             value: self.value,
                             position: self.position,
                         };
                     case "regex":
                         return {
-                            //id: self.id,
                             type: "regex",
                             value: self.value,
                             position: self.position,
@@ -166,7 +162,6 @@ export function parser(source, recover?: boolean) {
                 function(self: NodeType, left): ast.BinaryNode {
                     let rhs = expression(bindingPower);
                     return {
-                        id: self.id,
                         value: self.value,
                         type: "binary",
                         lhs: left,
@@ -188,7 +183,6 @@ export function parser(source, recover?: boolean) {
                 function(self: NodeType, left): ast.BinaryNode {
                     let rhs = expression(bindingPower - 1); // subtract 1 from bindingPower for right associative operators
                     return {
-                        id: self.id,
                         value: self.value,
                         type: "binary",
                         lhs: left,
@@ -206,7 +200,6 @@ export function parser(source, recover?: boolean) {
                 nud ||
                 function(self: any): ast.UnaryNode {
                     return {
-                        id: self.id,
                         value: self.value,
                         type: "unary",
                         expression: expression(70),
@@ -251,7 +244,6 @@ export function parser(source, recover?: boolean) {
 
         infixr("(error)", 10, function(self: any, left: ExprNode): ast.ErrorNode {
             return {
-                id: self.id,
                 value: self.value,
                 lhs: left,
                 error: node.error,
@@ -263,7 +255,6 @@ export function parser(source, recover?: boolean) {
         // field wildcard (single level)
         prefix("*", function(self: NodeType): ast.WildcardNode {
             return {
-                id: self.id,
                 value: self.value,
                 type: "wildcard",
             };
@@ -272,7 +263,6 @@ export function parser(source, recover?: boolean) {
         // descendant wildcard (multi-level)
         prefix("**", function(self: NodeType): ast.DescendantNode {
             return {
-                id: self.id,
                 value: self.value,
                 type: "descendant",
             };
@@ -307,7 +297,6 @@ export function parser(source, recover?: boolean) {
 
             if (!isLambda) {
                 let alt: ast.FunctionInvocationNode = {
-                    id: self.id,
                     position: self.position,
                     value: self.value,
                     type: type,
@@ -365,7 +354,6 @@ export function parser(source, recover?: boolean) {
             let body = expression(0);
             advance("}");
             return {
-                id: self.id,
                 value: self.value,
                 type: "lambda",
                 body: body,
@@ -387,7 +375,6 @@ export function parser(source, recover?: boolean) {
             }
             advance(")", true);
             return {
-                id: self.id,
                 value: self.value,
                 type: "block",
                 expressions: expressions,
@@ -418,7 +405,6 @@ export function parser(source, recover?: boolean) {
             advance("]", true);
             // TODO: Should this be a different type...? (not unary)
             return {
-                id: self.id,
                 value: self.value,
                 type: "unary",
                 expressions: a,
@@ -441,7 +427,6 @@ export function parser(source, recover?: boolean) {
                 let rhs = expression(operators["]"]);
                 advance("]", true);
                 let ret: ast.BinaryNode = {
-                    id: self.id,
                     value: self.value,
                     type: "binary",
                     lhs: left,
@@ -479,7 +464,6 @@ export function parser(source, recover?: boolean) {
             }
             advance(")");
             return {
-                id: self.id,
                 position: self.position, // REQUIRED?!?
                 value: self.value,
                 type: "binary",
@@ -506,7 +490,6 @@ export function parser(source, recover?: boolean) {
             advance("}", true);
             // NUD - unary prefix form
             return {
-                id: self.id,
                 value: self.value,
                 type: "unary",
                 lhs: a, // TODO: use expression
@@ -531,7 +514,6 @@ export function parser(source, recover?: boolean) {
             advance("}", true);
             // LED - binary infix form
             return {
-                id: self.id,
                 value: self.value,
                 type: "binary",
                 lhs: left,
@@ -555,7 +537,6 @@ export function parser(source, recover?: boolean) {
                 otherwise = expression(0);
             }
             return {
-                id: self.id,
                 value: self.value,
                 type: "condition",
                 condition: left,
@@ -576,7 +557,6 @@ export function parser(source, recover?: boolean) {
             }
             advance("|");
             return {
-                id: self.id,
                 value: self.value,
                 type: "transform",
                 pattern: expr,

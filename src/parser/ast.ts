@@ -1,7 +1,6 @@
 import { Token } from '../tokenizer';
 
 export interface BaseNode {
-    id: string; // Symbol id this came from
     type: string;
     value: any;
     keepArray?: boolean;
@@ -122,4 +121,5 @@ export type ASTNode
   | TransformNode
   | FunctionInvocationNode
   | LambdaDefinitionNode
+  | EndNode
   ;
