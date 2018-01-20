@@ -6,8 +6,8 @@ import { ast_optimize } from "./optimize";
 import { ErrorCollector } from "./errors";
 import * as ast from "./ast";
 
-export type NUD = (self: NodeType, token: Token) => ast.ASTNode;
-export type LED = (self: NodeType, left: ast.ASTNode) => ast.ASTNode;
+export type NUD = (state: ParserState, token: Token) => ast.ASTNode;
+export type LED = (state: ParserState, left: ast.ASTNode) => ast.ASTNode;
 
 export interface Symbol {
     id: string;
@@ -33,11 +33,17 @@ export interface NodeType {
     value?: any;
 }
 
+export interface ParserState {
+    symbol: Symbol;
+    token: Token;
+    error: any;
+}
+
 // This parser implements the 'Top down operator precedence' algorithm developed by Vaughan R Pratt; http://dl.acm.org/citation.cfm?id=512931.
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
 export function parser(source, recover?: boolean) {
-    var current: { token: Token; symbol: Symbol };
+    var current: ParserState;
     var node: NodeType;
     var lexer: Tokenizer;
 
@@ -57,7 +63,7 @@ export function parser(source, recover?: boolean) {
     function createTable(): { [id: string]: Symbol } {
         let symbol_table: { [id: string]: Symbol } = {};
 
-        let defaultNud: NUD = (self: NodeType, token: Token): ast.ErrorNode => {
+        let defaultNud: NUD = (state: ParserState, token: Token): ast.ErrorNode => {
             // error - symbol has been invoked as a unary operator
             var err: any = {
                 code: "S0211",
@@ -100,8 +106,8 @@ export function parser(source, recover?: boolean) {
         // A terminal could be a 'literal', 'variable', 'name'
         var terminal = (id) => {
             var s = symbol(id, 0);
-            s.nud = (self: NodeType, token: Token): ast.TerminalNode => {
-                switch (self.type) {
+            s.nud = (state: ParserState, token: Token): ast.TerminalNode => {
+                switch (state.token.type) {
                     case "variable":
                         return {
                             type: "variable",
@@ -134,7 +140,7 @@ export function parser(source, recover?: boolean) {
                         };
                     default:
                         /* istanbul ignore next */
-                        if (self.id !== "(end)") {
+                        if (state.symbol.id !== "(end)") {
                             throw new Error("Unexpected terminal: " + JSON.stringify(self));
                         }
                         return {
@@ -153,10 +159,10 @@ export function parser(source, recover?: boolean) {
         var infix = (id: string, bp?: number, led?: LED) => {
             var bindingPower = bp || operators[id];
             var s = symbol(id, bindingPower);
-            let defaultLED: LED = (self: NodeType, left: ast.ASTNode): ast.BinaryNode => {
+            let defaultLED: LED = (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
                 let rhs = expression(bindingPower);
                 return {
-                    value: self.value,
+                    value: state.token.value,
                     type: "binary",
                     lhs: left,
                     rhs: rhs,
@@ -173,10 +179,10 @@ export function parser(source, recover?: boolean) {
         var infixr = (id, bp?, led?: LED) => {
             var bindingPower = bp || operators[id];
             var s = symbol(id, bindingPower);
-            let defaultLED: LED = (self: NodeType, left: ast.ASTNode): ast.BinaryNode => {
+            let defaultLED: LED = (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
                 let rhs = expression(bindingPower - 1); // subtract 1 from bindingPower for right associative operators
                 return {
-                    value: self.value,
+                    value: state.token.value,
                     type: "binary",
                     lhs: left,
                     rhs: rhs,
@@ -192,7 +198,7 @@ export function parser(source, recover?: boolean) {
         // <operator> <expression>
         var prefix = (id, nud?: NUD) => {
             var s = symbol(id, 0);
-            let defaultNUD: NUD = (self: NodeType, token: Token): ast.UnaryNode => {
+            let defaultNUD: NUD = (state: ParserState, token: Token): ast.UnaryNode => {
                 return {
                     value: token.value,
                     type: "unary",
@@ -239,18 +245,18 @@ export function parser(source, recover?: boolean) {
         prefix("-"); // unary numeric negation
         infix("~>"); // function application
 
-        infixr("(error)", 10, (self: NodeType, left: ast.ASTNode): ast.ErrorNode => {
+        infixr("(error)", 10, (state: ParserState, left: ast.ASTNode): ast.ErrorNode => {
             return {
-                value: self.value,
+                value: state.token.value,
                 lhs: left,
-                error: self.error,
+                error: state.error,
                 remaining: remainingTokens(),
                 type: "error",
             };
         });
 
         // field wildcard (single level)
-        prefix("*", (self: NodeType, token: Token): ast.WildcardNode => {
+        prefix("*", (state: ParserState, token: Token): ast.WildcardNode => {
             return {
                 value: token.value,
                 type: "wildcard",
@@ -258,7 +264,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // descendant wildcard (multi-level)
-        prefix("**", (self: NodeType, token: Token): ast.DescendantNode => {
+        prefix("**", (state: ParserState, token: Token): ast.DescendantNode => {
             return {
                 value: token.value,
                 type: "descendant",
@@ -267,7 +273,7 @@ export function parser(source, recover?: boolean) {
 
         // function invocation
         infix("(", operators["("], (
-            self: NodeType,
+            state: ParserState,
             left: ast.ASTNode,
         ): ast.FunctionInvocationNode | ast.LambdaDefinitionNode => {
             // left is is what we are trying to invoke
@@ -294,8 +300,8 @@ export function parser(source, recover?: boolean) {
 
             if (!isLambda) {
                 let alt: ast.FunctionInvocationNode = {
-                    position: self.position,
-                    value: self.value,
+                    position: state.token.position,
+                    value: state.token.value,
                     type: type,
                     arguments: args,
                     procedure: left,
@@ -351,7 +357,7 @@ export function parser(source, recover?: boolean) {
             let body = expression(0);
             advance("}");
             return {
-                value: self.value,
+                value: state.token.value,
                 type: "lambda",
                 body: body,
                 signature: signature,
@@ -361,7 +367,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // parenthesis - block expression
-        prefix("(", (self: NodeType, token: Token): ast.BlockNode => {
+        prefix("(", (state: ParserState, token: Token): ast.BlockNode => {
             var expressions = [];
             while (current.symbol.id !== ")") {
                 expressions.push(expression(0));
@@ -379,7 +385,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // array constructor
-        prefix("[", (self: NodeType, token: Token): ast.UnaryNode => {
+        prefix("[", (state: ParserState, token: Token): ast.UnaryNode => {
             var a = [];
             if (current.symbol.id !== "]") {
                 for (;;) {
@@ -410,7 +416,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // filter - predicate or array index
-        infix("[", operators["["], (self: NodeType, left: ast.ASTNode): ast.ASTNode | ast.BinaryNode => {
+        infix("[", operators["["], (state: ParserState, left: ast.ASTNode): ast.ASTNode | ast.BinaryNode => {
             if (current.symbol.id === "]") {
                 // empty predicate means maintain singleton arrays in the output
                 var step = left;
@@ -425,7 +431,7 @@ export function parser(source, recover?: boolean) {
                 let rhs = expression(operators["]"]);
                 advance("]", true);
                 let ret: ast.BinaryNode = {
-                    value: self.value,
+                    value: state.token.value,
                     type: "binary",
                     lhs: left,
                     rhs: rhs,
@@ -435,7 +441,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // order-by
-        infix("^", operators["^"], (self: NodeType, left: ast.ASTNode): ast.BinaryNode => {
+        infix("^", operators["^"], (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
             advance("(");
             var terms = [];
             for (;;) {
@@ -462,15 +468,15 @@ export function parser(source, recover?: boolean) {
             }
             advance(")");
             return {
-                position: self.position, // REQUIRED?!?
-                value: self.value,
+                position: state.token.position, // REQUIRED?!?
+                value: state.token.value,
                 type: "binary",
                 lhs: left,
                 rhs: terms, // TODO: Not an expression node...different node type recommended
             };
         });
 
-        var objectParserNUD = (self: NodeType, token: Token): ast.UnaryNode => {
+        var objectParserNUD = (state: ParserState, token: Token): ast.UnaryNode => {
             var a = [];
             /* istanbul ignore else */
             if (current.symbol.id !== "}") {
@@ -494,7 +500,7 @@ export function parser(source, recover?: boolean) {
             };
         };
 
-        var objectParserLED = (self: NodeType, left: ast.ASTNode): ast.BinaryNode => {
+        var objectParserLED = (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
             var a = [];
             /* istanbul ignore else */
             if (current.symbol.id !== "}") {
@@ -512,7 +518,7 @@ export function parser(source, recover?: boolean) {
             advance("}", true);
             // LED - binary infix form
             return {
-                value: self.value,
+                value: state.token.value,
                 type: "binary",
                 lhs: left,
                 rhs: a,
@@ -526,7 +532,7 @@ export function parser(source, recover?: boolean) {
         infix("{", operators["{"], objectParserLED);
 
         // if/then/else ternary operator ?:
-        infix("?", operators["?"], (self: NodeType, left): ast.TernaryNode => {
+        infix("?", operators["?"], (state: ParserState, left): ast.TernaryNode => {
             let then = expression(0);
             let otherwise = undefined;
             if (current.symbol.id === ":") {
@@ -535,7 +541,7 @@ export function parser(source, recover?: boolean) {
                 otherwise = expression(0);
             }
             return {
-                value: self.value,
+                value: state.token.value,
                 type: "condition",
                 condition: left,
                 then: then,
@@ -544,7 +550,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // object transformer
-        prefix("|", (self: NodeType, token: Token): ast.TransformNode => {
+        prefix("|", (state: ParserState, token: Token): ast.TransformNode => {
             let expr = expression(0);
             advance("|");
             let update = expression(0);
@@ -584,6 +590,7 @@ export function parser(source, recover?: boolean) {
                     value: null,
                     position: current.token.position,
                 },
+                error: err,
             };
         } else {
             err.stack = new Error().stack;
@@ -621,6 +628,7 @@ export function parser(source, recover?: boolean) {
                     value: symbol.value,
                     position: source.length,
                 },
+                error: undefined,
             };
             return;
         }
@@ -670,6 +678,7 @@ export function parser(source, recover?: boolean) {
                 type: type,
                 position: next_token.position,
             },
+            error: undefined,
         };
         node = Object.create(symbol);
         node.value = value;
@@ -683,12 +692,12 @@ export function parser(source, recover?: boolean) {
         var c = current;
         var t = node;
         advance(null, true);
-        var left: ast.ASTNode = c.symbol.nud(t, c.token);
+        var left: ast.ASTNode = c.symbol.nud(c, c.token);
         while (rbp < current.symbol.lbp) {
             t = node;
             c = current;
             advance();
-            left = c.symbol.led(t, left);
+            left = c.symbol.led(c, left);
         }
         return left;
     };
