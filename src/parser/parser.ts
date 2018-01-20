@@ -61,7 +61,7 @@ export function parser(source, recover?: boolean) {
     function createTable(): { [id: string]: Symbol } {
         let symbol_table: { [id: string]: Symbol } = {};
 
-        let defaultNud: NUD = function(self: NodeType) {
+        let defaultNud: NUD = function(self: NodeType): ast.ErrorNode {
                 // error - symbol has been invoked as a unary operator
                 var err: any = {
                     code: "S0211",
@@ -105,7 +105,15 @@ export function parser(source, recover?: boolean) {
         var terminal = function(id) {
             var s = symbol(id, 0);
             s.nud = function(self: NodeType) /* : ast.TerminalNode */ {
-                return { ...self };
+                //console.log("keys = ", Object.keys(self));
+                return {
+                    ...self,
+                    //id: self.id,
+                    //lbp: self.lbp,
+                    type: self.type,
+                    value: self.value,
+                    position: self.position,
+                };
             };
         };
 
@@ -113,7 +121,7 @@ export function parser(source, recover?: boolean) {
         // <expression> <operator> <expression>
         // left associative
         // TODO: Add default values for bp and led
-        var infix = function(id, bp?, led?) {
+        var infix = function(id: string, bp?: number, led?) {
             var bindingPower = bp || operators[id];
             var s = symbol(id, bindingPower);
             s.led =
@@ -344,6 +352,7 @@ export function parser(source, recover?: boolean) {
                 }
             }
             advance("]", true);
+            // TODO: Should this be a different type...? (not unary)
             self.expressions = a;
             self.type = "unary";
             return self;
@@ -437,30 +446,48 @@ export function parser(source, recover?: boolean) {
         infix("{", operators["{"], objectParser);
 
         // if/then/else ternary operator ?:
-        infix("?", operators["?"], function(self: any, left) {
-            self.type = "condition";
-            self.condition = left;
-            self.then = expression(0);
+        infix("?", operators["?"], function(self: any, left): ast.TernaryNode {
+            let then = expression(0);
+            let otherwise = undefined;
             if (current.symbol.id === ":") {
                 // else condition
                 advance(":");
-                self.else = expression(0);
+                otherwise = expression(0);
             }
-            return self;
+            return {
+                id: self.id,
+                value: self.value,
+                type: "condition",
+                condition: left,
+                then: then,
+                else: otherwise,
+            }
         });
 
         // object transformer
-        prefix("|", function(self: any) {
+        prefix("|", function(self: any): ast.TransformNode {
+            let expr = expression(0);
             self.type = "transform";
-            self.pattern = expression(0);
+            self.pattern = expr;
             advance("|");
-            self.update = expression(0);
+            let update = expression(0);
+            self.update = update;
+            let del = undefined;
             if (current.symbol.id === ",") {
                 advance(",");
-                self.delete = expression(0);
+                del = expression(0);
+                self.delete = del;
             }
             advance("|");
-            return self;
+            return {
+                id: self.id,
+                value: self.value,
+                type: "transform",
+                pattern: expr,
+                update: update,
+                delete: del,
+            };
+            // return self;
         });
 
         return symbol_table;

@@ -58,3 +58,18 @@ export interface BlockNode extends ASTNode {
     // TODO: refine
     expressions: any[];
 }
+
+export interface TernaryNode extends ASTNode {
+    type: "condition",
+    condition: any;
+    then: any;
+    else: any;
+}
+
+export interface TransformNode extends ASTNode {
+    type: "transform",
+    // TODO: Refine these
+    pattern: any;
+    update: any;
+    delete?: any;
+}
