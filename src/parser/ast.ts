@@ -4,6 +4,7 @@ export interface BaseNode {
     type: string;
     value: any;
     keepArray?: boolean;
+    errors?: string[];
 }
 
 export interface WildcardNode extends BaseNode {
@@ -49,7 +50,7 @@ export interface OperatorNode extends BaseNode {
 
 export interface EndNode extends BaseNode {
     type: "end";
-    value: "(end)";
+    value: string;
     position: number;
 }
 
@@ -116,6 +117,8 @@ export type ASTNode
   | LiteralNode
   | NameNode
   | VariableNode
+  | RegexNode
+  | OperatorNode
   | UnaryNode
   | BinaryNode
   | TernaryNode

@@ -6,10 +6,8 @@ import { ast_optimize } from "./optimize";
 import { ErrorCollector } from "./errors";
 import * as ast from "./ast";
 
-export type ExprNode = any;
-
-export type NUD = (self: any) => ExprNode;
-export type LED = (self: any, left: any) => ExprNode;
+export type NUD = (self: any) => ast.ASTNode;
+export type LED = (self: any, left: ast.ASTNode) => ast.ASTNode;
 
 export interface Symbol {
     id: string;
@@ -242,7 +240,7 @@ export function parser(source, recover?: boolean) {
         prefix("-"); // unary numeric negation
         infix("~>"); // function application
 
-        infixr("(error)", 10, function(self: any, left: ExprNode): ast.ErrorNode {
+        infixr("(error)", 10, function(self: any, left: ast.ASTNode): ast.ErrorNode {
             return {
                 value: self.value,
                 lhs: left,
@@ -271,7 +269,7 @@ export function parser(source, recover?: boolean) {
         // function invocation
         infix("(", operators["("], function(
             self: any,
-            left: ExprNode,
+            left: ast.ASTNode,
         ): ast.FunctionInvocationNode | ast.LambdaDefinitionNode {
             // left is is what we are trying to invoke
             let type: "function" | "partial" = "function";
@@ -388,11 +386,12 @@ export function parser(source, recover?: boolean) {
                 for (;;) {
                     var item = expression(0);
                     if (current.symbol.id === "..") {
+                        let position = current.token.position;
+                        let lhs = item;
                         // range operator
-                        var range = { type: "binary", value: "..", position: current.token.position, lhs: item };
                         advance("..");
-                        // TODO: Fix any cast
-                        (range as any).rhs = expression(0);
+                        let rhs = expression(0);
+                        var range: ast.BinaryNode = { type: "binary", value: "..", position: position, lhs: lhs, rhs: rhs };
                         item = range;
                     }
                     a.push(item);
@@ -437,7 +436,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // order-by
-        infix("^", operators["^"], function(self: any, left: ExprNode): ast.BinaryNode {
+        infix("^", operators["^"], function(self: any, left: ast.ASTNode): ast.BinaryNode {
             advance("(");
             var terms = [];
             for (;;) {
@@ -496,7 +495,7 @@ export function parser(source, recover?: boolean) {
             };
         };
 
-        var objectParserLED = function(self: any, left: ExprNode): ast.BinaryNode {
+        var objectParserLED = function(self: any, left: ast.ASTNode): ast.BinaryNode {
             var a = [];
             /* istanbul ignore else */
             if (current.symbol.id !== "}") {
@@ -679,8 +678,8 @@ export function parser(source, recover?: boolean) {
     };
 
     // Pratt's algorithm
-    var expression = function(rbp: number): ExprNode {
-        var left: ExprNode;
+    var expression = function(rbp: number): ast.ASTNode {
+        var left: ast.ASTNode;
         var t = node;
         var c = current;
         advance(null, true);
