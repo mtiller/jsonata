@@ -1,12 +1,14 @@
-import { isNumeric } from '../utils';
-import { tail_call_optimize } from './tail_call';
-import { ErrorCollector } from './errors';
+import { isNumeric } from "../utils";
+import { tail_call_optimize } from "./tail_call";
+import { ErrorCollector } from "./types";
+import * as ast from "./ast";
 
 // post-parse stage
 // the purpose of this is flatten the parts of the AST representing location paths,
 // converting them to arrays of steps which in turn may contain arrays of predicates.
 // following this, nodes containing '.' and '[' should be eliminated from the AST.
-export function ast_optimize(expr, collect: undefined | ErrorCollector) {
+// TODO: Add types and adjust for errors
+export function ast_optimize(expr /* : ast.ASTNode */, collect: undefined | ErrorCollector) {
     var result;
     switch (expr.type) {
         case "binary":
@@ -240,7 +242,7 @@ export function ast_optimize(expr, collect: undefined | ErrorCollector) {
         default:
             var code = "S0206";
             /* istanbul ignore else */
-            if (expr.type=="end") {
+            if (expr.type == "end") {
                 code = "S0207";
             }
             var err = {
@@ -257,4 +259,4 @@ export function ast_optimize(expr, collect: undefined | ErrorCollector) {
             }
     }
     return result;
-};
+}

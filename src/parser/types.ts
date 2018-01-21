@@ -1,5 +1,5 @@
-import * as ast from './ast';
-import { Token } from '../tokenizer';
+import * as ast from "./ast";
+import { Token } from "../tokenizer";
 export type NUD = (state: ParserState) => ast.ASTNode;
 export type LED = (state: ParserState, left: ast.ASTNode) => ast.ASTNode;
 
@@ -22,4 +22,6 @@ export interface ParserState {
     handleError: (err) => void;
 }
 
-export type SymbolTable = { [id: string]: Symbol }
+export type SymbolTable = { [id: string]: Symbol };
+
+export type ErrorCollector = (err: any) => void;

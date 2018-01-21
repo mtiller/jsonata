@@ -1,7 +1,7 @@
 import { NUD, LED, ParserState } from "./types";
 import { parseSignature } from "../signatures";
 import * as ast from "./ast";
-import { operators } from '../constants';
+import { operators } from "../constants";
 
 export const infixDefaultLED = (bindingPower: number): LED => {
     return (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {

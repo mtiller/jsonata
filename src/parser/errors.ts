@@ -1,1 +1,0 @@
-export type ErrorCollector = (err: any) => void;

@@ -26,4 +26,4 @@ export function tail_call_optimize(expr) {
         result = expr;
     }
     return result;
-};
+}

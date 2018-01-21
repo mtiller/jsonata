@@ -1,4 +1,4 @@
-import { Token } from '../tokenizer';
+import { Token } from "../tokenizer";
 
 export interface BaseNode {
     type: string;
@@ -22,7 +22,7 @@ export interface ErrorNode extends BaseNode {
     error: any;
     // TODO: refine
     lhs: any;
-    remaining: Token[],
+    remaining: Token[];
 }
 
 export interface VariableNode extends BaseNode {
@@ -76,7 +76,7 @@ export interface BinaryNode extends BaseNode {
 }
 
 export interface TernaryNode extends BaseNode {
-    type: "condition",
+    type: "condition";
     condition: any;
     then: any;
     else: any;
@@ -89,7 +89,7 @@ export interface BlockNode extends BaseNode {
 }
 
 export interface TransformNode extends BaseNode {
-    type: "transform",
+    type: "transform";
     // TODO: Refine these
     pattern: any;
     update: any;
@@ -111,21 +111,20 @@ export interface LambdaDefinitionNode extends BaseNode {
     arguments: any;
 }
 
-export type ASTNode
-  = WildcardNode
-  | DescendantNode
-  | ErrorNode
-  | LiteralNode
-  | NameNode
-  | VariableNode
-  | RegexNode
-  | OperatorNode
-  | UnaryNode
-  | BinaryNode
-  | TernaryNode
-  | BlockNode
-  | TransformNode
-  | FunctionInvocationNode
-  | LambdaDefinitionNode
-  | EndNode
-  ;
+export type ASTNode =
+    | WildcardNode
+    | DescendantNode
+    | ErrorNode
+    | LiteralNode
+    | NameNode
+    | VariableNode
+    | RegexNode
+    | OperatorNode
+    | UnaryNode
+    | BinaryNode
+    | TernaryNode
+    | BlockNode
+    | TransformNode
+    | FunctionInvocationNode
+    | LambdaDefinitionNode
+    | EndNode;

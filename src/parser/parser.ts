@@ -3,13 +3,12 @@ import { parseSignature } from "../signatures";
 import { tokenizer, Tokenizer, Token } from "../tokenizer";
 import { isNumeric } from "../utils";
 import { ast_optimize } from "./optimize";
-import { ErrorCollector } from "./errors";
-import { createTable } from './symbols';
+import { createTable } from "./symbols";
 import * as ast from "./ast";
 import * as nuds from "./nuds";
 import * as leds from "./leds";
 
-import { NUD, LED, Symbol, ParserState, SymbolTable } from "./types";
+import { NUD, LED, Symbol, ParserState, SymbolTable, ErrorCollector } from "./types";
 
 function remainingTokens(current: ParserState, lexer: Tokenizer): Token[] {
     var remaining: Token[] = [];
@@ -24,7 +23,14 @@ function remainingTokens(current: ParserState, lexer: Tokenizer): Token[] {
     return remaining;
 }
 
-function handleError(current: ParserState, lexer: Tokenizer, recover: boolean, errors: string[], symbol_table: SymbolTable, err: any): void {
+function handleError(
+    current: ParserState,
+    lexer: Tokenizer,
+    recover: boolean,
+    errors: string[],
+    symbol_table: SymbolTable,
+    err: any,
+): void {
     if (recover) {
         // tokenize the rest of the buffer and add it to an error token
         err.remaining = remainingTokens(current, lexer);
@@ -44,7 +50,16 @@ function handleError(current: ParserState, lexer: Tokenizer, recover: boolean, e
     }
 }
 
-export function advance(current: ParserState, lexer: Tokenizer, source: string, recover: boolean, errors: string[], symbol_table: SymbolTable, id?: string, infix?: boolean) {
+export function advance(
+    current: ParserState,
+    lexer: Tokenizer,
+    source: string,
+    recover: boolean,
+    errors: string[],
+    symbol_table: SymbolTable,
+    id?: string,
+    infix?: boolean,
+) {
     if (id && current.symbol.id !== id) {
         var code;
         if (current.symbol.id === "(end)") {
@@ -113,13 +128,13 @@ export function advance(current: ParserState, lexer: Tokenizer, source: string, 
             });
     }
 
-    current.symbol = Object.create(symbol),
-    current.previousToken = current.token,
-    current.token = {
-        value: value,
-        type: type,
-        position: next_token.position,
-    };
+    (current.symbol = Object.create(symbol)),
+        (current.previousToken = current.token),
+        (current.token = {
+            value: value,
+            type: type,
+            position: next_token.position,
+        });
     current.error = undefined;
     return;
 }
@@ -134,7 +149,8 @@ export function parser(source, recover?: boolean) {
     var errors = [];
     let symbol_table = createTable(recover, errors, () => remainingTokens(current, lexer));
 
-    current.advance = (id?: string, infix?: boolean) => advance(current, lexer, source, recover, errors, symbol_table, id, infix);
+    current.advance = (id?: string, infix?: boolean) =>
+        advance(current, lexer, source, recover, errors, symbol_table, id, infix);
 
     // Pratt's algorithm
     current.expression = (rbp: number): ast.ASTNode => {
@@ -148,7 +164,7 @@ export function parser(source, recover?: boolean) {
         }
         return left;
     };
-    current.handleError = (err) => handleError(current, lexer, recover, errors, symbol_table, err);
+    current.handleError = err => handleError(current, lexer, recover, errors, symbol_table, err);
 
     // now invoke the tokenizer and the parser and return the syntax tree
     lexer = tokenizer(source);

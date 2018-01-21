@@ -1,27 +1,27 @@
 import { NUD, ParserState } from "./types";
-import { Token } from '../tokenizer';
+import { Token } from "../tokenizer";
 import * as ast from "./ast";
 
 export const defaultNUD = (recover: boolean, errors: string[], remainingTokens: () => Token[]): NUD => {
     return (state: ParserState): ast.ErrorNode => {
-    // error - symbol has been invoked as a unary operator
-    var err: any = {
-        code: "S0211",
-        // TODO: impacts parser-recovery.js (expects previous token)
-        token: state.previousToken.value,
-        position: state.previousToken.position,
-    };
+        // error - symbol has been invoked as a unary operator
+        var err: any = {
+            code: "S0211",
+            // TODO: impacts parser-recovery.js (expects previous token)
+            token: state.previousToken.value,
+            position: state.previousToken.position,
+        };
 
-    if (recover) {
-        err.remaining = remainingTokens();
-        err.type = "error";
-        errors.push(err);
-        return err;
-    } else {
-        err.stack = new Error().stack;
-        throw err;
-    }
-}
+        if (recover) {
+            err.remaining = remainingTokens();
+            err.type = "error";
+            errors.push(err);
+            return err;
+        } else {
+            err.stack = new Error().stack;
+            throw err;
+        }
+    };
 };
 
 export const prefixDefaultNUD = (bindingPower: number): NUD => {
@@ -33,8 +33,8 @@ export const prefixDefaultNUD = (bindingPower: number): NUD => {
             type: "unary",
             expression: expr,
         };
-    }
-}
+    };
+};
 
 export const terminalNUD: NUD = (state: ParserState): ast.TerminalNode => {
     let token = state.previousToken;
@@ -78,23 +78,23 @@ export const terminalNUD: NUD = (state: ParserState): ast.TerminalNode => {
                 type: "end",
                 value: "(end)",
                 position: token.position,
-            }
+            };
     }
-}
+};
 
 export const wildcardNUD = (state: ParserState): ast.WildcardNode => {
     return {
         value: state.previousToken.value,
         type: "wildcard",
     };
-}
+};
 
 export const descendantNUD = (state: ParserState): ast.DescendantNode => {
     return {
         value: state.previousToken.value,
         type: "descendant",
     };
-}
+};
 
 export const blockNUD = (state: ParserState): ast.BlockNode => {
     var expressions = [];
