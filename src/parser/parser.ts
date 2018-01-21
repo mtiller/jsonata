@@ -582,19 +582,14 @@ export function parser(source, recover?: boolean) {
                 });
         }
 
-        current = {
-            symbol: Object.create(symbol),
-            previousToken: current.token,
-            token: {
-                value: value,
-                type: type,
-                position: next_token.position,
-            },
-            error: undefined,
-            advance: advance2,
-            expression: expression2,
-            handleError: handleError2,
+        current.symbol = Object.create(symbol),
+        current.previousToken = current.token,
+        current.token = {
+            value: value,
+            type: type,
+            position: next_token.position,
         };
+        current.error = undefined;
         return;
     };
 
@@ -612,6 +607,10 @@ export function parser(source, recover?: boolean) {
         }
         return left;
     };
+    
+    current.advance = advance2;
+    current.expression = expression2;
+    current.handleError = handleError2;
 
     // now invoke the tokenizer and the parser and return the syntax tree
     lexer = tokenizer(source);
