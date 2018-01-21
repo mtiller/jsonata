@@ -13,10 +13,10 @@ export interface Symbol {
 }
 
 export interface ParserState {
-    symbol: Symbol;
-    previousToken: Token;
-    token: Token;
-    error: any;
+    readonly symbol: Symbol;
+    readonly previousToken: Token;
+    readonly token: Token;
+    readonly error: any;
     advance: (id?: string, infix?: boolean) => void;
     expression: (rbp: number) => ast.ASTNode;
     handleError: (err) => void;

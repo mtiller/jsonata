@@ -16,32 +16,29 @@ import { NUD, LED, Symbol, ParserState, SymbolTable, ErrorCollector } from "./ty
  * a closure, but this way it is a bit easier to see the shared state and a bit easier
  * to implement the supporting functions (as methods).
  */
-class Parser {
-    protected current: ParserState = {} as ParserState;
+class Parser implements ParserState {
+    symbol: Symbol = undefined;
+    previousToken: Token = undefined;
+    token: Token = undefined;
+    error: any = undefined;
+
     protected lexer: Tokenizer;
     protected errors: string[] = [];
     protected symbol_table: SymbolTable;
     constructor(protected source: string, protected recover?: boolean) {
         // now invoke the tokenizer and the parser and return the syntax tree
         this.lexer = tokenizer(source);
-        this.symbol_table = createTable(recover, this.errors, () => this.remainingTokens());
-    
-        this.current.advance = (id?: string, infix?: boolean) => this.advance(id, infix);
-    
-        // Pratt's algorithm
-        this.current.expression = (rbp: number): ast.ASTNode => this.expression(rbp);
-    
-        this.current.handleError = err => this.handleError(err);
+        this.symbol_table = createTable(recover, this.errors, () => this.remainingTokens());    
     }
     parse(): ast.ASTNode {
-        this.current.advance();
+        this.advance();
         // parse the tokens
-        var expr = this.current.expression(0);
-        if (this.current.symbol.id !== "(end)") {
+        var expr = this.expression(0);
+        if (this.symbol.id !== "(end)") {
             var err = {
                 code: "S0201",
-                position: this.current.token.position,
-                token: this.current.token.value,
+                position: this.token.position,
+                token: this.token.value,
             };
             this.handleError(err);
         }
@@ -59,8 +56,8 @@ class Parser {
 
     private remainingTokens(): Token[] {
         var remaining: Token[] = [];
-        if (this.current.symbol.id !== "(end)") {
-            remaining.push(this.current.token);
+        if (this.symbol.id !== "(end)") {
+            remaining.push(this.token);
         }
         var nxt: Token = this.lexer(undefined);
         while (nxt !== null) {
@@ -70,30 +67,30 @@ class Parser {
         return remaining;
     }
 
-    private handleError(err: any): void {
+    handleError(err: any): void {
         if (this.recover) {
             // tokenize the rest of the buffer and add it to an error token
             err.remaining = this.remainingTokens();
             this.errors.push(err);
             var symbol = this.symbol_table["(error)"];
-            this.current.symbol = Object.create(symbol);
-            this.current.previousToken = this.current.token;
-            this.current.token = {
+            this.symbol = Object.create(symbol);
+            this.previousToken = this.token;
+            this.token = {
                 type: "(error)",
                 value: null,
-                position: this.current.token.position,
+                position: this.token.position,
             };
-            this.current.error = err;
+            this.error = err;
         } else {
             err.stack = new Error().stack;
             throw err;
         }
     }
 
-    private advance(id?: string, infix?: boolean) {
-        if (id && this.current.symbol.id !== id) {
+    advance(id?: string, infix?: boolean) {
+        if (id && this.symbol.id !== id) {
             var code;
-            if (this.current.symbol.id === "(end)") {
+            if (this.symbol.id === "(end)") {
                 // unexpected end of buffer
                 code = "S0203";
             } else {
@@ -101,8 +98,8 @@ class Parser {
             }
             var err = {
                 code: code,
-                position: this.current.token.position,
-                token: this.current.token.value,
+                position: this.token.position,
+                token: this.token.value,
                 value: id,
             };
             return this.handleError(err);
@@ -110,14 +107,14 @@ class Parser {
         var next_token: Token = this.lexer(infix);
         if (next_token === null) {
             let symbol = this.symbol_table["(end)"];
-            this.current.symbol = Object.create(symbol);
-            this.current.previousToken = this.current.token;
-            this.current.token = {
+            this.symbol = Object.create(symbol);
+            this.previousToken = this.token;
+            this.token = {
                 type: "(end)",
                 value: symbol.value,
                 position: this.source.length,
             };
-            this.current.error = undefined;
+            this.error = undefined;
             return;
         }
         var value = next_token.value;
@@ -159,25 +156,25 @@ class Parser {
                 });
         }
     
-        this.current.symbol = Object.create(symbol);
-        this.current.previousToken = this.current.token;
-        this.current.token = {
+        this.symbol = Object.create(symbol);
+        this.previousToken = this.token;
+        this.token = {
                 value: value,
                 type: type,
                 position: next_token.position,
             };
-        this.current.error = undefined;
+        this.error = undefined;
         return;
     }
 
     expression(rbp: number): ast.ASTNode {
-        let symbol = this.current.symbol;
-        this.current.advance(null, true);
-        var left: ast.ASTNode = symbol.nud(this.current);
-        while (rbp < this.current.symbol.lbp) {
-            symbol = this.current.symbol;
-            this.current.advance();
-            left = symbol.led(this.current, left);
+        let symbol = this.symbol;
+        this.advance(null, true);
+        var left: ast.ASTNode = symbol.nud(this);
+        while (rbp < this.symbol.lbp) {
+            symbol = this.symbol;
+            this.advance();
+            left = symbol.led(this, left);
         }
         return left;
     }
