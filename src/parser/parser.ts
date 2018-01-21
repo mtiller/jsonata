@@ -600,12 +600,12 @@ export function parser(source, recover?: boolean) {
         var c = current;
         let symbol = current.symbol;
         advance2(null, true);
-        var left: ast.ASTNode = symbol.nud(c);
+        var left: ast.ASTNode = symbol.nud(current);
         while (rbp < current.symbol.lbp) {
             c = current;
             symbol = current.symbol;
             advance2();
-            left = symbol.led(c, left);
+            left = symbol.led(current, left);
         }
         return left;
     };

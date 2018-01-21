@@ -6,7 +6,7 @@ export const infixDefaultLED = (bindingPower: number): LED => {
     return (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
         let rhs = state.expression(bindingPower);
         return {
-            value: state.token.value,
+            value: state.previousToken.value,
             type: "binary",
             lhs: left,
             rhs: rhs,

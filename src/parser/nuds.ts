@@ -4,7 +4,7 @@ import * as ast from "./ast";
 export const prefixDefaultNUD = (bindingPower: number): NUD => {
     return (state: ParserState): ast.UnaryNode => {
         return {
-            value: state.token.value,
+            value: state.previousToken.value,
             type: "unary",
             expression: state.expression(bindingPower),
         };
@@ -12,8 +12,8 @@ export const prefixDefaultNUD = (bindingPower: number): NUD => {
 }
 
 export const terminalNUD: NUD = (state: ParserState): ast.TerminalNode => {
-    let token = state.token;
-    switch (state.token.type) {
+    let token = state.previousToken;
+    switch (token.type) {
         case "variable":
             return {
                 type: "variable",
@@ -59,14 +59,14 @@ export const terminalNUD: NUD = (state: ParserState): ast.TerminalNode => {
 
 export const wildcardNUD = (state: ParserState): ast.WildcardNode => {
     return {
-        value: state.token.value,
+        value: state.previousToken.value,
         type: "wildcard",
     };
 }
 
 export const descendantNUD = (state: ParserState): ast.DescendantNode => {
     return {
-        value: state.token.value,
+        value: state.previousToken.value,
         type: "descendant",
     };
 }
