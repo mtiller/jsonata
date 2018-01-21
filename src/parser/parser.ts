@@ -46,8 +46,8 @@ export function parser(source, recover?: boolean) {
             var err: any = {
                 code: "S0211",
                 // TODO: impacts parser-recovery.js (expects previous token)
-                token: current.previousToken.value,
-                position: current.previousToken.position,
+                token: state.previousToken.value,
+                position: state.previousToken.position,
             };
 
             if (recover) {
@@ -157,7 +157,7 @@ export function parser(source, recover?: boolean) {
 
         infixr("(error)", 10, (state: ParserState, left: ast.ASTNode): ast.ErrorNode => {
             return {
-                value: current.token.value,
+                value: state.token.value,
                 lhs: left,
                 error: state.error,
                 remaining: remainingTokens(),
@@ -178,22 +178,22 @@ export function parser(source, recover?: boolean) {
             // left is is what we are trying to invoke
             let type: "function" | "partial" = "function";
             let args = [];
-            let initialToken = current.previousToken;
-            if (current.symbol.id !== ")") {
+            let initialToken = state.previousToken;
+            if (state.symbol.id !== ")") {
                 for (;;) {
-                    if (current.token.type === "operator" && current.symbol.id === "?") {
+                    if (state.token.type === "operator" && state.symbol.id === "?") {
                         // partial function application
                         type = "partial";
                         args.push({
                             type: "operator",
-                            position: current.token.position,
-                            value: current.token.value,
+                            position: state.token.position,
+                            value: state.token.value,
                         });
                         state.advance("?");
                     } else {
                         args.push(state.expression(0));
                     }
-                    if (current.symbol.id !== ",") break;
+                    if (state.symbol.id !== ",") break;
                     state.advance(",");
                 }
             }
@@ -226,21 +226,21 @@ export function parser(source, recover?: boolean) {
             });
             // is the next token a '<' - if so, parse the function signature
             let signature = undefined;
-            if (current.symbol.id === "<") {
-                var sigPos = current.token.position;
+            if (state.symbol.id === "<") {
+                var sigPos = state.token.position;
                 var depth = 1;
                 var sig = "<";
-                let id = current.symbol.id;
+                let id = state.symbol.id;
                 // TODO: Bug in typescript compiler?...doesn't recognize side effects in advance and impact on node value
                 while (depth > 0 && id !== "{" && id !== "(end)") {
                     state.advance();
-                    id = current.symbol.id;
+                    id = state.symbol.id;
                     if (id === ">") {
                         depth--;
                     } else if (id === "<") {
                         depth++;
                     }
-                    sig += current.token.value;
+                    sig += state.token.value;
                 }
                 state.advance(">");
                 try {
@@ -261,7 +261,7 @@ export function parser(source, recover?: boolean) {
             let body = state.expression(0);
             state.advance("}");
             return {
-                value: current.token.value,
+                value: initialToken.value,
                 type: "lambda",
                 body: body,
                 signature: signature,
@@ -273,16 +273,16 @@ export function parser(source, recover?: boolean) {
         // parenthesis - block expression
         prefix("(", (state: ParserState): ast.BlockNode => {
             var expressions = [];
-            while (current.symbol.id !== ")") {
+            while (state.symbol.id !== ")") {
                 expressions.push(state.expression(0));
-                if (current.symbol.id !== ";") {
+                if (state.symbol.id !== ";") {
                     break;
                 }
                 state.advance(";");
             }
             state.advance(")", true);
             return {
-                value: current.token.value,
+                value: state.token.value,
                 type: "block",
                 expressions: expressions,
             };
@@ -291,12 +291,12 @@ export function parser(source, recover?: boolean) {
         // array constructor
         prefix("[", (state: ParserState): ast.UnaryNode => {
             var a = [];
-            let initialToken = current.previousToken;
-            if (current.symbol.id !== "]") {
+            let initialToken = state.previousToken;
+            if (state.symbol.id !== "]") {
                 for (;;) {
                     var item = state.expression(0);
-                    if (current.symbol.id === "..") {
-                        let position = current.token.position;
+                    if (state.symbol.id === "..") {
+                        let position = state.token.position;
                         let lhs = item;
                         // range operator
                         state.advance("..");
@@ -311,7 +311,7 @@ export function parser(source, recover?: boolean) {
                         item = range;
                     }
                     a.push(item);
-                    if (current.symbol.id !== ",") {
+                    if (state.symbol.id !== ",") {
                         break;
                     }
                     state.advance(",");
@@ -328,8 +328,8 @@ export function parser(source, recover?: boolean) {
 
         // filter - predicate or array index
         infix("[", operators["["], (state: ParserState, left: ast.ASTNode): ast.ASTNode | ast.BinaryNode => {
-            let initialToken = current.previousToken;
-            if (current.symbol.id === "]") {
+            let initialToken = state.previousToken;
+            if (state.symbol.id === "]") {
                 // empty predicate means maintain singleton arrays in the output
                 var step = left;
                 while (step && step.type === "binary" && step.value === "[") {
@@ -354,17 +354,17 @@ export function parser(source, recover?: boolean) {
 
         // order-by
         infix("^", operators["^"], (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
-            let initialToken = current.previousToken;
+            let initialToken = state.previousToken;
             state.advance("(");
             var terms = [];
             for (;;) {
                 var term = {
                     descending: false,
                 };
-                if (current.symbol.id === "<") {
+                if (state.symbol.id === "<") {
                     // ascending sort
                     state.advance("<");
-                } else if (current.symbol.id === ">") {
+                } else if (state.symbol.id === ">") {
                     // descending sort
                     term.descending = true;
                     state.advance(">");
@@ -374,7 +374,7 @@ export function parser(source, recover?: boolean) {
                 // TODO: Fix any cast
                 (term as any).expression = state.expression(0);
                 terms.push(term);
-                if (current.symbol.id !== ",") {
+                if (state.symbol.id !== ",") {
                     break;
                 }
                 state.advance(",");
@@ -391,15 +391,15 @@ export function parser(source, recover?: boolean) {
 
         var objectParserNUD = (state: ParserState): ast.UnaryNode => {
             var a = [];
-            let initialToken = current.previousToken;
+            let initialToken = state.previousToken;
             /* istanbul ignore else */
-            if (current.symbol.id !== "}") {
+            if (state.symbol.id !== "}") {
                 for (;;) {
                     var n = state.expression(0);
                     state.advance(":");
                     var v = state.expression(0);
                     a.push([n, v]); // holds an array of name/value expression pairs
-                    if (current.symbol.id !== ",") {
+                    if (state.symbol.id !== ",") {
                         break;
                     }
                     state.advance(",");
@@ -416,15 +416,15 @@ export function parser(source, recover?: boolean) {
 
         var objectParserLED = (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
             var a = [];
-            let initialToken = current.previousToken;
+            let initialToken = state.previousToken;
             /* istanbul ignore else */
-            if (current.symbol.id !== "}") {
+            if (state.symbol.id !== "}") {
                 for (;;) {
                     var n = state.expression(0);
                     state.advance(":");
                     var v = state.expression(0);
                     a.push([n, v]); // holds an array of name/value expression pairs
-                    if (current.symbol.id !== ",") {
+                    if (state.symbol.id !== ",") {
                         break;
                     }
                     state.advance(",");
@@ -448,10 +448,10 @@ export function parser(source, recover?: boolean) {
 
         // if/then/else ternary operator ?:
         infix("?", operators["?"], (state: ParserState, left): ast.TernaryNode => {
-            let initialToken = current.previousToken;
+            let initialToken = state.previousToken;
             let then = state.expression(0);
             let otherwise = undefined;
-            if (current.symbol.id === ":") {
+            if (state.symbol.id === ":") {
                 // else condition
                 state.advance(":");
                 otherwise = state.expression(0);
@@ -467,12 +467,12 @@ export function parser(source, recover?: boolean) {
 
         // object transformer
         prefix("|", (state: ParserState): ast.TransformNode => {
-            let initialToken = current.previousToken;
+            let initialToken = state.previousToken;
             let expr = state.expression(0);
             state.advance("|");
             let update = state.expression(0);
             let del = undefined;
-            if (current.symbol.id === ",") {
+            if (state.symbol.id === ",") {
                 state.advance(",");
                 del = state.expression(0);
             }
@@ -607,7 +607,7 @@ export function parser(source, recover?: boolean) {
         }
         return left;
     };
-    
+
     current.advance = advance2;
     current.expression = expression2;
     current.handleError = handleError2;
