@@ -22,3 +22,4 @@ export interface ParserState {
     handleError: (err) => void;
 }
 
+export type SymbolTable = { [id: string]: Symbol }

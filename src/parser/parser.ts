@@ -9,58 +9,50 @@ import * as ast from "./ast";
 import * as nuds from "./nuds";
 import * as leds from "./leds";
 
-import { NUD, LED, Symbol, ParserState } from "./types";
+import { NUD, LED, Symbol, ParserState, SymbolTable } from "./types";
+
+function remainingTokens(current: ParserState, lexer: Tokenizer): Token[] {
+    var remaining: Token[] = [];
+    if (current.symbol.id !== "(end)") {
+        remaining.push(current.token);
+    }
+    var nxt: Token = lexer(undefined);
+    while (nxt !== null) {
+        remaining.push(nxt);
+        nxt = lexer(undefined);
+    }
+    return remaining;
+}
+
+function handleError(current: ParserState, lexer: Tokenizer, recover: boolean, errors: string[], symbol_table: SymbolTable, err: any): void {
+    if (recover) {
+        // tokenize the rest of the buffer and add it to an error token
+        err.remaining = remainingTokens(current, lexer);
+        errors.push(err);
+        var symbol = symbol_table["(error)"];
+        current.symbol = Object.create(symbol);
+        current.previousToken = current.token;
+        current.token = {
+            type: "(error)",
+            value: null,
+            position: current.token.position,
+        };
+        current.error = err;
+    } else {
+        err.stack = new Error().stack;
+        throw err;
+    }
+}
 
 // This parser implements the 'Top down operator precedence' algorithm developed by Vaughan R Pratt; http://dl.acm.org/citation.cfm?id=512931.
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
 export function parser(source, recover?: boolean) {
-    var current: ParserState = {
-        symbol: undefined,
-        token: undefined,
-        previousToken: undefined,
-        error: undefined,
-        advance: advance,
-        expression: expression,
-        handleError: handleError,
-    };
+    var current: ParserState = {} as ParserState;
     var lexer: Tokenizer;
 
-    var remainingTokens = () => {
-        var remaining: Token[] = [];
-        if (current.symbol.id !== "(end)") {
-            remaining.push(current.token);
-        }
-        var nxt: Token = lexer(undefined);
-        while (nxt !== null) {
-            remaining.push(nxt);
-            nxt = lexer(undefined);
-        }
-        return remaining;
-    };
-
     var errors = [];
-    let symbol_table = createTable(recover, errors, remainingTokens);
-
-    var handleError = (err): void => {
-        if (recover) {
-            // tokenize the rest of the buffer and add it to an error token
-            err.remaining = remainingTokens();
-            errors.push(err);
-            var symbol = symbol_table["(error)"];
-            current.symbol = Object.create(symbol);
-            current.previousToken = current.token;
-            current.token = {
-                type: "(error)",
-                value: null,
-                position: current.token.position,
-            };
-            current.error = err;
-        } else {
-            err.stack = new Error().stack;
-            throw err;
-        }
-    };
+    let symbol_table = createTable(recover, errors, () => remainingTokens(current, lexer));
 
     var advance = (id?: string, infix?: boolean): void => {
         if (id && current.symbol.id !== id) {
@@ -77,7 +69,7 @@ export function parser(source, recover?: boolean) {
                 token: current.token.value,
                 value: id,
             };
-            return handleError(err);
+            return handleError(current, lexer, recover, errors, symbol_table, err);
         }
         var next_token: Token = lexer(infix);
         if (next_token === null) {
@@ -103,7 +95,7 @@ export function parser(source, recover?: boolean) {
             case "operator":
                 symbol = symbol_table[value];
                 if (!symbol) {
-                    return handleError({
+                    return handleError(current, lexer, recover, errors, symbol_table, {
                         code: "S0204",
                         stack: new Error().stack,
                         position: next_token.position,
@@ -123,7 +115,7 @@ export function parser(source, recover?: boolean) {
                 break;
             /* istanbul ignore next */
             default:
-                return handleError({
+                return handleError(current, lexer, recover, errors, symbol_table, {
                     code: "S0205",
                     stack: new Error().stack,
                     position: next_token.position,
@@ -159,7 +151,7 @@ export function parser(source, recover?: boolean) {
 
     current.advance = advance;
     current.expression = expression;
-    current.handleError = handleError;
+    current.handleError = (err) => handleError(current, lexer, recover, errors, symbol_table, err);
 
     // now invoke the tokenizer and the parser and return the syntax tree
     lexer = tokenizer(source);
@@ -172,7 +164,7 @@ export function parser(source, recover?: boolean) {
             position: current.token.position,
             token: current.token.value,
         };
-        handleError(err);
+        handleError(current, lexer, recover, errors, symbol_table, err);
     }
 
     // Decide if we want to collect errors and recover, or just throw an error

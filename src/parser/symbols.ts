@@ -1,11 +1,11 @@
 import { operators } from '../constants';
-import { Symbol, LED, NUD, ParserState } from './types';
+import { Symbol, LED, NUD, ParserState, SymbolTable } from './types';
 import { Token } from '../tokenizer';
 import * as nuds from './nuds';
 import * as leds from './leds';
 import * as ast from './ast';
 
-export function createTable(recover: boolean, errors: string[], remainingTokens: () => Token[]): { [id: string]: Symbol } {
+export function createTable(recover: boolean, errors: string[], remainingTokens: () => Token[]): SymbolTable {
     let symbol_table: { [id: string]: Symbol } = {};
 
     var getSymbol = (id, bp: number): Symbol => {
