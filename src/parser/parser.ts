@@ -20,9 +20,9 @@ export function parser(source, recover?: boolean) {
         token: undefined,
         previousToken: undefined,
         error: undefined,
-        advance: advance2,
-        expression: expression2,
-        handleError: handleError2,
+        advance: advance,
+        expression: expression,
+        handleError: handleError,
     };
     var lexer: Tokenizer;
 
@@ -42,7 +42,7 @@ export function parser(source, recover?: boolean) {
     var errors = [];
     let symbol_table = createTable(recover, errors, remainingTokens);
 
-    var handleError2 = (err): void => {
+    var handleError = (err): void => {
         if (recover) {
             // tokenize the rest of the buffer and add it to an error token
             err.remaining = remainingTokens();
@@ -62,8 +62,7 @@ export function parser(source, recover?: boolean) {
         }
     };
 
-    // TODO: Add types
-    var advance2 = (id?: string, infix?: boolean): void => {
+    var advance = (id?: string, infix?: boolean): void => {
         if (id && current.symbol.id !== id) {
             var code;
             if (current.symbol.id === "(end)") {
@@ -78,7 +77,7 @@ export function parser(source, recover?: boolean) {
                 token: current.token.value,
                 value: id,
             };
-            return handleError2(err);
+            return handleError(err);
         }
         var next_token: Token = lexer(infix);
         if (next_token === null) {
@@ -104,7 +103,7 @@ export function parser(source, recover?: boolean) {
             case "operator":
                 symbol = symbol_table[value];
                 if (!symbol) {
-                    return handleError2({
+                    return handleError({
                         code: "S0204",
                         stack: new Error().stack,
                         position: next_token.position,
@@ -124,7 +123,7 @@ export function parser(source, recover?: boolean) {
                 break;
             /* istanbul ignore next */
             default:
-                return handleError2({
+                return handleError({
                     code: "S0205",
                     stack: new Error().stack,
                     position: next_token.position,
@@ -144,36 +143,36 @@ export function parser(source, recover?: boolean) {
     };
 
     // Pratt's algorithm
-    var expression2 = (rbp: number): ast.ASTNode => {
+    var expression = (rbp: number): ast.ASTNode => {
         var c = current;
         let symbol = current.symbol;
-        advance2(null, true);
+        advance(null, true);
         var left: ast.ASTNode = symbol.nud(current);
         while (rbp < current.symbol.lbp) {
             c = current;
             symbol = current.symbol;
-            advance2();
+            advance();
             left = symbol.led(current, left);
         }
         return left;
     };
 
-    current.advance = advance2;
-    current.expression = expression2;
-    current.handleError = handleError2;
+    current.advance = advance;
+    current.expression = expression;
+    current.handleError = handleError;
 
     // now invoke the tokenizer and the parser and return the syntax tree
     lexer = tokenizer(source);
-    advance2();
+    advance();
     // parse the tokens
-    var expr = expression2(0);
+    var expr = expression(0);
     if (current.symbol.id !== "(end)") {
         var err = {
             code: "S0201",
             position: current.token.position,
             token: current.token.value,
         };
-        handleError2(err);
+        handleError(err);
     }
 
     // Decide if we want to collect errors and recover, or just throw an error
