@@ -4,9 +4,10 @@ import * as ast from "./ast";
 
 export const infixDefaultLED = (bindingPower: number): LED => {
     return (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
+        let initialToken = state.previousToken;
         let rhs = state.expression(bindingPower);
         return {
-            value: state.previousToken.value,
+            value: initialToken.value,
             type: "binary",
             lhs: left,
             rhs: rhs,

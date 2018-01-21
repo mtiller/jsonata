@@ -3,10 +3,12 @@ import * as ast from "./ast";
 
 export const prefixDefaultNUD = (bindingPower: number): NUD => {
     return (state: ParserState): ast.UnaryNode => {
+        let initialToken = state.previousToken;
+        let expr = state.expression(bindingPower);
         return {
-            value: state.previousToken.value,
+            value: initialToken.value,
             type: "unary",
-            expression: state.expression(bindingPower),
+            expression: expr,
         };
     }
 }

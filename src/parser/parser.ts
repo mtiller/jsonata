@@ -5,16 +5,24 @@ import { isNumeric } from "../utils";
 import { ast_optimize } from "./optimize";
 import { ErrorCollector } from "./errors";
 import * as ast from "./ast";
-import * as nuds from './nuds';
-import * as leds from './leds';
+import * as nuds from "./nuds";
+import * as leds from "./leds";
 
-import { NUD, LED, Symbol, ParserState } from './types';
+import { NUD, LED, Symbol, ParserState } from "./types";
 
 // This parser implements the 'Top down operator precedence' algorithm developed by Vaughan R Pratt; http://dl.acm.org/citation.cfm?id=512931.
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
 export function parser(source, recover?: boolean) {
-    var current: ParserState;
+    var current: ParserState = {
+        symbol: undefined,
+        token: undefined,
+        previousToken: undefined,
+        error: undefined,
+        advance: advance2,
+        expression: expression2,
+        handleError: handleError2,
+    };
     var lexer: Tokenizer;
 
     var remainingTokens = () => {
@@ -75,7 +83,7 @@ export function parser(source, recover?: boolean) {
         };
 
         // A terminal could be a 'literal', 'variable', 'name'
-        var terminal = (id) => {
+        var terminal = id => {
             var s = getSymbol(id, 0);
             s.nud = nuds.terminalNUD;
         };
@@ -164,10 +172,9 @@ export function parser(source, recover?: boolean) {
         prefix("**", nuds.descendantNUD);
 
         // function invocation
-        infix("(", operators["("], (
-            state: ParserState,
-            left: ast.ASTNode,
-        ): ast.FunctionInvocationNode | ast.LambdaDefinitionNode => {
+        infix("(", operators["("], (state: ParserState, left: ast.ASTNode):
+            | ast.FunctionInvocationNode
+            | ast.LambdaDefinitionNode => {
             // left is is what we are trying to invoke
             let type: "function" | "partial" = "function";
             let args = [];
@@ -294,7 +301,13 @@ export function parser(source, recover?: boolean) {
                         // range operator
                         state.advance("..");
                         let rhs = state.expression(0);
-                        var range: ast.BinaryNode = { type: "binary", value: "..", position: position, lhs: lhs, rhs: rhs };
+                        var range: ast.BinaryNode = {
+                            type: "binary",
+                            value: "..",
+                            position: position,
+                            lhs: lhs,
+                            rhs: rhs,
+                        };
                         item = range;
                     }
                     a.push(item);
@@ -485,19 +498,14 @@ export function parser(source, recover?: boolean) {
             err.remaining = remainingTokens();
             errors.push(err);
             var symbol = symbol_table["(error)"];
-            current = {
-                symbol: Object.create(symbol),
-                previousToken: current.token,
-                token: {
-                    type: "(error)",
-                    value: null,
-                    position: current.token.position,
-                },
-                error: err,
-                advance: advance2,
-                expression: expression2,
-                handleError: handleError2,
+            current.symbol = Object.create(symbol);
+            current.previousToken = current.token;
+            current.token = {
+                type: "(error)",
+                value: null,
+                position: current.token.position,
             };
+            current.error = err;
         } else {
             err.stack = new Error().stack;
             throw err;
@@ -524,20 +532,15 @@ export function parser(source, recover?: boolean) {
         }
         var next_token: Token = lexer(infix);
         if (next_token === null) {
-            let symbol = symbol_table["(end)"]
-            current = {
-                symbol: Object.create(symbol),
-                previousToken: current.token,
-                token: {
-                    type: "(end)",
-                    value: symbol.value,
-                    position: source.length,
-                },
-                error: undefined,
-                advance: advance2,
-                expression: expression2,
-                handleError: handleError2,
+            let symbol = symbol_table["(end)"];
+            current.symbol = Object.create(symbol);
+            current.previousToken = current.token;
+            current.token = {
+                type: "(end)",
+                value: symbol.value,
+                position: source.length,
             };
+            current.error = undefined;
             return;
         }
         var value = next_token.value;
@@ -581,7 +584,7 @@ export function parser(source, recover?: boolean) {
 
         current = {
             symbol: Object.create(symbol),
-            previousToken: current ? current.token : undefined,
+            previousToken: current.token,
             token: {
                 value: value,
                 type: type,
