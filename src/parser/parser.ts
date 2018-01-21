@@ -41,26 +41,6 @@ export function parser(source, recover?: boolean) {
     function createTable(): { [id: string]: Symbol } {
         let symbol_table: { [id: string]: Symbol } = {};
 
-        let defaultNud: NUD = (state: ParserState): ast.ErrorNode => {
-            // error - symbol has been invoked as a unary operator
-            var err: any = {
-                code: "S0211",
-                // TODO: impacts parser-recovery.js (expects previous token)
-                token: state.previousToken.value,
-                position: state.previousToken.position,
-            };
-
-            if (recover) {
-                err.remaining = remainingTokens();
-                err.type = "error";
-                errors.push(err);
-                return err;
-            } else {
-                err.stack = new Error().stack;
-                throw err;
-            }
-        };
-
         var getSymbol = (id, bp: number): Symbol => {
             bp = bp || 0;
             if (symbol_table.hasOwnProperty(id)) {
@@ -75,7 +55,7 @@ export function parser(source, recover?: boolean) {
                     id: id,
                     lbp: bp,
                     value: id,
-                    nud: defaultNud,
+                    nud: nuds.defaultNUD(recover, errors, remainingTokens),
                 };
                 symbol_table[id] = s;
                 return s;
@@ -172,279 +152,25 @@ export function parser(source, recover?: boolean) {
         prefix("**", nuds.descendantNUD);
 
         // function invocation
-        infix("(", operators["("], (state: ParserState, left: ast.ASTNode):
-            | ast.FunctionInvocationNode
-            | ast.LambdaDefinitionNode => {
-            // left is is what we are trying to invoke
-            let type: "function" | "partial" = "function";
-            let args = [];
-            let initialToken = state.previousToken;
-            if (state.symbol.id !== ")") {
-                for (;;) {
-                    if (state.token.type === "operator" && state.symbol.id === "?") {
-                        // partial function application
-                        type = "partial";
-                        args.push({
-                            type: "operator",
-                            position: state.token.position,
-                            value: state.token.value,
-                        });
-                        state.advance("?");
-                    } else {
-                        args.push(state.expression(0));
-                    }
-                    if (state.symbol.id !== ",") break;
-                    state.advance(",");
-                }
-            }
-            state.advance(")", true);
-
-            // if the name of the function is 'function' or λ, then this is function definition (lambda function)
-            let isLambda = left.type === "name" && (left.value === "function" || left.value === "\u03BB");
-
-            if (!isLambda) {
-                let alt: ast.FunctionInvocationNode = {
-                    position: initialToken.position,
-                    value: initialToken.value,
-                    type: type,
-                    arguments: args,
-                    procedure: left,
-                };
-                return alt;
-            }
-            // all of the args must be VARIABLE tokens
-            args.forEach((arg, index) => {
-                if (arg.type !== "variable") {
-                    return state.handleError({
-                        code: "S0208",
-                        stack: new Error().stack,
-                        position: arg.position,
-                        token: arg.value,
-                        value: index + 1,
-                    });
-                }
-            });
-            // is the next token a '<' - if so, parse the function signature
-            let signature = undefined;
-            if (state.symbol.id === "<") {
-                var sigPos = state.token.position;
-                var depth = 1;
-                var sig = "<";
-                let id = state.symbol.id;
-                // TODO: Bug in typescript compiler?...doesn't recognize side effects in advance and impact on node value
-                while (depth > 0 && id !== "{" && id !== "(end)") {
-                    state.advance();
-                    id = state.symbol.id;
-                    if (id === ">") {
-                        depth--;
-                    } else if (id === "<") {
-                        depth++;
-                    }
-                    sig += state.token.value;
-                }
-                state.advance(">");
-                try {
-                    signature = parseSignature(sig);
-                } catch (err) {
-                    // insert the position into this error
-                    err.position = sigPos + err.offset;
-                    // TODO: If recover is true, we need to force the return of an
-                    // error node here.  In the tests, recover is never set so this
-                    // always throws.
-                    state.handleError(err);
-                    /* istanbul ignore next */
-                    throw err;
-                }
-            }
-            // parse the function body
-            state.advance("{");
-            let body = state.expression(0);
-            state.advance("}");
-            return {
-                value: initialToken.value,
-                type: "lambda",
-                body: body,
-                signature: signature,
-                procedure: left,
-                arguments: args,
-            };
-        });
+        infix("(", operators["("], leds.functionLED);
 
         // parenthesis - block expression
-        prefix("(", (state: ParserState): ast.BlockNode => {
-            var expressions = [];
-            while (state.symbol.id !== ")") {
-                expressions.push(state.expression(0));
-                if (state.symbol.id !== ";") {
-                    break;
-                }
-                state.advance(";");
-            }
-            state.advance(")", true);
-            return {
-                value: state.token.value,
-                type: "block",
-                expressions: expressions,
-            };
-        });
+        prefix("(", nuds.blockNUD);
 
         // array constructor
-        prefix("[", (state: ParserState): ast.UnaryNode => {
-            var a = [];
-            let initialToken = state.previousToken;
-            if (state.symbol.id !== "]") {
-                for (;;) {
-                    var item = state.expression(0);
-                    if (state.symbol.id === "..") {
-                        let position = state.token.position;
-                        let lhs = item;
-                        // range operator
-                        state.advance("..");
-                        let rhs = state.expression(0);
-                        var range: ast.BinaryNode = {
-                            type: "binary",
-                            value: "..",
-                            position: position,
-                            lhs: lhs,
-                            rhs: rhs,
-                        };
-                        item = range;
-                    }
-                    a.push(item);
-                    if (state.symbol.id !== ",") {
-                        break;
-                    }
-                    state.advance(",");
-                }
-            }
-            state.advance("]", true);
-            // TODO: Should this be a different type...? (not unary)
-            return {
-                value: initialToken.value,
-                type: "unary",
-                expressions: a,
-            };
-        });
+        prefix("[", nuds.arrayNUD);
 
         // filter - predicate or array index
-        infix("[", operators["["], (state: ParserState, left: ast.ASTNode): ast.ASTNode | ast.BinaryNode => {
-            let initialToken = state.previousToken;
-            if (state.symbol.id === "]") {
-                // empty predicate means maintain singleton arrays in the output
-                var step = left;
-                while (step && step.type === "binary" && step.value === "[") {
-                    let s = step as ast.BinaryNode;
-                    step = s.lhs;
-                }
-                step.keepArray = true;
-                state.advance("]");
-                return left;
-            } else {
-                let rhs = state.expression(operators["]"]);
-                state.advance("]", true);
-                let ret: ast.BinaryNode = {
-                    value: initialToken.value,
-                    type: "binary",
-                    lhs: left,
-                    rhs: rhs,
-                };
-                return ret;
-            }
-        });
+        infix("[", operators["["], leds.filterLED);
 
         // order-by
-        infix("^", operators["^"], (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
-            let initialToken = state.previousToken;
-            state.advance("(");
-            var terms = [];
-            for (;;) {
-                var term = {
-                    descending: false,
-                };
-                if (state.symbol.id === "<") {
-                    // ascending sort
-                    state.advance("<");
-                } else if (state.symbol.id === ">") {
-                    // descending sort
-                    term.descending = true;
-                    state.advance(">");
-                } else {
-                    //unspecified - default to ascending
-                }
-                // TODO: Fix any cast
-                (term as any).expression = state.expression(0);
-                terms.push(term);
-                if (state.symbol.id !== ",") {
-                    break;
-                }
-                state.advance(",");
-            }
-            state.advance(")");
-            return {
-                position: initialToken.position, // REQUIRED?!?
-                value: initialToken.value,
-                type: "binary",
-                lhs: left,
-                rhs: terms, // TODO: Not an expression node...different node type recommended
-            };
-        });
-
-        var objectParserNUD = (state: ParserState): ast.UnaryNode => {
-            var a = [];
-            let initialToken = state.previousToken;
-            /* istanbul ignore else */
-            if (state.symbol.id !== "}") {
-                for (;;) {
-                    var n = state.expression(0);
-                    state.advance(":");
-                    var v = state.expression(0);
-                    a.push([n, v]); // holds an array of name/value expression pairs
-                    if (state.symbol.id !== ",") {
-                        break;
-                    }
-                    state.advance(",");
-                }
-            }
-            state.advance("}", true);
-            // NUD - unary prefix form
-            return {
-                value: initialToken.value,
-                type: "unary",
-                lhs: a, // TODO: use expression
-            };
-        };
-
-        var objectParserLED = (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
-            var a = [];
-            let initialToken = state.previousToken;
-            /* istanbul ignore else */
-            if (state.symbol.id !== "}") {
-                for (;;) {
-                    var n = state.expression(0);
-                    state.advance(":");
-                    var v = state.expression(0);
-                    a.push([n, v]); // holds an array of name/value expression pairs
-                    if (state.symbol.id !== ",") {
-                        break;
-                    }
-                    state.advance(",");
-                }
-            }
-            state.advance("}", true);
-            // LED - binary infix form
-            return {
-                value: initialToken.value,
-                type: "binary",
-                lhs: left,
-                rhs: a,
-            };
-        };
+        infix("^", operators["^"], leds.orderByLED);
 
         // object constructor
-        prefix("{", objectParserNUD);
+        prefix("{", nuds.objectParserNUD);
 
         // object grouping
-        infix("{", operators["{"], objectParserLED);
+        infix("{", operators["{"], leds.objectParserLED);
 
         // if/then/else ternary operator ?:
         infix("?", operators["?"], (state: ParserState, left): ast.TernaryNode => {
@@ -466,25 +192,7 @@ export function parser(source, recover?: boolean) {
         });
 
         // object transformer
-        prefix("|", (state: ParserState): ast.TransformNode => {
-            let initialToken = state.previousToken;
-            let expr = state.expression(0);
-            state.advance("|");
-            let update = state.expression(0);
-            let del = undefined;
-            if (state.symbol.id === ",") {
-                state.advance(",");
-                del = state.expression(0);
-            }
-            state.advance("|");
-            return {
-                value: initialToken.value,
-                type: "transform",
-                pattern: expr,
-                update: update,
-                delete: del,
-            };
-        });
+        prefix("|", nuds.transformerNUD);
 
         return symbol_table;
     }
