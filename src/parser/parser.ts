@@ -29,17 +29,7 @@ class Parser {
         this.current.advance = (id?: string, infix?: boolean) => this.advance(id, infix);
     
         // Pratt's algorithm
-        this.current.expression = (rbp: number): ast.ASTNode => {
-            let symbol = this.current.symbol;
-            this.current.advance(null, true);
-            var left: ast.ASTNode = symbol.nud(this.current);
-            while (rbp < this.current.symbol.lbp) {
-                symbol = this.current.symbol;
-                this.current.advance();
-                left = symbol.led(this.current, left);
-            }
-            return left;
-        };
+        this.current.expression = (rbp: number): ast.ASTNode => this.expression(rbp);
     
         this.current.handleError = err => this.handleError(err);
     }
@@ -178,6 +168,18 @@ class Parser {
             };
         this.current.error = undefined;
         return;
+    }
+
+    expression(rbp: number): ast.ASTNode {
+        let symbol = this.current.symbol;
+        this.current.advance(null, true);
+        var left: ast.ASTNode = symbol.nud(this.current);
+        while (rbp < this.current.symbol.lbp) {
+            symbol = this.current.symbol;
+            this.current.advance();
+            left = symbol.led(this.current, left);
+        }
+        return left;
     }
 }
 
