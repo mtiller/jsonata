@@ -38,8 +38,8 @@ export function parser(source, recover?: boolean) {
             var err: any = {
                 code: "S0211",
                 // TODO: impacts parser-recovery.js (expects previous token)
-                token: state.token.value,
-                position: state.token.position,
+                token: current.previousToken.value,
+                position: current.previousToken.position,
             };
 
             if (recover) {
@@ -487,6 +487,7 @@ export function parser(source, recover?: boolean) {
             var symbol = symbol_table["(error)"];
             current = {
                 symbol: Object.create(symbol),
+                previousToken: current.token,
                 token: {
                     type: "(error)",
                     value: null,
@@ -526,6 +527,7 @@ export function parser(source, recover?: boolean) {
             let symbol = symbol_table["(end)"]
             current = {
                 symbol: Object.create(symbol),
+                previousToken: current.token,
                 token: {
                     type: "(end)",
                     value: symbol.value,
@@ -579,6 +581,7 @@ export function parser(source, recover?: boolean) {
 
         current = {
             symbol: Object.create(symbol),
+            previousToken: current ? current.token : undefined,
             token: {
                 value: value,
                 type: type,

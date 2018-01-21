@@ -14,6 +14,7 @@ export interface Symbol {
 
 export interface ParserState {
     symbol: Symbol;
+    previousToken: Token;
     token: Token;
     error: any;
     advance: (id?: string, infix?: boolean) => void;
