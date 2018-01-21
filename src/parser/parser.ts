@@ -44,6 +44,86 @@ function handleError(current: ParserState, lexer: Tokenizer, recover: boolean, e
     }
 }
 
+export function advance(current: ParserState, lexer: Tokenizer, source: string, recover: boolean, errors: string[], symbol_table: SymbolTable, id?: string, infix?: boolean) {
+    if (id && current.symbol.id !== id) {
+        var code;
+        if (current.symbol.id === "(end)") {
+            // unexpected end of buffer
+            code = "S0203";
+        } else {
+            code = "S0202";
+        }
+        var err = {
+            code: code,
+            position: current.token.position,
+            token: current.token.value,
+            value: id,
+        };
+        return handleError(current, lexer, recover, errors, symbol_table, err);
+    }
+    var next_token: Token = lexer(infix);
+    if (next_token === null) {
+        let symbol = symbol_table["(end)"];
+        current.symbol = Object.create(symbol);
+        current.previousToken = current.token;
+        current.token = {
+            type: "(end)",
+            value: symbol.value,
+            position: source.length,
+        };
+        current.error = undefined;
+        return;
+    }
+    var value = next_token.value;
+    var type = next_token.type;
+    var symbol;
+    switch (type) {
+        case "name":
+        case "variable":
+            symbol = symbol_table["(name)"];
+            break;
+        case "operator":
+            symbol = symbol_table[value];
+            if (!symbol) {
+                return handleError(current, lexer, recover, errors, symbol_table, {
+                    code: "S0204",
+                    stack: new Error().stack,
+                    position: next_token.position,
+                    token: value,
+                });
+            }
+            break;
+        case "string":
+        case "number":
+        case "value":
+            type = "literal";
+            symbol = symbol_table["(literal)"];
+            break;
+        case "regex":
+            type = "regex";
+            symbol = symbol_table["(regex)"];
+            break;
+        /* istanbul ignore next */
+        default:
+            return handleError(current, lexer, recover, errors, symbol_table, {
+                code: "S0205",
+                stack: new Error().stack,
+                position: next_token.position,
+                token: value,
+            });
+    }
+
+    current.symbol = Object.create(symbol),
+    current.previousToken = current.token,
+    current.token = {
+        value: value,
+        type: type,
+        position: next_token.position,
+    };
+    current.error = undefined;
+    return;
+}
+
 // This parser implements the 'Top down operator precedence' algorithm developed by Vaughan R Pratt; http://dl.acm.org/citation.cfm?id=512931.
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
@@ -54,110 +134,27 @@ export function parser(source, recover?: boolean) {
     var errors = [];
     let symbol_table = createTable(recover, errors, () => remainingTokens(current, lexer));
 
-    var advance = (id?: string, infix?: boolean): void => {
-        if (id && current.symbol.id !== id) {
-            var code;
-            if (current.symbol.id === "(end)") {
-                // unexpected end of buffer
-                code = "S0203";
-            } else {
-                code = "S0202";
-            }
-            var err = {
-                code: code,
-                position: current.token.position,
-                token: current.token.value,
-                value: id,
-            };
-            return handleError(current, lexer, recover, errors, symbol_table, err);
-        }
-        var next_token: Token = lexer(infix);
-        if (next_token === null) {
-            let symbol = symbol_table["(end)"];
-            current.symbol = Object.create(symbol);
-            current.previousToken = current.token;
-            current.token = {
-                type: "(end)",
-                value: symbol.value,
-                position: source.length,
-            };
-            current.error = undefined;
-            return;
-        }
-        var value = next_token.value;
-        var type = next_token.type;
-        var symbol;
-        switch (type) {
-            case "name":
-            case "variable":
-                symbol = symbol_table["(name)"];
-                break;
-            case "operator":
-                symbol = symbol_table[value];
-                if (!symbol) {
-                    return handleError(current, lexer, recover, errors, symbol_table, {
-                        code: "S0204",
-                        stack: new Error().stack,
-                        position: next_token.position,
-                        token: value,
-                    });
-                }
-                break;
-            case "string":
-            case "number":
-            case "value":
-                type = "literal";
-                symbol = symbol_table["(literal)"];
-                break;
-            case "regex":
-                type = "regex";
-                symbol = symbol_table["(regex)"];
-                break;
-            /* istanbul ignore next */
-            default:
-                return handleError(current, lexer, recover, errors, symbol_table, {
-                    code: "S0205",
-                    stack: new Error().stack,
-                    position: next_token.position,
-                    token: value,
-                });
-        }
-
-        current.symbol = Object.create(symbol),
-        current.previousToken = current.token,
-        current.token = {
-            value: value,
-            type: type,
-            position: next_token.position,
-        };
-        current.error = undefined;
-        return;
-    };
+    current.advance = (id?: string, infix?: boolean) => advance(current, lexer, source, recover, errors, symbol_table, id, infix);
 
     // Pratt's algorithm
-    var expression = (rbp: number): ast.ASTNode => {
-        var c = current;
+    current.expression = (rbp: number): ast.ASTNode => {
         let symbol = current.symbol;
-        advance(null, true);
+        current.advance(null, true);
         var left: ast.ASTNode = symbol.nud(current);
         while (rbp < current.symbol.lbp) {
-            c = current;
             symbol = current.symbol;
-            advance();
+            current.advance();
             left = symbol.led(current, left);
         }
         return left;
     };
-
-    current.advance = advance;
-    current.expression = expression;
     current.handleError = (err) => handleError(current, lexer, recover, errors, symbol_table, err);
 
     // now invoke the tokenizer and the parser and return the syntax tree
     lexer = tokenizer(source);
-    advance();
+    current.advance();
     // parse the tokens
-    var expr = expression(0);
+    var expr = current.expression(0);
     if (current.symbol.id !== "(end)") {
         var err = {
             code: "S0201",
