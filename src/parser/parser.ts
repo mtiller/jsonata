@@ -171,7 +171,7 @@ export function parser(source, recover?: boolean) {
             // left is is what we are trying to invoke
             let type: "function" | "partial" = "function";
             let args = [];
-            let initialToken = state.token;
+            let initialToken = current.previousToken;
             if (current.symbol.id !== ")") {
                 for (;;) {
                     if (current.token.type === "operator" && current.symbol.id === "?") {
@@ -284,7 +284,7 @@ export function parser(source, recover?: boolean) {
         // array constructor
         prefix("[", (state: ParserState): ast.UnaryNode => {
             var a = [];
-            let initialToken = state.token;
+            let initialToken = current.previousToken;
             if (current.symbol.id !== "]") {
                 for (;;) {
                     var item = state.expression(0);
@@ -315,7 +315,7 @@ export function parser(source, recover?: boolean) {
 
         // filter - predicate or array index
         infix("[", operators["["], (state: ParserState, left: ast.ASTNode): ast.ASTNode | ast.BinaryNode => {
-            let initialToken = state.token;
+            let initialToken = current.previousToken;
             if (current.symbol.id === "]") {
                 // empty predicate means maintain singleton arrays in the output
                 var step = left;
@@ -341,9 +341,9 @@ export function parser(source, recover?: boolean) {
 
         // order-by
         infix("^", operators["^"], (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
+            let initialToken = current.previousToken;
             state.advance("(");
             var terms = [];
-            let initialToken = state.token;
             for (;;) {
                 var term = {
                     descending: false,
@@ -378,7 +378,7 @@ export function parser(source, recover?: boolean) {
 
         var objectParserNUD = (state: ParserState): ast.UnaryNode => {
             var a = [];
-            let initialToken = state.token;
+            let initialToken = current.previousToken;
             /* istanbul ignore else */
             if (current.symbol.id !== "}") {
                 for (;;) {
@@ -403,7 +403,7 @@ export function parser(source, recover?: boolean) {
 
         var objectParserLED = (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
             var a = [];
-            let initialToken = state.token;
+            let initialToken = current.previousToken;
             /* istanbul ignore else */
             if (current.symbol.id !== "}") {
                 for (;;) {
@@ -435,7 +435,7 @@ export function parser(source, recover?: boolean) {
 
         // if/then/else ternary operator ?:
         infix("?", operators["?"], (state: ParserState, left): ast.TernaryNode => {
-            let initialToken = state.token;
+            let initialToken = current.previousToken;
             let then = state.expression(0);
             let otherwise = undefined;
             if (current.symbol.id === ":") {
@@ -454,7 +454,7 @@ export function parser(source, recover?: boolean) {
 
         // object transformer
         prefix("|", (state: ParserState): ast.TransformNode => {
-            let initialToken = state.token;
+            let initialToken = current.previousToken;
             let expr = state.expression(0);
             state.advance("|");
             let update = state.expression(0);
@@ -598,12 +598,14 @@ export function parser(source, recover?: boolean) {
     // Pratt's algorithm
     var expression2 = (rbp: number): ast.ASTNode => {
         var c = current;
+        let symbol = current.symbol;
         advance2(null, true);
-        var left: ast.ASTNode = c.symbol.nud(c);
+        var left: ast.ASTNode = symbol.nud(c);
         while (rbp < current.symbol.lbp) {
             c = current;
+            symbol = current.symbol;
             advance2();
-            left = c.symbol.led(c, left);
+            left = symbol.led(c, left);
         }
         return left;
     };
