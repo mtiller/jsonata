@@ -37,6 +37,7 @@ export function parser(source, recover?: boolean) {
             // error - symbol has been invoked as a unary operator
             var err: any = {
                 code: "S0211",
+                // TODO: impacts parser-recovery.js (expects previous token)
                 token: state.token.value,
                 position: state.token.position,
             };
@@ -148,7 +149,7 @@ export function parser(source, recover?: boolean) {
 
         infixr("(error)", 10, (state: ParserState, left: ast.ASTNode): ast.ErrorNode => {
             return {
-                value: state.token.value,
+                value: current.token.value,
                 lhs: left,
                 error: state.error,
                 remaining: remainingTokens(),
@@ -170,6 +171,7 @@ export function parser(source, recover?: boolean) {
             // left is is what we are trying to invoke
             let type: "function" | "partial" = "function";
             let args = [];
+            let initialToken = state.token;
             if (current.symbol.id !== ")") {
                 for (;;) {
                     if (current.token.type === "operator" && current.symbol.id === "?") {
@@ -195,8 +197,8 @@ export function parser(source, recover?: boolean) {
 
             if (!isLambda) {
                 let alt: ast.FunctionInvocationNode = {
-                    position: state.token.position,
-                    value: state.token.value,
+                    position: initialToken.position,
+                    value: initialToken.value,
                     type: type,
                     arguments: args,
                     procedure: left,
@@ -252,7 +254,7 @@ export function parser(source, recover?: boolean) {
             let body = state.expression(0);
             state.advance("}");
             return {
-                value: state.token.value,
+                value: current.token.value,
                 type: "lambda",
                 body: body,
                 signature: signature,
@@ -273,7 +275,7 @@ export function parser(source, recover?: boolean) {
             }
             state.advance(")", true);
             return {
-                value: state.token.value,
+                value: current.token.value,
                 type: "block",
                 expressions: expressions,
             };
@@ -282,6 +284,7 @@ export function parser(source, recover?: boolean) {
         // array constructor
         prefix("[", (state: ParserState): ast.UnaryNode => {
             var a = [];
+            let initialToken = state.token;
             if (current.symbol.id !== "]") {
                 for (;;) {
                     var item = state.expression(0);
@@ -304,7 +307,7 @@ export function parser(source, recover?: boolean) {
             state.advance("]", true);
             // TODO: Should this be a different type...? (not unary)
             return {
-                value: state.token.value,
+                value: initialToken.value,
                 type: "unary",
                 expressions: a,
             };
@@ -312,6 +315,7 @@ export function parser(source, recover?: boolean) {
 
         // filter - predicate or array index
         infix("[", operators["["], (state: ParserState, left: ast.ASTNode): ast.ASTNode | ast.BinaryNode => {
+            let initialToken = state.token;
             if (current.symbol.id === "]") {
                 // empty predicate means maintain singleton arrays in the output
                 var step = left;
@@ -326,7 +330,7 @@ export function parser(source, recover?: boolean) {
                 let rhs = state.expression(operators["]"]);
                 state.advance("]", true);
                 let ret: ast.BinaryNode = {
-                    value: state.token.value,
+                    value: initialToken.value,
                     type: "binary",
                     lhs: left,
                     rhs: rhs,
@@ -339,6 +343,7 @@ export function parser(source, recover?: boolean) {
         infix("^", operators["^"], (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
             state.advance("(");
             var terms = [];
+            let initialToken = state.token;
             for (;;) {
                 var term = {
                     descending: false,
@@ -363,8 +368,8 @@ export function parser(source, recover?: boolean) {
             }
             state.advance(")");
             return {
-                position: state.token.position, // REQUIRED?!?
-                value: state.token.value,
+                position: initialToken.position, // REQUIRED?!?
+                value: initialToken.value,
                 type: "binary",
                 lhs: left,
                 rhs: terms, // TODO: Not an expression node...different node type recommended
@@ -373,6 +378,7 @@ export function parser(source, recover?: boolean) {
 
         var objectParserNUD = (state: ParserState): ast.UnaryNode => {
             var a = [];
+            let initialToken = state.token;
             /* istanbul ignore else */
             if (current.symbol.id !== "}") {
                 for (;;) {
@@ -389,7 +395,7 @@ export function parser(source, recover?: boolean) {
             state.advance("}", true);
             // NUD - unary prefix form
             return {
-                value: state.token.value,
+                value: initialToken.value,
                 type: "unary",
                 lhs: a, // TODO: use expression
             };
@@ -397,6 +403,7 @@ export function parser(source, recover?: boolean) {
 
         var objectParserLED = (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
             var a = [];
+            let initialToken = state.token;
             /* istanbul ignore else */
             if (current.symbol.id !== "}") {
                 for (;;) {
@@ -413,7 +420,7 @@ export function parser(source, recover?: boolean) {
             state.advance("}", true);
             // LED - binary infix form
             return {
-                value: state.token.value,
+                value: initialToken.value,
                 type: "binary",
                 lhs: left,
                 rhs: a,
@@ -428,6 +435,7 @@ export function parser(source, recover?: boolean) {
 
         // if/then/else ternary operator ?:
         infix("?", operators["?"], (state: ParserState, left): ast.TernaryNode => {
+            let initialToken = state.token;
             let then = state.expression(0);
             let otherwise = undefined;
             if (current.symbol.id === ":") {
@@ -436,7 +444,7 @@ export function parser(source, recover?: boolean) {
                 otherwise = state.expression(0);
             }
             return {
-                value: state.token.value,
+                value: initialToken.value,
                 type: "condition",
                 condition: left,
                 then: then,
@@ -446,6 +454,7 @@ export function parser(source, recover?: boolean) {
 
         // object transformer
         prefix("|", (state: ParserState): ast.TransformNode => {
+            let initialToken = state.token;
             let expr = state.expression(0);
             state.advance("|");
             let update = state.expression(0);
@@ -456,7 +465,7 @@ export function parser(source, recover?: boolean) {
             }
             state.advance("|");
             return {
-                value: state.token.value,
+                value: initialToken.value,
                 type: "transform",
                 pattern: expr,
                 update: update,
