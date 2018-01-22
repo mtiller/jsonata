@@ -1364,7 +1364,14 @@ function partialApplyNativeFunction(native, args) {
     var body = "function(" + sigArgs.join(", ") + "){ _ }";
 
     var bodyAST = parser(body);
-    bodyAST.body = native;
+
+    /* istanbul ignore else */
+    if (bodyAST.type==="lambda") {
+        // TODO: Check node type...
+        bodyAST.body = native;
+    } else {
+        throw new Error("Expected parsing of partially applied native function to return a 'lambda' node");
+    }
 
     var partial = partialApplyProcedure(bodyAST, args);
     return partial;

@@ -1,7 +1,6 @@
 import { isNumeric } from "../utils";
 import { tail_call_optimize } from "./tail_call";
 import { ErrorCollector } from "./types";
-import * as ast from "./ast";
 
 // post-parse stage
 // the purpose of this is flatten the parts of the AST representing location paths,

@@ -1,14 +1,9 @@
-import { operators } from "../constants";
-import { parseSignature } from "../signatures";
 import { tokenizer, Tokenizer, Token } from "../tokenizer";
-import { isNumeric } from "../utils";
 import { ast_optimize } from "./optimize";
 import { createTable } from "./symbols";
 import * as ast from "./ast";
-import * as nuds from "./nuds";
-import * as leds from "./leds";
 
-import { NUD, LED, Symbol, ParserState, SymbolTable, ErrorCollector } from "./types";
+import { Symbol, ParserState, SymbolTable } from "./types";
 
 /**
  * The parser was made into a class primarily so it was easier to track the state of

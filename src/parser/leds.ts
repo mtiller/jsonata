@@ -1,4 +1,4 @@
-import { NUD, LED, ParserState } from "./types";
+import { LED, ParserState } from "./types";
 import { parseSignature } from "../signatures";
 import * as ast from "./ast";
 import { operators } from "../constants";
