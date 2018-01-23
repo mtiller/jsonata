@@ -1,7 +1,7 @@
 import * as ast from "./ast";
 import { Token } from "../tokenizer";
-export type NUD = (state: ParserState) => ast.RawASTNode;
-export type LED = (state: ParserState, left: ast.RawASTNode) => ast.RawASTNode;
+export type NUD = (state: ParserState) => ast.ASTNode;
+export type LED = (state: ParserState, left: ast.ASTNode) => ast.ASTNode;
 
 export interface Symbol {
     id: string;
@@ -18,7 +18,7 @@ export interface ParserState {
     readonly token: Token;
     readonly error: any;
     advance: (id?: string, infix?: boolean) => void;
-    expression: (rbp: number) => ast.RawASTNode;
+    expression: (rbp: number) => ast.ASTNode;
     handleError: (err) => void;
 }
 

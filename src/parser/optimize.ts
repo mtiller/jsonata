@@ -8,7 +8,7 @@ import * as ast from "./ast";
 // converting them to arrays of steps which in turn may contain arrays of predicates.
 // following this, nodes containing '.' and '[' should be eliminated from the AST.
 // TODO: Add types and adjust for errors
-export function ast_optimize(expr: ast.RawASTNode, collect: undefined | ErrorCollector) {
+export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollector): ast.ASTNode {
     var result;
     switch (expr.type) {
         case "binary":
@@ -33,7 +33,10 @@ export function ast_optimize(expr: ast.RawASTNode, collect: undefined | ErrorCol
                         result.steps[result.steps.length - 1].nextFunction = rest.procedure.steps[0].value;
                     }
                     if (rest.type !== "path") {
-                        rest = { type: "path", steps: [rest] };
+                        // TODO: these undefined values are here because the PathNode is seemingly the only
+                        // ASTNode that doesn't include value and position because it is generated post-parsing
+                        // and was never created from a token/symbol.
+                        rest = { type: "path", steps: [rest], value: undefined, position: undefined };
                     }
                     Array.prototype.push.apply(result.steps, rest.steps);
                     // any steps within a path that are literals, should be changed to 'name'
@@ -247,7 +250,11 @@ export function ast_optimize(expr: ast.RawASTNode, collect: undefined | ErrorCol
             };
             if (collect) {
                 collect(err);
-                return { type: "error", error: err };
+                // TODO: The cast is necessary because this node didn't evolve from a token/symbol.  If we add 
+                // defined values (which would be a good thing) for all the expected fields, tests fail.  So this
+                // is here largely for legacy reasons and should eventually be fixed by putting defined values
+                // in here.
+                return { type: "error", error: err } as any;
             } else {
                 (err as any).stack = new Error().stack;
                 throw err;

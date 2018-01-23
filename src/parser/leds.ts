@@ -4,7 +4,7 @@ import * as ast from "./ast";
 import { operators } from "../constants";
 
 export const infixDefaultLED = (bindingPower: number): LED => {
-    return (state: ParserState, left: ast.RawASTNode): ast.BinaryNode => {
+    return (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
         let initialToken = state.previousToken;
         let rhs = state.expression(bindingPower);
         return {
@@ -19,7 +19,7 @@ export const infixDefaultLED = (bindingPower: number): LED => {
 
 export const functionLED: LED = (
     state: ParserState,
-    left: ast.RawASTNode,
+    left: ast.ASTNode,
 ): ast.FunctionInvocationNode | ast.LambdaDefinitionNode => {
     // left is is what we are trying to invoke
     let type: "function" | "partial" = "function";
@@ -117,7 +117,7 @@ export const functionLED: LED = (
     };
 };
 
-export const filterLED: LED = (state: ParserState, left: ast.RawASTNode): ast.RawASTNode | ast.BinaryNode => {
+export const filterLED: LED = (state: ParserState, left: ast.ASTNode): ast.ASTNode | ast.BinaryNode => {
     let initialToken = state.previousToken;
     if (state.symbol.id === "]") {
         // empty predicate means maintain singleton arrays in the output
@@ -143,7 +143,7 @@ export const filterLED: LED = (state: ParserState, left: ast.RawASTNode): ast.Ra
     }
 };
 
-export const orderByLED: LED = (state: ParserState, left: ast.RawASTNode): ast.SortNode => {
+export const orderByLED: LED = (state: ParserState, left: ast.ASTNode): ast.SortNode => {
     let initialToken = state.previousToken;
     state.advance("(");
     var terms: ast.SortTerm[] = [];
@@ -181,7 +181,7 @@ export const orderByLED: LED = (state: ParserState, left: ast.RawASTNode): ast.S
     };
 };
 
-export const objectParserLED: LED = (state: ParserState, left: ast.RawASTNode): ast.BinaryObjectNode => {
+export const objectParserLED: LED = (state: ParserState, left: ast.ASTNode): ast.BinaryObjectNode => {
     var a = [];
     let initialToken = state.previousToken;
     /* istanbul ignore else */
