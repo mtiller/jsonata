@@ -102,7 +102,7 @@ export function createTable(recover: boolean, errors: string[], remainingTokens:
     prefix("-"); // unary numeric negation
     infix("~>"); // function application
 
-    infixr("(error)", 10, (state: ParserState, left: ast.ASTNode): ast.ErrorNode => {
+    infixr("(error)", 10, (state: ParserState, left: ast.RawASTNode): ast.ErrorNode => {
         return {
             value: state.token.value,
             lhs: left,

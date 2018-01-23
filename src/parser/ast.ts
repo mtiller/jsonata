@@ -24,10 +24,8 @@ export interface ErrorFields {
 
 export interface ErrorNode extends BaseNode {
     type: "error";
-    // TODO: refine
     error: ErrorFields;
-    // TODO: refine
-    lhs: ASTNode;
+    lhs: RawASTNode;
     remaining: Token[];
 }
 
@@ -59,67 +57,69 @@ export type TerminalNode = VariableNode | NameNode | LiteralNode | RegexNode | O
 
 export interface UnaryNode extends BaseNode {
     type: "unary";
-    expression?: ASTNode;
-    lhs?: ASTNode[];
-    expressions?: ASTNode[];
+    expression?: RawASTNode;
+    lhs?: RawASTNode[];
+    expressions?: RawASTNode[];
     position: number;
 }
 
 export interface BinaryNode extends BaseNode {
     type: "binary";
     value: "+" | "[" | ".." | "." | "[" | ":=" | "~>" | "{" | "^" // TODO: There must be more?!?
-    lhs: ASTNode;
-    rhs: ASTNode | ASTNode[]; // ASTNode if operator is "." | "[" | ":=" | "~>", ASTNode[] if operator is "{" | "^"
+    lhs: RawASTNode;
+    rhs: RawASTNode | RawASTNode[]; // ASTNode if operator is "." | "[" | ":=" | "~>", ASTNode[] if operator is "{" | "^"
 }
 
 export interface SortTerm {
     descending: boolean;
-    expression: ASTNode;
+    expression: RawASTNode;
 }
 
 export interface SortNode extends BaseNode {
     type: "sort";
-    lhs: ASTNode;
+    lhs: RawASTNode;
     rhs: SortTerm[];
 }
 
 export interface TernaryNode extends BaseNode {
     type: "condition";
-    condition: ASTNode;
-    then: ASTNode;
-    else: ASTNode;
+    condition: RawASTNode;
+    then: RawASTNode;
+    else: RawASTNode;
     position: number;
 }
 
 export interface BlockNode extends BaseNode {
     type: "block";
-    expressions: ASTNode[];
+    expressions: RawASTNode[];
 }
 
 export interface TransformNode extends BaseNode {
     type: "transform";
-    // TODO: Refine these
-    pattern: ASTNode;
-    update: ASTNode;
-    delete?: ASTNode;
+    pattern: RawASTNode;
+    update: RawASTNode;
+    delete?: RawASTNode;
 }
 
 export interface FunctionInvocationNode extends BaseNode {
     type: "function" | "partial";
-    //name: string;
-    procedure: ASTNode;
-    arguments: ASTNode[];
+    procedure: RawASTNode;
+    arguments: RawASTNode[];
 }
 
 export interface LambdaDefinitionNode extends BaseNode {
     type: "lambda";
-    body: ASTNode;
+    body: RawASTNode;
     signature: Signature;
-    procedure: ASTNode;
-    arguments: ASTNode[];
+    procedure: RawASTNode;
+    arguments: RawASTNode[];
 }
 
-export type ASTNode =
+/**
+ * These are the AST nodes that come directly out of the parser before
+ * ast_optimize is called.
+ */
+export type RawASTNode =
     | WildcardNode
     | DescendantNode
     | ErrorNode
@@ -139,4 +139,4 @@ export type ASTNode =
     | EndNode;
 
 // TODO: Add synthetic ast nodes (rename ASTNode to RawAstNode or something)
-export type OptimizedASTNode = ASTNode;
+export type OptimizedASTNode = RawASTNode;

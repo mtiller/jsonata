@@ -25,7 +25,7 @@ class Parser implements ParserState {
         this.lexer = tokenizer(source);
         this.symbol_table = createTable(recover, this.errors, () => this.remainingTokens());    
     }
-    parse(): ast.ASTNode {
+    parse(): ast.RawASTNode {
         this.advance();
         // parse the tokens
         var expr = this.expression(0);
@@ -162,10 +162,10 @@ class Parser implements ParserState {
         return;
     }
 
-    expression(rbp: number): ast.ASTNode {
+    expression(rbp: number): ast.RawASTNode {
         let symbol = this.symbol;
         this.advance(null, true);
-        var left: ast.ASTNode = symbol.nud(this);
+        var left: ast.RawASTNode = symbol.nud(this);
         while (rbp < this.symbol.lbp) {
             symbol = this.symbol;
             this.advance();

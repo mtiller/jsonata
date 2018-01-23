@@ -26,12 +26,12 @@ export interface Visitor {
     exitLambda?: (node: ast.LambdaDefinitionNode) => void;
 }
 
-export function throwNever(node: ast.ASTNode, x: never): never {
+export function throwNever(node: ast.RawASTNode, x: never): never {
     throw new Error("Unhandled node type: " + node.type + ": " + JSON.stringify(node));
 }
 
-export function walk(node: ast.ASTNode, visitor: Visitor): void {
-    let visit = <T extends ast.ASTNode>(f?: (node: T) => void) => void {
+export function walk(node: ast.RawASTNode, visitor: Visitor): void {
+    let visit = <T extends ast.RawASTNode>(f?: (node: T) => void) => void {
         if (f) {
             f(node);
         }
