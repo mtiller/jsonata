@@ -107,53 +107,78 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                         position: expr.position,
                     };
                     break;
-                case ":=":
-                    result = { type: "bind", value: expr.value, position: expr.position };
-                    result.lhs = ast_optimize(expr.lhs, collect);
-                    result.rhs = ast_optimize(expr.rhs, collect);
-                    break;
-                case "~>":
-                    result = { type: "apply", value: expr.value, position: expr.position };
-                    result.lhs = ast_optimize(expr.lhs, collect);
-                    result.rhs = ast_optimize(expr.rhs, collect);
-                    break;
+                case ":=": {
+                    let lhs = ast_optimize(expr.lhs, collect);
+                    let rhs = ast_optimize(expr.rhs, collect);
+                    return {
+                        type: "bind",
+                        value: expr.value,
+                        position: expr.position,
+                        lhs: lhs,
+                        rhs: rhs,
+                    };
+                }
+                case "~>": {
+                    let lhs = ast_optimize(expr.lhs, collect);
+                    let rhs = ast_optimize(expr.rhs, collect);
+                    return {
+                        type: "apply",
+                        value: expr.value,
+                        position: expr.position,
+                        lhs: lhs,
+                        rhs: rhs,
+                    };
+                }
                 default:
-                    result = { type: expr.type, value: expr.value, position: expr.position };
-                    result.lhs = ast_optimize(expr.lhs, collect);
-                    result.rhs = ast_optimize(expr.rhs, collect);
+                    return {
+                        ...expr,
+                        lhs: ast_optimize(expr.lhs, collect),
+                        rhs: ast_optimize(expr.rhs, collect),
+                    };
             }
             break;
         case "sort":
-            result = {
+            return {
                 type: "sort",
                 value: expr.value,
                 position: expr.position,
                 lhs: ast_optimize(expr.lhs, collect),
                 rhs: expr.rhs.map(term => ({ ...term, expression: ast_optimize(term.expression, collect) })),
             };
-            break;
         case "unary":
-            result = { type: expr.type, value: expr.value, position: expr.position };
-            if (expr.value === "[") {
-                // array constructor - process each item
-                result.expressions = expr.expressions.map(function(item) {
-                    return ast_optimize(item, collect);
-                });
-            } else if (expr.value === "{") {
-                // object constructor - process each pair
-                result.lhs = expr.lhs.map(function(pair) {
-                    return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
-                });
-            } else {
-                // all other unary expressions - just process the expression
-                result.expression = ast_optimize(expr.expression, collect);
-                // if unary minus on a number, then pre-process
-                if (expr.value === "-" && result.expression.type === "literal" && isNumeric(result.expression.value)) {
-                    result = result.expression;
-                    result.value = -result.value;
+            switch (expr.value) {
+                case "[": {
+                    let expressions = expr.expressions.map(item => ast_optimize(item, collect));
+                    return {
+                        ...expr,
+                        expressions: expressions,
+                    };
+                }
+                case "{": {
+                    let lhs = expr.lhs.map(pair => {
+                        return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
+                    });
+                    return {
+                        ...expr,
+                        lhs: lhs,
+                    };
+                }
+                default: {
+                    // all other unary expressions - just process the expression
+                    let expression = ast_optimize(expr.expression, collect);
+                    // if unary minus on a number, then pre-process
+                    if (expr.value === "-" && expression.type === "literal" && isNumeric(expression.value)) {
+                        return {
+                            ...expression,
+                            value: -expression.value,
+                        };
+                    }
+                    return {
+                        ...expr,
+                        expression: expression,
+                    };
                 }
             }
-            break;
         case "function":
         case "partial":
             result = { type: expr.type, value: expr.value, position: expr.position };
@@ -199,28 +224,39 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
             // if so, need to mark the block as one that needs to create a new frame
             break;
         case "name":
-            result = { type: "path", steps: [expr] };
+            // TODO: should add value and position for consistency (except test cases fail).
+            // TODO: should always give a value for keepSingletonArray.
             if (expr.keepArray) {
-                result.keepSingletonArray = true;
+                return {
+                    type: "path",
+                    // value: expr.value,
+                    // position: expr.position,
+                    keepSingletonArray: true,
+                    steps: [expr],
+                } as any;
+            } else {
+                return {
+                    type: "path",
+                    // value: expr.value,
+                    // position: expr.position,
+                    steps: [expr],
+                } as any;
             }
-            break;
         case "literal":
         case "wildcard":
         case "descendant":
         case "variable":
         case "regex":
-            result = expr;
-            break;
+            return expr;
         case "operator":
             // the tokens 'and' and 'or' might have been used as a name rather than an operator
             if (expr.value === "and" || expr.value === "or" || expr.value === "in") {
-                result = ast_optimize({ ...expr, type: "name" }, collect);
+                return ast_optimize({ ...expr, type: "name" }, collect);
             } else {
                 /* istanbul ignore else */
-
                 if (expr.value === "?") {
                     // partial application
-                    result = expr;
+                    return { ...expr };
                 } else {
                     throw {
                         code: "S0201",
@@ -230,13 +266,11 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     };
                 }
             }
-            break;
         case "error":
-            result = expr;
             if (expr.lhs) {
-                result = ast_optimize(expr.lhs, collect);
+                return ast_optimize(expr.lhs, collect);
             }
-            break;
+            return expr;
         default:
             var code = "S0206";
             /* istanbul ignore else */
@@ -250,7 +284,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
             };
             if (collect) {
                 collect(err);
-                // TODO: The cast is necessary because this node didn't evolve from a token/symbol.  If we add 
+                // TODO: The cast is necessary because this node didn't evolve from a token/symbol.  If we add
                 // defined values (which would be a good thing) for all the expected fields, tests fail.  So this
                 // is here largely for legacy reasons and should eventually be fixed by putting defined values
                 // in here.

@@ -55,17 +55,29 @@ export interface EndNode extends BaseNode {
 
 export type TerminalNode = VariableNode | NameNode | LiteralNode | RegexNode | OperatorNode | EndNode;
 
-export interface UnaryNode extends BaseNode {
+export interface UnaryMinusNode extends BaseNode {
     type: "unary";
-    expression?: ASTNode;
-    lhs?: ASTNode[];
-    expressions?: ASTNode[];
-    position: number;
+    value: "-";
+    expression: ASTNode;
 }
+
+export interface ArrayConstructorNode extends BaseNode {
+    type: "unary";
+    value: "[";
+    expressions: ASTNode[];
+}
+
+export interface UnaryObjectNode extends BaseNode {
+    type: "unary";
+    value: "{";
+    lhs: ASTNode[][];
+}
+
+export type UnaryNode = UnaryMinusNode | ArrayConstructorNode | UnaryObjectNode;
 
 export interface BinaryNode extends BaseNode {
     type: "binary";
-    value: "+" | "-" | "*" | "/" | "[" | ".." | "." | "[" | ":=" | "~>"; // TODO: There must be more?!?
+    value: "+" | "-" | "*" | "/" | "[" | ".." | "." | "[" | ":=" | "~>"; // TODO: There must be more?!? (e.g., comparisons)
     lhs: ASTNode;
     rhs: ASTNode; // ASTNode if operator is "." | "[" | ":=" | "~>", ASTNode[] if operator is "{" | "^"
 }
@@ -126,6 +138,19 @@ export interface LambdaDefinitionNode extends BaseNode {
 export interface PathNode extends BaseNode {
     type: "path";
     steps: ASTNode[];
+    keepSingletonArray?: boolean,
+}
+
+export interface BindNode extends BaseNode {
+    type: "bind";
+    lhs: ASTNode;
+    rhs: ASTNode;
+}
+
+export interface ApplyNode extends BaseNode {
+    type: "apply";
+    lhs: ASTNode;
+    rhs: ASTNode;
 }
 
 /**
@@ -151,5 +176,7 @@ export type ASTNode =
     | FunctionInvocationNode
     | LambdaDefinitionNode
     | PathNode
+    | BindNode
+    | ApplyNode
     | EndNode;
 
