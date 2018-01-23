@@ -1,4 +1,5 @@
 import { Token } from "../tokenizer";
+import { Signature } from '../signatures';
 
 export interface BaseNode {
     type: string;
@@ -16,12 +17,16 @@ export interface DescendantNode extends BaseNode {
     type: "descendant";
 }
 
+export interface ErrorFields {
+    code: string;
+}
+
 export interface ErrorNode extends BaseNode {
     type: "error";
     // TODO: refine
-    error: any;
+    error: ErrorFields;
     // TODO: refine
-    lhs: any;
+    lhs: ASTNode;
     remaining: Token[];
 }
 
@@ -59,56 +64,52 @@ export type TerminalNode = VariableNode | NameNode | LiteralNode | RegexNode | O
 
 export interface UnaryNode extends BaseNode {
     type: "unary";
-    // TODO: refine
-    expression?: any;
-    // TODO: Used by objectParser (should get rid of this eventually)
-    lhs?: any;
-    // TODO: Used by array constructor
-    expressions?: any;
+    expression?: ASTNode;
+    lhs?: ASTNode[];
+    expressions?: ASTNode[];
 }
 
 export interface BinaryNode extends BaseNode {
     type: "binary";
-    value: string; // Could be refined
-    lhs: any;
-    rhs: any;
+    value: "+" | "[" | ".."; // TODO: There must be more?!?
+    lhs: ASTNode;
+    rhs: ASTNode | ASTNode[];
     position?: number; // Required for sort operator!?!
 }
 
 export interface TernaryNode extends BaseNode {
     type: "condition";
-    condition: any;
-    then: any;
-    else: any;
+    condition: ASTNode;
+    then: ASTNode;
+    else: ASTNode;
 }
 
 export interface BlockNode extends BaseNode {
     type: "block";
-    // TODO: refine
-    expressions: any[];
+    expressions: ASTNode[];
 }
 
 export interface TransformNode extends BaseNode {
     type: "transform";
     // TODO: Refine these
-    pattern: any;
-    update: any;
-    delete?: any;
+    pattern: ASTNode;
+    update: ASTNode;
+    delete?: ASTNode;
 }
 
 export interface FunctionInvocationNode extends BaseNode {
     type: "function" | "partial";
-    procedure: any;
-    arguments: any;
+    procedure: ASTNode;
+    arguments: ASTNode[];
     position: number;
 }
 
 export interface LambdaDefinitionNode extends BaseNode {
     type: "lambda";
-    body: any;
-    signature: any;
-    procedure: any;
-    arguments: any;
+    body: ASTNode;
+    signature: Signature;
+    procedure: ASTNode;
+    arguments: ASTNode[];
 }
 
 export type ASTNode =
