@@ -14,6 +14,10 @@ export interface Visitor {
     exitUnary?: (node: ast.UnaryNode) => void;
     enterBinary?: (node: ast.BinaryNode) => void;
     exitBinary?: (node: ast.BinaryNode) => void;
+    enterBinaryObject?: (node: ast.BinaryObjectNode) => void;
+    exitBinaryObject?: (node: ast.BinaryObjectNode) => void;
+    enterSort?: (node: ast.BinaryObjectNode) => void;
+    exitSort?: (node: ast.BinaryObjectNode) => void;
     enterTernary?: (node: ast.TernaryNode) => void;
     exitTernary?: (node: ast.TernaryNode) => void;
     enterBlock?: (node: ast.BlockNode) => void;

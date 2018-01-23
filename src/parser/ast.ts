@@ -65,9 +65,16 @@ export interface UnaryNode extends BaseNode {
 
 export interface BinaryNode extends BaseNode {
     type: "binary";
-    value: "+" | "[" | ".." | "." | "[" | ":=" | "~>" | "{" | "^" // TODO: There must be more?!?
+    value: "+" | "-" | "*" | "/" | "[" | ".." | "." | "[" | ":=" | "~>"; // TODO: There must be more?!?
     lhs: RawASTNode;
-    rhs: RawASTNode | RawASTNode[]; // ASTNode if operator is "." | "[" | ":=" | "~>", ASTNode[] if operator is "{" | "^"
+    rhs: RawASTNode; // ASTNode if operator is "." | "[" | ":=" | "~>", ASTNode[] if operator is "{" | "^"
+}
+
+export interface BinaryObjectNode extends BaseNode {
+    type: "binary";
+    value: "{" 
+    lhs: RawASTNode;
+    rhs: RawASTNode[]; // ASTNode[] if operator is "{"
 }
 
 export interface SortTerm {
@@ -130,6 +137,7 @@ export type RawASTNode =
     | OperatorNode
     | UnaryNode
     | BinaryNode
+    | BinaryObjectNode
     | SortNode
     | TernaryNode
     | BlockNode

@@ -105,6 +105,7 @@ export function createTable(recover: boolean, errors: string[], remainingTokens:
     infixr("(error)", 10, (state: ParserState, left: ast.RawASTNode): ast.ErrorNode => {
         return {
             value: state.token.value,
+            position: state.token.position,
             lhs: left,
             error: state.error,
             remaining: remainingTokens(),
@@ -151,6 +152,7 @@ export function createTable(recover: boolean, errors: string[], remainingTokens:
         }
         return {
             value: initialToken.value,
+            position: initialToken.position,
             type: "condition",
             condition: left,
             then: then,

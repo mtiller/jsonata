@@ -181,7 +181,7 @@ export const orderByLED: LED = (state: ParserState, left: ast.RawASTNode): ast.S
     };
 };
 
-export const objectParserLED: LED = (state: ParserState, left: ast.RawASTNode): ast.BinaryNode => {
+export const objectParserLED: LED = (state: ParserState, left: ast.RawASTNode): ast.BinaryObjectNode => {
     var a = [];
     let initialToken = state.previousToken;
     /* istanbul ignore else */
@@ -200,7 +200,7 @@ export const objectParserLED: LED = (state: ParserState, left: ast.RawASTNode): 
     state.advance("}", true);
     // LED - binary infix form
     return {
-        value: initialToken.value,
+        value: "{",
         position: initialToken.position,
         type: "binary",
         lhs: left,

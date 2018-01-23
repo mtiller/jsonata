@@ -21,8 +21,7 @@ export function ast_optimize(expr: ast.RawASTNode, collect: undefined | ErrorCol
                     } else {
                         result.steps = [lstep];
                     }
-                    // TODO: cast necessary because of AST overloading
-                    var rest = ast_optimize(expr.rhs as ast.RawASTNode, collect);
+                    var rest = ast_optimize(expr.rhs, collect);
                     if (
                         rest.type === "function" &&
                         rest.procedure.type === "path" &&
@@ -83,8 +82,7 @@ export function ast_optimize(expr: ast.RawASTNode, collect: undefined | ErrorCol
                     if (typeof step.predicate === "undefined") {
                         step.predicate = [];
                     }
-                    // TODO: Cast necessary because of AST overloading
-                    step.predicate.push(ast_optimize(expr.rhs as ast.RawASTNode, collect));
+                    step.predicate.push(ast_optimize(expr.rhs, collect));
                     break;
                 case "{":
                     // group-by
@@ -100,8 +98,7 @@ export function ast_optimize(expr: ast.RawASTNode, collect: undefined | ErrorCol
                     }
                     // object constructor - process each pair
                     result.group = {
-                        // TODO: Cast necessary because of AST overloading
-                        lhs: (expr.rhs as ast.RawASTNode[]).map(function(pair) {
+                        lhs: expr.rhs.map(function(pair) {
                             return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
                         }),
                         position: expr.position,
@@ -110,20 +107,17 @@ export function ast_optimize(expr: ast.RawASTNode, collect: undefined | ErrorCol
                 case ":=":
                     result = { type: "bind", value: expr.value, position: expr.position };
                     result.lhs = ast_optimize(expr.lhs, collect);
-                    // TODO: Cast necessary because of AST overloading
-                    result.rhs = ast_optimize(expr.rhs as ast.RawASTNode, collect);
+                    result.rhs = ast_optimize(expr.rhs, collect);
                     break;
                 case "~>":
                     result = { type: "apply", value: expr.value, position: expr.position };
                     result.lhs = ast_optimize(expr.lhs, collect);
-                    // TODO: Cast necessary because of AST overloading
-                    result.rhs = ast_optimize(expr.rhs as ast.RawASTNode, collect);
+                    result.rhs = ast_optimize(expr.rhs, collect);
                     break;
                 default:
                     result = { type: expr.type, value: expr.value, position: expr.position };
                     result.lhs = ast_optimize(expr.lhs, collect);
-                    // TODO: Cast necessary because of AST overloading
-                    result.rhs = ast_optimize(expr.rhs as ast.RawASTNode, collect);
+                    result.rhs = ast_optimize(expr.rhs, collect);
             }
             break;
         case "sort":
