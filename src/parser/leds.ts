@@ -143,26 +143,28 @@ export const filterLED: LED = (state: ParserState, left: ast.ASTNode): ast.ASTNo
     }
 };
 
-export const orderByLED: LED = (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
+export const orderByLED: LED = (state: ParserState, left: ast.ASTNode): ast.SortNode => {
     let initialToken = state.previousToken;
     state.advance("(");
-    var terms = [];
+    var terms: ast.SortTerm[] = [];
     for (;;) {
-        var term = {
-            descending: false,
-        };
+        let descending = false;
         if (state.symbol.id === "<") {
             // ascending sort
+            descending = false;
             state.advance("<");
         } else if (state.symbol.id === ">") {
             // descending sort
-            term.descending = true;
+            descending = true;
             state.advance(">");
         } else {
+            descending = false;
             //unspecified - default to ascending
         }
-        // TODO: Fix any cast
-        (term as any).expression = state.expression(0);
+        let term: ast.SortTerm = {
+            descending: descending,
+            expression: state.expression(0),
+        };
         terms.push(term);
         if (state.symbol.id !== ",") {
             break;
@@ -173,9 +175,9 @@ export const orderByLED: LED = (state: ParserState, left: ast.ASTNode): ast.Bina
     return {
         position: initialToken.position, // REQUIRED?!?
         value: initialToken.value,
-        type: "binary",
+        type: "sort",
         lhs: left,
-        rhs: terms, // TODO: Not an expression node...different node type recommended
+        rhs: terms,
     };
 };
 

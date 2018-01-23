@@ -72,6 +72,17 @@ export interface BinaryNode extends BaseNode {
     rhs: ASTNode | ASTNode[]; // ASTNode if operator is "." | "[" | ":=" | "~>", ASTNode[] if operator is "{" | "^"
 }
 
+export interface SortTerm {
+    descending: boolean;
+    expression: ASTNode;
+}
+
+export interface SortNode extends BaseNode {
+    type: "sort";
+    lhs: ASTNode;
+    rhs: SortTerm[];
+}
+
 export interface TernaryNode extends BaseNode {
     type: "condition";
     condition: ASTNode;
@@ -119,6 +130,7 @@ export type ASTNode =
     | OperatorNode
     | UnaryNode
     | BinaryNode
+    | SortNode
     | TernaryNode
     | BlockNode
     | TransformNode

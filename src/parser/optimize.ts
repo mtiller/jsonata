@@ -1,7 +1,7 @@
 import { isNumeric } from "../utils";
 import { tail_call_optimize } from "./tail_call";
 import { ErrorCollector } from "./types";
-import * as ast from './ast';
+import * as ast from "./ast";
 
 // post-parse stage
 // the purpose of this is flatten the parts of the AST representing location paths,
@@ -100,27 +100,12 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     }
                     // object constructor - process each pair
                     result.group = {
-                    // TODO: Cast necessary because of AST overloading
-                    lhs: (expr.rhs as ast.ASTNode[]).map(function(pair) {
+                        // TODO: Cast necessary because of AST overloading
+                        lhs: (expr.rhs as ast.ASTNode[]).map(function(pair) {
                             return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
                         }),
                         position: expr.position,
                     };
-                    break;
-                case "^":
-                    // order-by
-                    // LHS is the array to be ordered
-                    // RHS defines the terms
-                    result = { type: "sort", value: expr.value, position: expr.position };
-                    result.lhs = ast_optimize(expr.lhs, collect);
-                    // TODO: Cast necessary because of AST overloading
-                    // TODO: Move this to the parsing stage!
-                    result.rhs = (expr.rhs as ast.ASTNode[]).map(function(terms) {
-                        return {
-                            descending: terms.descending,
-                            expression: ast_optimize(terms.expression, collect),
-                        };
-                    });
                     break;
                 case ":=":
                     result = { type: "bind", value: expr.value, position: expr.position };
@@ -140,6 +125,15 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     // TODO: Cast necessary because of AST overloading
                     result.rhs = ast_optimize(expr.rhs as ast.ASTNode, collect);
             }
+            break;
+        case "sort":
+            result = {
+                type: "sort",
+                value: expr.value,
+                position: expr.position,
+                lhs: ast_optimize(expr.lhs, collect),
+                rhs: expr.rhs.map(term => ({ ...term, expression: ast_optimize(term.expression, collect) })),
+            };
             break;
         case "unary":
             result = { type: expr.type, value: expr.value, position: expr.position };
