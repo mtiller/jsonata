@@ -71,10 +71,10 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     // predicated step
                     // LHS is a step or a predicated step
                     // RHS is the predicate expr
-                    result = ast_optimize(expr.lhs, collect);
-                    var step = result;
-                    if (result.type === "path") {
-                        step = result.steps[result.steps.length - 1];
+                    let node = ast_optimize(expr.lhs, collect);
+                    var step = node;
+                    if (node.type === "path") {
+                        step = node.steps[node.steps.length - 1];
                     }
                     if (typeof step.group !== "undefined") {
                         throw {
@@ -87,7 +87,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                         step.predicate = [];
                     }
                     step.predicate.push(ast_optimize(expr.rhs, collect));
-                    break;
+                    return node;
                 }
                 case "{": {
                     // group-by
@@ -194,42 +194,60 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 procedure: procedure,
             };
         }
-        case "lambda":
-            result = {
-                type: expr.type,
-                arguments: expr.arguments,
-                signature: expr.signature,
-                position: expr.position,
-            };
-            var body = ast_optimize(expr.body, collect);
-            result.body = tail_call_optimize(body);
-            break;
-        case "condition":
-            result = { type: expr.type, position: expr.position };
-            result.condition = ast_optimize(expr.condition, collect);
-            // TODO: Yikes!  This is very dangerous (might appear like a Promise)
-            result.then = ast_optimize(expr.then, collect);
+        case "lambda": {
+            let body = ast_optimize(expr.body, collect);
+            body = tail_call_optimize(body);
+            let args = expr.arguments.map((arg) => ast_optimize(arg, collect));
+            return {
+                ...expr,
+                body: body,
+                arguments: args,
+            }
+        }
+        case "condition": {
+            let condition = ast_optimize(expr.condition, collect);
+            let then = ast_optimize(expr.then, collect);
+            let otherwise: undefined | ast.ASTNode = undefined;
             if (typeof expr.else !== "undefined") {
-                result.else = ast_optimize(expr.else, collect);
+                otherwise = ast_optimize(expr.else, collect);
             }
-            break;
-        case "transform":
-            result = { type: expr.type, position: expr.position };
-            result.pattern = ast_optimize(expr.pattern, collect);
-            result.update = ast_optimize(expr.update, collect);
+            return {
+                type: "condition",
+                position: expr.position,
+                value: expr.value,
+                condition: condition,
+                then: then,
+                else: otherwise,
+            }
+        }
+        case "transform": {
+            let pattern = ast_optimize(expr.pattern, collect);
+            let update = ast_optimize(expr.update, collect);
+            let del: undefined | ast.ASTNode = undefined;
             if (typeof expr.delete !== "undefined") {
-                result.delete = ast_optimize(expr.delete, collect);
+                del = ast_optimize(expr.delete, collect);
             }
-            break;
+            return {
+                type: "transform",
+                position: expr.position,
+                value: expr.value,
+                pattern: pattern,
+                update: update,
+                delete: del,
+            }
+        }
         case "block":
-            result = { type: expr.type, position: expr.position };
-            // array of expressions - process each one
-            result.expressions = expr.expressions.map(function(item) {
-                return ast_optimize(item, collect);
-            });
             // TODO scan the array of expressions to see if any of them assign variables
             // if so, need to mark the block as one that needs to create a new frame
-            break;
+            let expressions = expr.expressions.map((item) => {
+                return ast_optimize(item, collect);
+            });
+            return {
+                type: "block",
+                value: expr.value,
+                position: expr.position,
+                expressions: expressions,
+            }
         case "name":
             // TODO: should add value and position for consistency (except test cases fail).
             // TODO: should always give a value for keepSingletonArray.

@@ -13,6 +13,10 @@ export interface BaseNode {
     // It further appears that this attribute really only gets added to path and unary nodes (judging from the
     // test suite).  Not sure I can extrapolate from that though.
     group?: { lhs: ASTNode[][], position: number };
+    // TODO: This is added by the binary "[" node (array construction).  What isn't clear is whether
+    // this is only associated with "path" nodes or not.  The code implies this could be found on any node.
+    // I suspect a peek at the evaluation code will indicate for sure.
+    predicate?: ASTNode[];
 }
 
 export interface WildcardNode extends BaseNode {
