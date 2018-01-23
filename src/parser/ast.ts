@@ -8,6 +8,11 @@ export interface BaseNode {
     keepArray?: boolean;
     // TODO: This is only added to the root expression node...should probably be a separate return value from parser
     errors?: string[];
+    // TODO: This seems to get added in ast_optimize for binary object nodes (group-by)
+    // This seems to be a result of the extra data in the binary version (vs the unary object constructor).
+    // It further appears that this attribute really only gets added to path and unary nodes (judging from the
+    // test suite).  Not sure I can extrapolate from that though.
+    group?: { lhs: ASTNode[][], position: number };
 }
 
 export interface WildcardNode extends BaseNode {
@@ -75,19 +80,21 @@ export interface UnaryObjectNode extends BaseNode {
 
 export type UnaryNode = UnaryMinusNode | ArrayConstructorNode | UnaryObjectNode;
 
-export interface BinaryNode extends BaseNode {
+export interface BinaryOperationNode extends BaseNode {
     type: "binary";
     value: "+" | "-" | "*" | "/" | "[" | ".." | "." | "[" | ":=" | "~>"; // TODO: There must be more?!? (e.g., comparisons)
     lhs: ASTNode;
-    rhs: ASTNode; // ASTNode if operator is "." | "[" | ":=" | "~>", ASTNode[] if operator is "{" | "^"
+    rhs: ASTNode; // ASTNode if operator is "." | "[" | ":=" | "~>"
 }
 
 export interface BinaryObjectNode extends BaseNode {
     type: "binary";
-    value: "{" 
+    value: "{";
     lhs: ASTNode;
     rhs: ASTNode[]; // ASTNode[] if operator is "{"
 }
+
+export type BinaryNode = BinaryOperationNode | BinaryObjectNode;
 
 export interface SortTerm {
     descending: boolean;

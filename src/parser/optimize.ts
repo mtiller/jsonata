@@ -2,6 +2,7 @@ import { isNumeric } from "../utils";
 import { tail_call_optimize } from "./tail_call";
 import { ErrorCollector } from "./types";
 import * as ast from "./ast";
+import { prefixDefaultNUD } from "./nuds";
 
 // post-parse stage
 // the purpose of this is flatten the parts of the AST representing location paths,
@@ -66,7 +67,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                         laststep.consarray = true;
                     }
                     break;
-                case "[":
+                case "[": {
                     // predicated step
                     // LHS is a step or a predicated step
                     // RHS is the predicate expr
@@ -87,12 +88,13 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     }
                     step.predicate.push(ast_optimize(expr.rhs, collect));
                     break;
-                case "{":
+                }
+                case "{": {
                     // group-by
                     // LHS is a step or a predicated step
                     // RHS is the object constructor expr
-                    result = ast_optimize(expr.lhs, collect);
-                    if (typeof result.group !== "undefined") {
+                    let node = ast_optimize(expr.lhs, collect);
+                    if (typeof node.group !== "undefined") {
                         throw {
                             code: "S0210",
                             stack: new Error().stack,
@@ -100,13 +102,14 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                         };
                     }
                     // object constructor - process each pair
-                    result.group = {
-                        lhs: expr.rhs.map(function(pair) {
+                    node.group = {
+                        lhs: expr.rhs.map((pair) => {
                             return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
                         }),
                         position: expr.position,
                     };
-                    break;
+                    return node;
+                }
                 case ":=": {
                     let lhs = ast_optimize(expr.lhs, collect);
                     let rhs = ast_optimize(expr.rhs, collect);
@@ -180,13 +183,17 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 }
             }
         case "function":
-        case "partial":
-            result = { type: expr.type, value: expr.value, position: expr.position };
-            result.arguments = expr.arguments.map(function(arg) {
+        case "partial": {
+            let args = expr.arguments.map(arg => {
                 return ast_optimize(arg, collect);
             });
-            result.procedure = ast_optimize(expr.procedure, collect);
-            break;
+            let procedure = ast_optimize(expr.procedure, collect);
+            return {
+                ...expr,
+                arguments: args,
+                procedure: procedure,
+            };
+        }
         case "lambda":
             result = {
                 type: expr.type,
