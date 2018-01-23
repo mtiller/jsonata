@@ -9,6 +9,7 @@ export const infixDefaultLED = (bindingPower: number): LED => {
         let rhs = state.expression(bindingPower);
         return {
             value: initialToken.value,
+            position: initialToken.position,
             type: "binary",
             lhs: left,
             rhs: rhs,
@@ -107,6 +108,7 @@ export const functionLED: LED = (
     state.advance("}");
     return {
         value: initialToken.value,
+        position: initialToken.position,
         type: "lambda",
         body: body,
         signature: signature,
@@ -132,6 +134,7 @@ export const filterLED: LED = (state: ParserState, left: ast.ASTNode): ast.ASTNo
         state.advance("]", true);
         let ret: ast.BinaryNode = {
             value: initialToken.value,
+            position: initialToken.position,
             type: "binary",
             lhs: left,
             rhs: rhs,
@@ -196,6 +199,7 @@ export const objectParserLED: LED = (state: ParserState, left: ast.ASTNode): ast
     // LED - binary infix form
     return {
         value: initialToken.value,
+        position: initialToken.position,
         type: "binary",
         lhs: left,
         rhs: a,

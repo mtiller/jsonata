@@ -1,13 +1,14 @@
 import { isNumeric } from "../utils";
 import { tail_call_optimize } from "./tail_call";
 import { ErrorCollector } from "./types";
+import * as ast from './ast';
 
 // post-parse stage
 // the purpose of this is flatten the parts of the AST representing location paths,
 // converting them to arrays of steps which in turn may contain arrays of predicates.
 // following this, nodes containing '.' and '[' should be eliminated from the AST.
 // TODO: Add types and adjust for errors
-export function ast_optimize(expr /* : ast.ASTNode */, collect: undefined | ErrorCollector) {
+export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollector) {
     var result;
     switch (expr.type) {
         case "binary":
@@ -20,7 +21,8 @@ export function ast_optimize(expr /* : ast.ASTNode */, collect: undefined | Erro
                     } else {
                         result.steps = [lstep];
                     }
-                    var rest = ast_optimize(expr.rhs, collect);
+                    // TODO: cast necessary because of AST overloading
+                    var rest = ast_optimize(expr.rhs as ast.ASTNode, collect);
                     if (
                         rest.type === "function" &&
                         rest.procedure.type === "path" &&
@@ -81,7 +83,8 @@ export function ast_optimize(expr /* : ast.ASTNode */, collect: undefined | Erro
                     if (typeof step.predicate === "undefined") {
                         step.predicate = [];
                     }
-                    step.predicate.push(ast_optimize(expr.rhs, collect));
+                    // TODO: Cast necessary because of AST overloading
+                    step.predicate.push(ast_optimize(expr.rhs as ast.ASTNode, collect));
                     break;
                 case "{":
                     // group-by
@@ -97,7 +100,8 @@ export function ast_optimize(expr /* : ast.ASTNode */, collect: undefined | Erro
                     }
                     // object constructor - process each pair
                     result.group = {
-                        lhs: expr.rhs.map(function(pair) {
+                    // TODO: Cast necessary because of AST overloading
+                    lhs: (expr.rhs as ast.ASTNode[]).map(function(pair) {
                             return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
                         }),
                         position: expr.position,
@@ -109,7 +113,9 @@ export function ast_optimize(expr /* : ast.ASTNode */, collect: undefined | Erro
                     // RHS defines the terms
                     result = { type: "sort", value: expr.value, position: expr.position };
                     result.lhs = ast_optimize(expr.lhs, collect);
-                    result.rhs = expr.rhs.map(function(terms) {
+                    // TODO: Cast necessary because of AST overloading
+                    // TODO: Move this to the parsing stage!
+                    result.rhs = (expr.rhs as ast.ASTNode[]).map(function(terms) {
                         return {
                             descending: terms.descending,
                             expression: ast_optimize(terms.expression, collect),
@@ -119,17 +125,20 @@ export function ast_optimize(expr /* : ast.ASTNode */, collect: undefined | Erro
                 case ":=":
                     result = { type: "bind", value: expr.value, position: expr.position };
                     result.lhs = ast_optimize(expr.lhs, collect);
-                    result.rhs = ast_optimize(expr.rhs, collect);
+                    // TODO: Cast necessary because of AST overloading
+                    result.rhs = ast_optimize(expr.rhs as ast.ASTNode, collect);
                     break;
                 case "~>":
                     result = { type: "apply", value: expr.value, position: expr.position };
                     result.lhs = ast_optimize(expr.lhs, collect);
-                    result.rhs = ast_optimize(expr.rhs, collect);
+                    // TODO: Cast necessary because of AST overloading
+                    result.rhs = ast_optimize(expr.rhs as ast.ASTNode, collect);
                     break;
                 default:
                     result = { type: expr.type, value: expr.value, position: expr.position };
                     result.lhs = ast_optimize(expr.lhs, collect);
-                    result.rhs = ast_optimize(expr.rhs, collect);
+                    // TODO: Cast necessary because of AST overloading
+                    result.rhs = ast_optimize(expr.rhs as ast.ASTNode, collect);
             }
             break;
         case "unary":
@@ -156,7 +165,7 @@ export function ast_optimize(expr /* : ast.ASTNode */, collect: undefined | Erro
             break;
         case "function":
         case "partial":
-            result = { type: expr.type, name: expr.name, value: expr.value, position: expr.position };
+            result = { type: expr.type, value: expr.value, position: expr.position };
             result.arguments = expr.arguments.map(function(arg) {
                 return ast_optimize(arg, collect);
             });
@@ -214,8 +223,7 @@ export function ast_optimize(expr /* : ast.ASTNode */, collect: undefined | Erro
         case "operator":
             // the tokens 'and' and 'or' might have been used as a name rather than an operator
             if (expr.value === "and" || expr.value === "or" || expr.value === "in") {
-                expr.type = "name";
-                result = ast_optimize(expr, collect);
+                result = ast_optimize({ ...expr, type: "name" }, collect);
             } else {
                 /* istanbul ignore else */
 

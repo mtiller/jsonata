@@ -4,6 +4,7 @@ import { Signature } from '../signatures';
 export interface BaseNode {
     type: string;
     value: any;
+    position: number;
     keepArray?: boolean;
     // TODO: This is only added to the root expression node...should probably be a separate return value from parser
     errors?: string[];
@@ -32,32 +33,26 @@ export interface ErrorNode extends BaseNode {
 
 export interface VariableNode extends BaseNode {
     type: "variable";
-    position: number;
 }
 
 export interface NameNode extends BaseNode {
     type: "name";
-    position: number;
 }
 export interface LiteralNode extends BaseNode {
     type: "literal";
-    position: number;
 }
 
 export interface RegexNode extends BaseNode {
     type: "regex";
-    position: number;
 }
 
 export interface OperatorNode extends BaseNode {
     type: "operator";
-    position: number;
 }
 
 export interface EndNode extends BaseNode {
     type: "end";
     value: string;
-    position: number;
 }
 
 export type TerminalNode = VariableNode | NameNode | LiteralNode | RegexNode | OperatorNode | EndNode;
@@ -67,14 +62,14 @@ export interface UnaryNode extends BaseNode {
     expression?: ASTNode;
     lhs?: ASTNode[];
     expressions?: ASTNode[];
+    position: number;
 }
 
 export interface BinaryNode extends BaseNode {
     type: "binary";
-    value: "+" | "[" | ".."; // TODO: There must be more?!?
+    value: "+" | "[" | ".." | "." | "[" | ":=" | "~>" | "{" | "^" // TODO: There must be more?!?
     lhs: ASTNode;
-    rhs: ASTNode | ASTNode[];
-    position?: number; // Required for sort operator!?!
+    rhs: ASTNode | ASTNode[]; // ASTNode if operator is "." | "[" | ":=" | "~>", ASTNode[] if operator is "{" | "^"
 }
 
 export interface TernaryNode extends BaseNode {
@@ -82,6 +77,7 @@ export interface TernaryNode extends BaseNode {
     condition: ASTNode;
     then: ASTNode;
     else: ASTNode;
+    position: number;
 }
 
 export interface BlockNode extends BaseNode {
@@ -99,9 +95,9 @@ export interface TransformNode extends BaseNode {
 
 export interface FunctionInvocationNode extends BaseNode {
     type: "function" | "partial";
+    //name: string;
     procedure: ASTNode;
     arguments: ASTNode[];
-    position: number;
 }
 
 export interface LambdaDefinitionNode extends BaseNode {
@@ -129,3 +125,6 @@ export type ASTNode =
     | FunctionInvocationNode
     | LambdaDefinitionNode
     | EndNode;
+
+// TODO: Add synthetic ast nodes (rename ASTNode to RawAstNode or something)
+export type OptimizedASTNode = ASTNode;
