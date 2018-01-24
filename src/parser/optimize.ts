@@ -83,9 +83,14 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                             position: expr.position,
                         };
                     }
+                    // If no predicates are associated with this step, initialize the
+                    // array to be empty.
                     if (typeof step.predicate === "undefined") {
                         step.predicate = [];
                     }
+                    // Add the current RHS to the list of predicates for this step.
+                    // Multiple predicates can accumulate (i.e., step.predicate may
+                    // have already had elements in it before getting here).
                     step.predicate.push(ast_optimize(expr.rhs, collect));
                     return node;
                 }
@@ -197,6 +202,10 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
         case "lambda": {
             let body = ast_optimize(expr.body, collect);
             body = tail_call_optimize(body);
+            // All arguments to a lambda should be variables so running
+            // ast_optimize should be a NO-OP.  But I run it anyway just in case
+            // those semantics change some day.  This keeps things consistent
+            // and doesn't impact the results.
             let args = expr.arguments.map(arg => ast_optimize(arg, collect));
             return {
                 ...expr,
@@ -249,24 +258,13 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 expressions: expressions,
             };
         case "name":
-            // TODO: should always give a value for keepSingletonArray.
-            if (expr.keepArray) {
-                return {
-                    type: "path",
-                    value: expr.value,
-                    position: expr.position,
-                    keepSingletonArray: true,
-                    steps: [expr],
-                };
-            } else {
-                return {
-                    type: "path",
-                    keepSingletonArray: false,
-                    value: expr.value,
-                    position: expr.position,
-                    steps: [expr],
-                };
-            }
+            return {
+                type: "path",
+                value: expr.value,
+                position: expr.position,
+                keepSingletonArray: !!expr.keepArray,
+                steps: [expr],
+            };
         case "literal":
         case "wildcard":
         case "descendant":

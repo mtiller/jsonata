@@ -113,18 +113,19 @@ export const functionLED: LED = (
         body: body,
         signature: signature,
         arguments: args,
-        // TODO: Set in version1.5, but doesn't appear used for lambda nodes.
-        // procedure: left,
+        thunk: false,
     };
 };
 
 export const filterLED: LED = (state: ParserState, left: ast.ASTNode): ast.ASTNode | ast.BinaryNode => {
     let initialToken = state.previousToken;
+
+    // If the next symbol is a "]", then this is an empty predicate.
     if (state.symbol.id === "]") {
         // empty predicate means maintain singleton arrays in the output
         var step = left;
         while (step && step.type === "binary" && step.value === "[") {
-            let s = step as ast.BinaryNode;
+            let s = step;
             step = s.lhs;
         }
         step.keepArray = true;

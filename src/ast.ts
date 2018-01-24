@@ -5,17 +5,15 @@ export interface BaseNode {
     type: string;
     value: any;
     position: number;
+    // TODO: Make mandatory?
     keepArray?: boolean;
     // TODO: This is only added to the root expression node...should probably be a separate return value from parser
     errors?: string[];
-    // TODO: This seems to get added in ast_optimize for binary object nodes (group-by)
-    // This seems to be a result of the extra data in the binary version (vs the unary object constructor).
-    // It further appears that this attribute really only gets added to path and unary nodes (judging from the
-    // test suite).  Not sure I can extrapolate from that though.
+    // This gets added to nodes to indicate how a value (assuming it is an object)
+    // should be grouped.
+    // TODO: Rename lhs...?
     group?: { lhs: ASTNode[][], position: number };
-    // TODO: This is added by the binary "[" node (array construction).  What isn't clear is whether
-    // this is only associated with "path" nodes or not.  The code implies this could be found on any node.
-    // I suspect a peek at the evaluation code will indicate for sure.
+    // This gets added to nodes to specify a list of predicates to filter on.
     predicate?: ASTNode[];
 }
 
@@ -148,9 +146,7 @@ export interface LambdaDefinitionNode extends BaseNode {
     body: ASTNode;
     signature: Signature;
     arguments: ASTNode[];
-    thunk?: boolean;
-    // TODO: Set in version1.5, but doesn't appear used for lambda nodes.
-    // procedure: ASTNode;
+    thunk: boolean;
 }
 
 // This type of node only appears after the AST is optimized
