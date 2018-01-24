@@ -157,7 +157,7 @@ export interface LambdaDefinitionNode extends BaseNode {
 export interface PathNode extends BaseNode {
     type: "path";
     steps: ASTNode[];
-    keepSingletonArray?: boolean,
+    keepSingletonArray: boolean,
 }
 
 export interface BindNode extends BaseNode {

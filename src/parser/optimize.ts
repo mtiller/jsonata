@@ -43,7 +43,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                         lit.type = "name";
                     });
                     // any step that signals keeping a singleton array, should be flagged on the path
-                    let keepSingletonArray: boolean = steps.some((step) => step.keepArray);
+                    let keepSingletonArray: boolean = steps.some(step => step.keepArray);
 
                     /* istanbul ignore else */
                     if (steps.length > 0) {
@@ -60,22 +60,13 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                         markAsArray(steps[steps.length - 1]);
                     }
 
-                    if (keepSingletonArray) {
-                        return {
-                            type: "path",
-                            position: expr.position,
-                            value: expr.value,
-                            steps: steps,
-                            keepSingletonArray: true,
-                        };
-                    } else {
-                        return {
-                            type: "path",
-                            position: expr.position,
-                            value: expr.value,
-                            steps: steps,
-                        };
-                    }
+                    return {
+                        type: "path",
+                        position: expr.position,
+                        value: expr.value,
+                        steps: steps,
+                        keepSingletonArray: keepSingletonArray,
+                    };
                 case "[": {
                     // predicated step
                     // LHS is a step or a predicated step
@@ -270,6 +261,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
             } else {
                 return {
                     type: "path",
+                    keepSingletonArray: false,
                     value: expr.value,
                     position: expr.position,
                     steps: [expr],
@@ -323,7 +315,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     lhs: expr,
                     remaining: [],
                     value: expr.value,
-                    position: expr.position
+                    position: expr.position,
                 };
             } else {
                 err.stack = new Error().stack;
@@ -336,7 +328,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
  * This checks a node to see if it is an array constructor.  If so,
  * it marks it with the `consarray` field which is used to indicate the
  * node should not be flattened. (?)
- * 
+ *
  * @param node The node to check
  */
 function markAsArray(node: ast.ASTNode) {

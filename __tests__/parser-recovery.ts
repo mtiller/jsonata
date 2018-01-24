@@ -10,6 +10,7 @@ describe("Invoke parser with valid expression", function() {
             var ast = expr.ast();
             var expected_ast = {
                 type: "path",
+                keepSingletonArray: false,
                 position: 8,
                 value: ".",
                 steps: [
@@ -47,6 +48,7 @@ describe("Invoke parser with incomplete expression", function() {
             var ast = expr.ast();
             var expected_ast = {
                 type: "path",
+                keepSingletonArray: false,
                 position: 8,
                 value: ".",
                 steps: [
@@ -92,6 +94,7 @@ describe("Invoke parser with incomplete expression", function() {
             var ast = expr.ast();
             var expected_ast = {
                 type: "path",
+                keepSingletonArray: false,
                 position: 7,
                 value: "Account",
                 steps: [
@@ -146,6 +149,7 @@ describe("Invoke parser with incomplete expression", function() {
             var ast = expr.ast();
             var expected_ast = {
                 type: "path",
+                keepSingletonArray: false,
                 position: 8,
                 value: ".",
                 steps: [
@@ -214,6 +218,7 @@ describe("Invoke parser with incomplete expression", function() {
             var ast = expr.ast();
             var expected_ast = {
                 type: "path",
+                keepSingletonArray: false,
                 position: 8,
                 value: ".",
                 steps: [
@@ -262,6 +267,7 @@ describe("Invoke parser with incomplete expression", function() {
             var ast = expr.ast();
             var expected_ast = {
                 type: "path",
+                keepSingletonArray: false,
                 position: 17,
                 value: ".",
                 steps: [
@@ -319,6 +325,7 @@ describe("Invoke parser with incomplete expression", function() {
                 position: 36,
                 lhs: {
                     type: "path",
+                    keepSingletonArray: false,
                     position: 16,
                     value: ".",
                     steps: [
