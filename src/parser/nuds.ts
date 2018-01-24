@@ -1,6 +1,6 @@
 import { NUD, ParserState } from "./types";
 import { Token } from "../tokenizer";
-import * as ast from "./ast";
+import * as ast from "../ast";
 
 export const defaultNUD = (recover: boolean, errors: string[], remainingTokens: () => Token[]): NUD => {
     return (state: ParserState): ast.ErrorNode => {

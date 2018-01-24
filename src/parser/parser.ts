@@ -1,7 +1,7 @@
 import { tokenizer, Tokenizer, Token } from "../tokenizer";
 import { ast_optimize } from "./optimize";
 import { createTable } from "./symbols";
-import * as ast from "./ast";
+import * as ast from "../ast";
 
 import { Symbol, ParserState, SymbolTable } from "./types";
 

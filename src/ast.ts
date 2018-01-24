@@ -1,5 +1,5 @@
-import { Token } from "../tokenizer";
-import { Signature } from '../signatures';
+import { Token } from "./tokenizer";
+import { Signature } from './signatures';
 
 export interface BaseNode {
     type: string;

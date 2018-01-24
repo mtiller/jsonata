@@ -1,4 +1,4 @@
-import * as ast from "./parser/ast";
+import * as ast from "./ast";
 
 export interface Visitor {
     visitWildcard?: (node: ast.WildcardNode) => void;
@@ -35,23 +35,23 @@ export function throwNever(node: ast.ASTNode, x: never): never {
 }
 
 export function walk(node: ast.ASTNode, visitor: Visitor): void {
-    let visit = <T extends ast.ASTNode>(f?: (node: T) => void) => void {
-        if (f) {
-            f(node);
-        }
-    }
+    let visit = <T extends ast.ASTNode>(f?: (node: T) => void) =>
+        void {
+            if(f) {
+                f(node);
+            },
+        };
     switch (node.type) {
         case "wildcard":
             return visit(visitor.visitWildcard);
         case "descendant":
             return visit(visitor.visitDescendant);
-            case "error":
+        case "error":
             return visit(visitor.visitError);
-            case "variable":
+        case "variable":
             return visit(visitor.visitVariable);
-            case "name":
+        case "name":
             return visit(visitor.visitName);
-            case 
     }
-    return throwNever(node, node);
+    //return throwNever(node, node);
 }
