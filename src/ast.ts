@@ -5,8 +5,6 @@ export interface BaseNode {
     type: string;
     value: any;
     position: number;
-    // TODO: Make mandatory?
-    keepArray?: boolean;
     // TODO: This is only added to the root expression node...should probably be a separate return value from parser
     errors?: string[];
     // This gets added to nodes to indicate how a value (assuming it is an object)

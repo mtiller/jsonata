@@ -40,9 +40,7 @@ class Parser implements ParserState {
     
         // Decide if we want to collect errors and recover, or just throw an error
         let collect = this.recover ? err => this.errors.push(err) : undefined;
-        // console.log("Pre-opt AST: "+JSON.stringify(expr, null, 4));
         expr = ast_optimize(expr, collect);
-        // console.log("Post-opt AST: "+JSON.stringify(expr, null, 4));
     
         if (this.errors.length > 0) {
             expr.errors = this.errors;

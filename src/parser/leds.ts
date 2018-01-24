@@ -122,21 +122,11 @@ export const filterLED: LED = (state: ParserState, left: ast.ASTNode): ast.ASTNo
 
     // If the next symbol is a "]", then this is an empty predicate.
     if (state.symbol.id === "]") {
-        // empty predicate means maintain singleton arrays in the output
-        var step = left;
-        while (step && step.type === "binary" && step.value === "[") {
-            let s = step;
-            step = s.lhs;
-        }
-        step.keepArray = true;
         state.advance("]");
-        // return left;
-        // console.log("Wrapping: "+JSON.stringify(left));
         return {
             type: "singleton",
             value: left.value,
             position: left.position,
-            keepArray: true,
             next: { ...left },
         }
     } else {

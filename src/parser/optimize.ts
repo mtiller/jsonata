@@ -44,13 +44,6 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     steps.filter(step => step.type === "literal").forEach(lit => {
                         lit.type = "name";
                     });
-                    // any step that signals keeping a singleton array, should be flagged on the path
-                    let keepSingletonArray: boolean = steps.some(step => step.keepArray);
-                    //let keepSingletonArray: boolean = steps.some(step => step.type==="singleton");
-                    if (keepSingletonArray) {
-                        console.log("unoptimized LHS = ", JSON.stringify(expr.lhs, null, 4));
-                        console.log("optimized steps: ", JSON.stringify(steps, null, 4));
-                    }
 
                     /* istanbul ignore else */
                     if (steps.length > 0) {
@@ -269,7 +262,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 type: "path",
                 value: expr.value,
                 position: expr.position,
-                keepSingletonArray: !!expr.keepArray,
+                keepSingletonArray: false,
                 steps: [expr],
             };
         case "literal":
@@ -279,12 +272,21 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
         case "regex":
             return expr;
         case "singleton": {
-            // return { ...expr, next: ast_optimize(expr.next, collect) };
+            // Optimize the AST node wrapped by this singleton decorator
             let opt = ast_optimize(expr.next, collect);
+
+            // No matter which branch we take, we replace the singleton with
+            // a path node with the keepSingleArray flag set.
             if (opt.type==="path") {
-                opt.keepSingletonArray = true;
-                return opt;
+                // If this is a path, then we can simply set the keepSingleArray
+                // fields on it.
+                return {
+                    ...opt,
+                    keepSingletonArray: true,
+                }
             } else {
+                // If this isn't a path, create a length 1 path and mark it as preserving
+                // singleton arrays.
                 return {
                     type: "path",
                     value: opt.value,
@@ -293,20 +295,6 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     keepSingletonArray: true,
                 }
             }
-            // if (opt.type==="path" && opt.keepSingletonArray==false) {
-            //     console.log("Exception!");
-            // }
-            // return {
-            //     type: "path",
-            //     value: expr.value,
-            //     position: expr.position,
-            //     steps: [ast_optimize(expr.next, collect)],
-            //     keepSingletonArray: false,
-            // }
-            // return {
-            //     ...ast_optimize(expr.next, collect),
-            //     singleton: true,
-            // } as any;
         }
         case "operator":
             // the tokens 'and' and 'or' might have been used as a name rather than an operator
