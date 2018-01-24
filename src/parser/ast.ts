@@ -74,6 +74,7 @@ export interface ArrayConstructorNode extends BaseNode {
     type: "unary";
     value: "[";
     expressions: ASTNode[];
+    consarray?: boolean;
 }
 
 export interface UnaryObjectNode extends BaseNode {
@@ -135,6 +136,8 @@ export interface FunctionInvocationNode extends BaseNode {
     type: "function" | "partial";
     procedure: ASTNode;
     arguments: ASTNode[];
+    // This is added when creating PathNodes.
+    nextFunction?: Function;
 }
 
 export interface LambdaDefinitionNode extends BaseNode {

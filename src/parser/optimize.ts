@@ -8,65 +8,74 @@ import { prefixDefaultNUD } from "./nuds";
 // the purpose of this is flatten the parts of the AST representing location paths,
 // converting them to arrays of steps which in turn may contain arrays of predicates.
 // following this, nodes containing '.' and '[' should be eliminated from the AST.
-// TODO: Add types and adjust for errors
 export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollector): ast.ASTNode {
-    var result;
     switch (expr.type) {
-        case "binary":
+        case "binary": {
             switch (expr.value) {
                 case ".":
-                    var lstep = ast_optimize(expr.lhs, collect);
-                    result = { type: "path", steps: [] };
+                    let lstep = ast_optimize(expr.lhs, collect);
+                    let steps: ast.ASTNode[] = [];
                     if (lstep.type === "path") {
-                        Array.prototype.push.apply(result.steps, lstep.steps);
+                        steps = lstep.steps;
                     } else {
-                        result.steps = [lstep];
+                        steps = [lstep];
                     }
-                    var rest = ast_optimize(expr.rhs, collect);
+                    let rest = ast_optimize(expr.rhs, collect);
+                    let last = steps[steps.length - 1];
+
                     if (
                         rest.type === "function" &&
                         rest.procedure.type === "path" &&
                         rest.procedure.steps.length === 1 &&
                         rest.procedure.steps[0].type === "name" &&
-                        result.steps[result.steps.length - 1].type === "function"
+                        last.type === "function"
                     ) {
                         // next function in chain of functions - will override a thenable
-                        result.steps[result.steps.length - 1].nextFunction = rest.procedure.steps[0].value;
+                        last.nextFunction = rest.procedure.steps[0].value;
                     }
-                    if (rest.type !== "path") {
-                        // TODO: these undefined values are here because the PathNode is seemingly the only
-                        // ASTNode that doesn't include value and position because it is generated post-parsing
-                        // and was never created from a token/symbol.
-                        rest = { type: "path", steps: [rest], value: undefined, position: undefined };
+
+                    if (rest.type === "path") {
+                        steps = [...steps, ...rest.steps];
+                    } else {
+                        steps = [...steps, rest];
                     }
-                    Array.prototype.push.apply(result.steps, rest.steps);
                     // any steps within a path that are literals, should be changed to 'name'
-                    result.steps
-                        .filter(function(step) {
-                            return step.type === "literal";
-                        })
-                        .forEach(function(lit) {
-                            lit.type = "name";
-                        });
+                    steps.filter(step => step.type === "literal").forEach(lit => {
+                        lit.type = "name";
+                    });
                     // any step that signals keeping a singleton array, should be flagged on the path
-                    if (
-                        result.steps.filter(function(step) {
-                            return step.keepArray === true;
-                        }).length > 0
-                    ) {
-                        result.keepSingletonArray = true;
+                    let keepSingletonArray: boolean = steps.some((step) => step.keepArray);
+
+                    /* istanbul ignore else */
+                    if (steps.length > 0) {
+                        // If I understand the previous comments, if the first "step" is a
+                        // unary node with a value of "[", that indicates it is a path constructor.
+                        // However, if the last step is also a unary node with a value of "[", that makes
+                        // it an array constructor.  In either case, our goal here is to set the
+                        // consarray field to be true for either of these if they are unary nodes with
+                        // value of "["
+
+                        // if first step is a path constructor, flag it for special handling
+                        markAsArray(steps[0]); // Check for PATH!
+                        // if last step is an array constructor, flag ti for special handling
+                        markAsArray(steps[steps.length - 1]);
                     }
-                    // if first step is a path constructor, flag it for special handling
-                    var firststep = result.steps[0];
-                    if (firststep.type === "unary" && firststep.value === "[") {
-                        firststep.consarray = true;
+
+                    // TODO: The casts here are here because the PathNode is seemingly the only
+                    // ASTNode that doesn't include value and position because it is generated post-parsing
+                    // and was never created from a token/symbol.
+                    if (keepSingletonArray) {
+                        return {
+                            type: "path",
+                            steps: steps,
+                            keepSingletonArray: true,
+                        } as ast.PathNode;
+                    } else {
+                        return {
+                            type: "path",
+                            steps: steps,
+                        } as ast.PathNode;
                     }
-                    // if the last step is an array constructor, flag it so it doesn't flatten
-                    var laststep = result.steps[result.steps.length - 1];
-                    if (laststep.type === "unary" && laststep.value === "[") {
-                        laststep.consarray = true;
-                    }
-                    break;
                 case "[": {
                     // predicated step
                     // LHS is a step or a predicated step
@@ -103,7 +112,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     }
                     // object constructor - process each pair
                     node.group = {
-                        lhs: expr.rhs.map((pair) => {
+                        lhs: expr.rhs.map(pair => {
                             return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
                         }),
                         position: expr.position,
@@ -139,7 +148,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                         rhs: ast_optimize(expr.rhs, collect),
                     };
             }
-            break;
+        }
         case "sort":
             return {
                 type: "sort",
@@ -197,12 +206,12 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
         case "lambda": {
             let body = ast_optimize(expr.body, collect);
             body = tail_call_optimize(body);
-            let args = expr.arguments.map((arg) => ast_optimize(arg, collect));
+            let args = expr.arguments.map(arg => ast_optimize(arg, collect));
             return {
                 ...expr,
                 body: body,
                 arguments: args,
-            }
+            };
         }
         case "condition": {
             let condition = ast_optimize(expr.condition, collect);
@@ -218,7 +227,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 condition: condition,
                 then: then,
                 else: otherwise,
-            }
+            };
         }
         case "transform": {
             let pattern = ast_optimize(expr.pattern, collect);
@@ -234,12 +243,12 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 pattern: pattern,
                 update: update,
                 delete: del,
-            }
+            };
         }
         case "block":
             // TODO scan the array of expressions to see if any of them assign variables
             // if so, need to mark the block as one that needs to create a new frame
-            let expressions = expr.expressions.map((item) => {
+            let expressions = expr.expressions.map(item => {
                 return ast_optimize(item, collect);
             });
             return {
@@ -247,7 +256,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 value: expr.value,
                 position: expr.position,
                 expressions: expressions,
-            }
+            };
         case "name":
             // TODO: should add value and position for consistency (except test cases fail).
             // TODO: should always give a value for keepSingletonArray.
@@ -319,5 +328,21 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 throw err;
             }
     }
-    return result;
+}
+
+/**
+ * This checks a node to see if it is an array constructor.  If so,
+ * it marks it with the `consarray` field which is used to indicate the
+ * node should not be flattened. (?)
+ * 
+ * @param node The node to check
+ */
+function markAsArray(node: ast.ASTNode) {
+    if (node.type === "unary") {
+        let unary = node;
+        if (unary.value === "[") {
+            let array = unary;
+            array.consarray = true;
+        }
+    }
 }
