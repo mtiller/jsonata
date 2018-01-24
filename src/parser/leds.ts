@@ -112,8 +112,9 @@ export const functionLED: LED = (
         type: "lambda",
         body: body,
         signature: signature,
-        procedure: left,
         arguments: args,
+        // TODO: Set in version1.5, but doesn't appear used for lambda nodes.
+        // procedure: left,
     };
 };
 

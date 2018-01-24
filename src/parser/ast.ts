@@ -144,8 +144,10 @@ export interface LambdaDefinitionNode extends BaseNode {
     type: "lambda";
     body: ASTNode;
     signature: Signature;
-    procedure: ASTNode;
     arguments: ASTNode[];
+    thunk?: boolean;
+    // TODO: Set in version1.5, but doesn't appear used for lambda nodes.
+    // procedure: ASTNode;
 }
 
 // This type of node only appears after the AST is optimized
