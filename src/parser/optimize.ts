@@ -60,20 +60,21 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                         markAsArray(steps[steps.length - 1]);
                     }
 
-                    // TODO: The casts here are here because the PathNode is seemingly the only
-                    // ASTNode that doesn't include value and position because it is generated post-parsing
-                    // and was never created from a token/symbol.
                     if (keepSingletonArray) {
                         return {
                             type: "path",
+                            position: expr.position,
+                            value: expr.value,
                             steps: steps,
                             keepSingletonArray: true,
-                        } as ast.PathNode;
+                        };
                     } else {
                         return {
                             type: "path",
+                            position: expr.position,
+                            value: expr.value,
                             steps: steps,
-                        } as ast.PathNode;
+                        };
                     }
                 case "[": {
                     // predicated step
@@ -257,23 +258,22 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 expressions: expressions,
             };
         case "name":
-            // TODO: should add value and position for consistency (except test cases fail).
             // TODO: should always give a value for keepSingletonArray.
             if (expr.keepArray) {
                 return {
                     type: "path",
-                    // value: expr.value,
-                    // position: expr.position,
+                    value: expr.value,
+                    position: expr.position,
                     keepSingletonArray: true,
                     steps: [expr],
-                } as any;
+                };
             } else {
                 return {
                     type: "path",
-                    // value: expr.value,
-                    // position: expr.position,
+                    value: expr.value,
+                    position: expr.position,
                     steps: [expr],
-                } as any;
+                };
             }
         case "literal":
         case "wildcard":
@@ -310,20 +310,23 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
             if (expr.type == "end") {
                 code = "S0207";
             }
-            var err = {
+            var err: ast.ErrorFields = {
                 code: code,
                 position: expr.position,
                 token: expr.value,
             };
             if (collect) {
                 collect(err);
-                // TODO: The cast is necessary because this node didn't evolve from a token/symbol.  If we add
-                // defined values (which would be a good thing) for all the expected fields, tests fail.  So this
-                // is here largely for legacy reasons and should eventually be fixed by putting defined values
-                // in here.
-                return { type: "error", error: err } as any;
+                return {
+                    type: "error",
+                    error: err,
+                    lhs: expr,
+                    remaining: [],
+                    value: expr.value,
+                    position: expr.position
+                };
             } else {
-                (err as any).stack = new Error().stack;
+                err.stack = new Error().stack;
                 throw err;
             }
     }

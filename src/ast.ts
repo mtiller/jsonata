@@ -29,6 +29,9 @@ export interface DescendantNode extends BaseNode {
 
 export interface ErrorFields {
     code: string;
+    position?: number;
+    token?: string;
+    stack?: string;
 }
 
 export interface ErrorNode extends BaseNode {
