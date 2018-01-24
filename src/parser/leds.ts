@@ -130,7 +130,15 @@ export const filterLED: LED = (state: ParserState, left: ast.ASTNode): ast.ASTNo
         }
         step.keepArray = true;
         state.advance("]");
-        return left;
+        // return left;
+        // console.log("Wrapping: "+JSON.stringify(left));
+        return {
+            type: "singleton",
+            value: left.value,
+            position: left.position,
+            keepArray: true,
+            next: { ...left },
+        }
     } else {
         let rhs = state.expression(operators["]"]);
         state.advance("]", true);

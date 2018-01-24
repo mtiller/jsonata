@@ -149,6 +149,11 @@ export interface LambdaDefinitionNode extends BaseNode {
     thunk: boolean;
 }
 
+export interface SingletonArrayDecorator extends BaseNode {
+    type: "singleton";
+    next: ASTNode;
+}
+
 // This type of node only appears after the AST is optimized
 export interface PathNode extends BaseNode {
     type: "path";
@@ -193,5 +198,6 @@ export type ASTNode =
     | PathNode
     | BindNode
     | ApplyNode
-    | EndNode;
+    | EndNode
+    | SingletonArrayDecorator;
 

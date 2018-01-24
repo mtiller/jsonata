@@ -14,8 +14,10 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 case ".":
                     let lstep = ast_optimize(expr.lhs, collect);
                     let steps: ast.ASTNode[] = [];
+                    let keepSA: boolean = false;
                     if (lstep.type === "path") {
                         steps = lstep.steps;
+                        if (lstep.keepSingletonArray) keepSA = true;
                     } else {
                         steps = [lstep];
                     }
@@ -44,6 +46,11 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     });
                     // any step that signals keeping a singleton array, should be flagged on the path
                     let keepSingletonArray: boolean = steps.some(step => step.keepArray);
+                    //let keepSingletonArray: boolean = steps.some(step => step.type==="singleton");
+                    if (keepSingletonArray) {
+                        console.log("unoptimized LHS = ", JSON.stringify(expr.lhs, null, 4));
+                        console.log("optimized steps: ", JSON.stringify(steps, null, 4));
+                    }
 
                     /* istanbul ignore else */
                     if (steps.length > 0) {
@@ -65,7 +72,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                         position: expr.position,
                         value: expr.value,
                         steps: steps,
-                        keepSingletonArray: keepSingletonArray,
+                        keepSingletonArray: keepSA,
                     };
                 case "[": {
                     // predicated step
@@ -271,6 +278,36 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
         case "variable":
         case "regex":
             return expr;
+        case "singleton": {
+            // return { ...expr, next: ast_optimize(expr.next, collect) };
+            let opt = ast_optimize(expr.next, collect);
+            if (opt.type==="path") {
+                opt.keepSingletonArray = true;
+                return opt;
+            } else {
+                return {
+                    type: "path",
+                    value: opt.value,
+                    position: opt.position,
+                    steps: [opt],
+                    keepSingletonArray: true,
+                }
+            }
+            // if (opt.type==="path" && opt.keepSingletonArray==false) {
+            //     console.log("Exception!");
+            // }
+            // return {
+            //     type: "path",
+            //     value: expr.value,
+            //     position: expr.position,
+            //     steps: [ast_optimize(expr.next, collect)],
+            //     keepSingletonArray: false,
+            // }
+            // return {
+            //     ...ast_optimize(expr.next, collect),
+            //     singleton: true,
+            // } as any;
+        }
         case "operator":
             // the tokens 'and' and 'or' might have been used as a name rather than an operator
             if (expr.value === "and" || expr.value === "or" || expr.value === "in") {
