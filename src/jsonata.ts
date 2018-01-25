@@ -32,8 +32,6 @@ export function jsonata(expr: string, options?: Partial<Options>): Expression {
     let errors: string[] = [];
     try {
         ast = parser(expr, errors, options && options.recover);
-        if (errors.length==0) errors = undefined;
-        delete ast.errors;
     } catch (err) {
         // insert error message into structure
         err.message = lookupMessage(err);
@@ -60,7 +58,7 @@ export function jsonata(expr: string, options?: Partial<Options>): Expression {
     return {
         evaluate: function(input, bindings, callback) {
             // throw if the expression compiled with syntax errors
-            if (typeof errors !== "undefined") {
+            if (typeof errors !== "undefined" && errors.length>0) {
                 var err: any = {
                     code: "S0500",
                     position: 0,

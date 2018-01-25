@@ -47,11 +47,7 @@ class Parser implements ParserState {
         // Decide if we want to collect errors and recover, or just throw an error
         let collect = this.recover ? err => this.errors.push(err) : undefined;
         expr = ast_optimize(expr, collect);
-    
-        if (this.errors.length > 0) {
-            expr.errors = this.errors;
-        }
-    
+        
         return expr;
     }
 

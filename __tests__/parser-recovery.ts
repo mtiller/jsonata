@@ -34,7 +34,7 @@ describe("Invoke parser with valid expression", function() {
                 ],
             };
             var errors = expr.errors();
-            var expected_errors = undefined;
+            var expected_errors = [];
             assert.deepEqual(ast, expected_ast);
             assert.deepEqual(errors, expected_errors);
         });
