@@ -3,6 +3,7 @@ import { lookupMessage, createFrame } from './utils';
 import { evaluate } from './evaluate';
 import { defineFunction } from './signatures';
 import { createStandardFrame } from './functions';
+import { ASTNode } from './ast';
 
 export interface Options {
     recover: boolean;
@@ -27,11 +28,11 @@ export type AST = any;
  * @returns {{evaluate: evaluate, assign: assign}} Evaluated expression
  */
 export function jsonata(expr: string, options?: Partial<Options>): Expression {
-    var ast;
+    let ast: undefined | ASTNode = undefined;
     let errors: string[] = [];
     try {
         ast = parser(expr, errors, options && options.recover);
-        errors = ast.errors;
+        if (errors.length==0) errors = undefined;
         delete ast.errors;
     } catch (err) {
         // insert error message into structure

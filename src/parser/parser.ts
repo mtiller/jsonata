@@ -184,9 +184,10 @@ class Parser implements ParserState {
 // This parser implements the 'Top down operator precedence' algorithm developed by Vaughan R Pratt; http://dl.acm.org/citation.cfm?id=512931.
 // and builds on the Javascript framework described by Douglas Crockford at http://javascript.crockford.com/tdop/tdop.html
 // and in 'Beautiful Code', edited by Andy Oram and Greg Wilson, Copyright 2007 O'Reilly Media, Inc. 798-0-596-51004-6
-export function parser(source: string, errors: string[], recover?: boolean) {
+export function parser(source: string, errors: string[], recover?: boolean): ast.ASTNode {
     let p = new Parser(source, recover);
+    let ast = p.parse();
     p.errors.forEach((err) => errors.push(err));
-    return p.parse();
+    return ast;
 }
 
