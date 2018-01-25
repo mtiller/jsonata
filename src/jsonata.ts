@@ -28,9 +28,9 @@ export type AST = any;
  */
 export function jsonata(expr: string, options?: Partial<Options>): Expression {
     var ast;
-    var errors;
+    let errors: string[] = [];
     try {
-        ast = parser(expr, options && options.recover);
+        ast = parser(expr, errors, options && options.recover);
         errors = ast.errors;
         delete ast.errors;
     } catch (err) {
