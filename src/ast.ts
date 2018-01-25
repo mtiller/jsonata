@@ -1,6 +1,13 @@
 import { Token } from "./tokenizer";
 import { Signature } from './signatures';
 
+// Potential AST changes
+//
+//   - Make predicate and group into AST nodes instead of optional fields on every node.
+//   - Change unary operator "[" to a different type...?
+//   - Get errors? off of BaseNode
+//   - Rationalize unary nodes
+
 export interface BaseNode {
     type: string;
     value: any;
@@ -73,7 +80,7 @@ export interface ArrayConstructorNode extends BaseNode {
     type: "unary";
     value: "[";
     expressions: ASTNode[];
-    consarray?: boolean;
+    consarray: boolean;
 }
 
 export interface UnaryObjectNode extends BaseNode {

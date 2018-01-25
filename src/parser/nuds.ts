@@ -146,12 +146,12 @@ export const arrayNUD = (state: ParserState): ast.UnaryNode => {
         }
     }
     state.advance("]", true);
-    // TODO: Should this be a different type...? (not unary)
     return {
         value: initialToken.value,
         position: initialToken.position,
         type: "unary",
         expressions: a,
+        consarray: false,
     };
 };
 
