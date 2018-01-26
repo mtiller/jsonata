@@ -11,7 +11,7 @@ import {
     toSequence,
 } from "./utils";
 import { defineFunction } from "./signatures";
-import { parser } from './parser';
+import { parser } from "./parser";
 import { functionBoolean, functionAppend, functionString, functionSort, createStandardFrame } from "./functions";
 import * as ast from "./ast";
 
@@ -40,6 +40,9 @@ export function* evaluate(expr: ast.ASTNode, input: any, environment: Environmen
             break;
         case "binary":
             result = yield* evaluateBinary(expr, input, environment);
+            break;
+        case "array":
+            result = yield* evaluateArray(expr, input, environment);
             break;
         case "unary":
             result = yield* evaluateUnary(expr, input, environment);
@@ -346,6 +349,37 @@ function* evaluateBinary(expr, input, environment) {
 }
 
 /**
+ * Evaluate array constructor against input data
+ * @param {Object} expr - JSONata expression
+ * @param {Object} input - Input data to evaluate against
+ * @param {Object} environment - Environment
+ * @returns {*} Evaluated input data
+ */
+function* evaluateArray(expr, input, environment) {
+    // array constructor - evaluate each item
+    let result = [];
+    for (var ii = 0; ii < expr.expressions.length; ii++) {
+        var item = expr.expressions[ii];
+        var value = yield* evaluate(item, input, environment);
+        if (typeof value !== "undefined") {
+            if (item.value === "[") {
+                result.push(value);
+            } else {
+                result = functionAppend(result, value);
+            }
+        }
+    }
+    if (expr.consarray) {
+        Object.defineProperty(result, "cons", {
+            enumerable: false,
+            configurable: false,
+            value: true,
+        });
+    }
+    return result;
+}
+
+/**
  * Evaluate unary expression against input data
  * @param {Object} expr - JSONata expression
  * @param {Object} input - Input data to evaluate against
@@ -370,28 +404,6 @@ function* evaluateUnary(expr, input, environment) {
                     token: expr.value,
                     value: result,
                 };
-            }
-            break;
-        case "[":
-            // array constructor - evaluate each item
-            result = [];
-            for (var ii = 0; ii < expr.expressions.length; ii++) {
-                var item = expr.expressions[ii];
-                var value = yield* evaluate(item, input, environment);
-                if (typeof value !== "undefined") {
-                    if (item.value === "[") {
-                        result.push(value);
-                    } else {
-                        result = functionAppend(result, value);
-                    }
-                }
-            }
-            if (expr.consarray) {
-                Object.defineProperty(result, "cons", {
-                    enumerable: false,
-                    configurable: false,
-                    value: true,
-                });
             }
             break;
         case "{":
@@ -1376,7 +1388,7 @@ function partialApplyNativeFunction(native, args) {
     var bodyAST = parser(body, []);
 
     /* istanbul ignore else */
-    if (bodyAST.type==="lambda") {
+    if (bodyAST.type === "lambda") {
         // TODO: Check node type...
         bodyAST.body = native;
     } else {

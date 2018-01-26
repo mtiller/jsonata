@@ -54,10 +54,18 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                         // consarray field to be true for either of these if they are unary nodes with
                         // value of "["
 
+                        let first = steps[0];
+                        let last = steps[steps.length-1];
+
                         // if first step is a path constructor, flag it for special handling
-                        markAsArray(steps[0]); // Check for PATH!
+                        if (first.type === "array") {
+                            first.consarray = true;
+                        }
+                    
                         // if last step is an array constructor, flag ti for special handling
-                        markAsArray(steps[steps.length - 1]);
+                        if (last.type==="array") {
+                            last.consarray = true;
+                        }
                     }
 
                     return {
@@ -153,15 +161,15 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 lhs: ast_optimize(expr.lhs, collect),
                 rhs: expr.rhs.map(term => ({ ...term, expression: ast_optimize(term.expression, collect) })),
             };
+        case "array": {
+            let expressions = expr.expressions.map(item => ast_optimize(item, collect));
+            return {
+                ...expr,
+                expressions: expressions,
+            };
+        }
         case "unary":
             switch (expr.value) {
-                case "[": {
-                    let expressions = expr.expressions.map(item => ast_optimize(item, collect));
-                    return {
-                        ...expr,
-                        expressions: expressions,
-                    };
-                }
                 case "{": {
                     let lhs = expr.lhs.map(pair => {
                         return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
@@ -344,22 +352,5 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 err.stack = new Error().stack;
                 throw err;
             }
-    }
-}
-
-/**
- * This checks a node to see if it is an array constructor.  If so,
- * it marks it with the `consarray` field which is used to indicate the
- * node should not be flattened. (?)
- *
- * @param node The node to check
- */
-function markAsArray(node: ast.ASTNode) {
-    if (node.type === "unary") {
-        let unary = node;
-        if (unary.value === "[") {
-            let array = unary;
-            array.consarray = true;
-        }
     }
 }

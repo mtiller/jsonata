@@ -77,9 +77,10 @@ export interface UnaryMinusNode extends BaseNode {
 }
 
 export interface ArrayConstructorNode extends BaseNode {
-    type: "unary";
+    type: "array";
     value: "[";
     expressions: ASTNode[];
+    // TODO: Do we still need this? (now that we have a dedicated array node?)
     consarray: boolean;
 }
 

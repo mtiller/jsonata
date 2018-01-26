@@ -117,7 +117,7 @@ export const blockNUD = (state: ParserState): ast.BlockNode => {
     };
 };
 
-export const arrayNUD = (state: ParserState): ast.UnaryNode => {
+export const arrayNUD = (state: ParserState): ast.ArrayConstructorNode => {
     var a = [];
     let initialToken = state.previousToken;
     if (state.symbol.id !== "]") {
@@ -149,7 +149,7 @@ export const arrayNUD = (state: ParserState): ast.UnaryNode => {
     return {
         value: initialToken.value,
         position: initialToken.position,
-        type: "unary",
+        type: "array",
         expressions: a,
         consarray: false,
     };
