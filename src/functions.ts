@@ -1489,7 +1489,7 @@ export function functionKeys(arg) {
  * @returns {*} Value of key in object
  */
 export function functionLookup(object, key) {
-    var result = evaluateName({ value: key }, object, {});
+    var result = evaluateName({ type: "name", value: key, position: -1 }, object, {});
     return result;
 }
 

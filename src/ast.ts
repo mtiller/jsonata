@@ -100,7 +100,7 @@ export interface BinaryOperationNode extends BaseNode {
 }
 
 export interface ProxyBinaryNode extends BaseNode {
-    type: "binary";
+    type: "proxy";
     value: "." | "[" | ":=" | "~>";
     lhs: ASTNode;
     rhs: ASTNode;

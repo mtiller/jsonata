@@ -4,16 +4,35 @@ import * as ast from "../ast";
 import { operators } from "../constants";
 
 export const infixDefaultLED = (bindingPower: number): LED => {
-    return (state: ParserState, left: ast.ASTNode): ast.BinaryNode => {
+    return (state: ParserState, left: ast.ASTNode): ast.BinaryOperationNode | ast.ProxyBinaryNode => {
         let initialToken = state.previousToken;
         let rhs = state.expression(bindingPower);
-        return {
-            value: initialToken.value,
-            position: initialToken.position,
-            type: "binary",
-            lhs: left,
-            rhs: rhs,
-        };
+        let value = initialToken.value;
+        let position = initialToken.position;
+        let proxies = [".", "[", ":=", "~>"];
+        let ops = ["+", "-", "*", "/", "%", "=", "!=", "<", "<=", ">", ">=", "&", "and", "or", "..", "in"];
+        if (proxies.indexOf(value) >= 0) {
+            return {
+                value: value,
+                position: position,
+                type: "proxy",
+                lhs: left,
+                rhs: rhs,
+            };
+        } else {
+            /* istanbul ignore else */
+            if (ops.indexOf(value) >= 0) {
+                return {
+                    value: value,
+                    position: position,
+                    type: "binary",
+                    lhs: left,
+                    rhs: rhs,
+                };
+            } else {
+                throw new Error("Unknown binary operator: " + value);
+            }
+        }
     };
 };
 
@@ -117,7 +136,7 @@ export const functionLED: LED = (
     };
 };
 
-export const filterLED: LED = (state: ParserState, left: ast.ASTNode): ast.ASTNode | ast.BinaryNode => {
+export const filterLED: LED = (state: ParserState, left: ast.ASTNode): ast.ASTNode => {
     let initialToken = state.previousToken;
 
     // If the next symbol is a "]", then this is an empty predicate.
@@ -128,14 +147,14 @@ export const filterLED: LED = (state: ParserState, left: ast.ASTNode): ast.ASTNo
             value: left.value,
             position: left.position,
             next: { ...left },
-        }
+        };
     } else {
         let rhs = state.expression(operators["]"]);
         state.advance("]", true);
-        let ret: ast.BinaryNode = {
-            value: initialToken.value,
+        let ret: ast.ProxyBinaryNode = {
+            value: "[",
             position: initialToken.position,
-            type: "binary",
+            type: "proxy",
             lhs: left,
             rhs: rhs,
         };

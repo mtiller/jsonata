@@ -92,11 +92,26 @@ export function* evaluate(expr: ast.ASTNode, input: any, environment: Environmen
         case "transform":
             result = evaluateTransformExpression(expr, input, environment);
             break;
+        /* istanbul ignore next */
         case "grouped-object":
+        /* istanbul ignore next */
+        case "proxy":
+        /* istanbul ignore next */
+        case "end":
+        /* istanbul ignore next */
+        case "error":
+        /* istanbul ignore next */
+        case "operator":
+        /* istanbul ignore next */
+        case "singleton": {
             /* istanbul ignore next */
             throw new Error("Raw AST node found in optimized tree");
+        }
+        /* istanbul ignore next */
+        default:
+            /* istanbul ignore next */
+            return reportUnknownExpr(expr, expr);
     }
-    // TODO: Add exhaustion check.
 
     if (
         environment.lookup("__jsonata_async") &&
@@ -163,7 +178,7 @@ function* evaluatePath(expr: ast.PathNode, input: any, environment: Environment)
         var step = expr.steps[ii];
 
         // if the first step is an explicit array constructor, then just evaluate that (i.e. don't iterate over a context array)
-        if (ii === 0 && step.type==="array" && step.consarray) {
+        if (ii === 0 && step.type === "array" && step.consarray) {
             resultSequence = yield* evaluate(step, inputSequence, environment);
         } else {
             resultSequence = yield* evaluateStep(step, inputSequence, environment, ii === expr.steps.length - 1);
@@ -425,7 +440,7 @@ function* evaluateUnary(expr: ast.UnaryNode, input: any, environment: Environmen
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-export function evaluateName(expr: ast.ASTNode, input: any, environment: Environment) {
+export function evaluateName(expr: ast.NameNode, input: any, environment: Environment) {
     // lookup the 'name' item in the input
     var result;
     if (Array.isArray(input)) {
@@ -1470,4 +1485,9 @@ function* applyProcedure(proc, args) {
         result = yield* evaluate(proc.body, proc.input, env);
     }
     return result;
+}
+
+/* istanbul ignore next */
+function reportUnknownExpr(expr: ast.ASTNode, n: never): never {
+    throw new Error("Found unknown expression of type " + expr.type);
 }

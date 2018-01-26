@@ -30,7 +30,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
             };
             return node;
         }
-        case "binary": {
+        case "proxy": {
             switch (expr.value) {
                 case ".":
                     let lstep = ast_optimize(expr.lhs, collect);
@@ -145,13 +145,17 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                         rhs: rhs,
                     };
                 }
+                /* istanbul ignore next */
                 default:
-                    return {
-                        ...expr,
-                        lhs: ast_optimize(expr.lhs, collect),
-                        rhs: ast_optimize(expr.rhs, collect),
-                    };
+                    throw new Error("Unknown proxy operator: " + expr.value);
             }
+        }
+        case "binary": {
+            return {
+                ...expr,
+                lhs: ast_optimize(expr.lhs, collect),
+                rhs: ast_optimize(expr.rhs, collect),
+            };
         }
         case "sort":
             return {
