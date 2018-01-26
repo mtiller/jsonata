@@ -486,7 +486,6 @@ function evaluateWildcard(expr: ast.ASTNode, input: any, environment: Environmen
         });
     }
 
-    //        result = normalizeSequence(results);
     return results;
 }
 
@@ -496,7 +495,7 @@ function evaluateWildcard(expr: ast.ASTNode, input: any, environment: Environmen
  * @param {Object} input - Input data to evaluate against
  * @returns {*} Evaluated input data
  */
-function evaluateDescendants(expr: ast.ASTNode, input: any, environment: Environment) {
+function evaluateDescendants(expr: ast.DescendantNode, input: any, environment: Environment) {
     var result;
     var resultSequence = createSequence();
     if (typeof input !== "undefined") {
@@ -516,7 +515,7 @@ function evaluateDescendants(expr: ast.ASTNode, input: any, environment: Environ
  * @param {Object} input - Input data
  * @param {Object} results - Results
  */
-function recurseDescendants(input, results) {
+function recurseDescendants(input: any, results) {
     // this is the equivalent of //* in XPath
     if (!Array.isArray(input)) {
         results.push(input);
@@ -539,7 +538,7 @@ function recurseDescendants(input, results) {
  * @param {Object} op - opcode
  * @returns {*} Result
  */
-function evaluateNumericExpression(lhs, rhs, op) {
+function evaluateNumericExpression(lhs: number, rhs: number, op: string): number {
     var result;
 
     if (typeof lhs === "undefined" || typeof rhs === "undefined") {
@@ -589,7 +588,7 @@ function evaluateNumericExpression(lhs, rhs, op) {
  * @param {Object} op - opcode
  * @returns {*} Result
  */
-function evaluateComparisonExpression(lhs, rhs, op) {
+function evaluateComparisonExpression(lhs: any, rhs: any, op): boolean {
     var result;
 
     // type checks
@@ -728,7 +727,7 @@ function evaluateStringConcat(lhs, rhs) {
  * @param {Object} environment - Environment
  * @returns {{}} Evaluated input data
  */
-function* evaluateGroupExpression(grouping: any, input: any, environment: Environment) {
+function* evaluateGroupExpression(grouping: { lhs: ast.ASTNode[][], position: number }, input: any, environment: Environment) {
     var result = {};
     var groups = {};
     // group the input sequence by 'key' expression
@@ -881,7 +880,7 @@ function* evaluateBlock(expr: ast.BlockNode, input: any, environment: Environmen
  * @param {Object} expr - expression containing regex
  * @returns {Function} Higher order function representing prepared regex
  */
-function evaluateRegex(expr: ast.ASTNode, input: any, environment: Environment) {
+function evaluateRegex(expr: ast.RegexNode, input: any, environment: Environment) {
     expr.value.lastIndex = 0;
     var closure = function(str) {
         var re = expr.value;
