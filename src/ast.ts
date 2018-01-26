@@ -14,8 +14,6 @@ export interface BaseNode {
     position: number;
     // This gets added to nodes to indicate how a value (assuming it is an object)
     // should be grouped.
-    // TODO: Rename lhs...?
-    group?: { lhs: ASTNode[][], position: number };
     // This gets added to nodes to specify a list of predicates to filter on.
     predicate?: ASTNode[];
     // TODO: Figure out exactly what this is
@@ -28,6 +26,12 @@ export interface WildcardNode extends BaseNode {
 
 export interface DescendantNode extends BaseNode {
     type: "descendant";
+}
+
+export interface GroupNode extends BaseNode {
+    type: "group";
+    lhs: ASTNode;
+    groupings: ASTNode[][];
 }
 
 export interface ErrorFields {
@@ -193,6 +197,7 @@ export interface ApplyNode extends BaseNode {
 export type ASTNode =
     | WildcardNode
     | DescendantNode
+    | GroupNode
     | ErrorNode
     | LiteralNode
     | NameNode

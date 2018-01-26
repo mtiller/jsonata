@@ -89,6 +89,10 @@ export function* evaluate(expr: ast.ASTNode, input: any, environment: Environmen
         case "sort":
             result = yield* evaluateSortExpression(expr, input, environment);
             break;
+        case "group":
+            result = yield* evaluate(expr.lhs, input, environment);
+            result = yield* evaluateGroupExpression({ lhs: expr.groupings, position: expr.position }, result, environment);
+            break;
         case "transform":
             result = evaluateTransformExpression(expr, input, environment);
             break;
@@ -133,9 +137,6 @@ export function* evaluate(expr: ast.ASTNode, input: any, environment: Environmen
 
     if (expr.hasOwnProperty("predicate")) {
         result = yield* applyPredicates(expr.predicate, result, environment);
-    }
-    if (expr.hasOwnProperty("group")) {
-        result = yield* evaluateGroupExpression(expr.group, result, environment);
     }
 
     var exitCallback = environment.lookup("__evaluate_exit");

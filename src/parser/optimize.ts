@@ -14,21 +14,25 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
             // LHS is a step or a predicated step
             // RHS is the object constructor expr
             let node = ast_optimize(expr.lhs, collect);
-            if (typeof node.group !== "undefined") {
+            if (node.type=="group") {
                 throw {
                     code: "S0210",
                     stack: new Error().stack,
                     position: expr.position,
                 };
             }
-            // object constructor - process each pair
-            node.group = {
-                lhs: expr.rhs.map(pair => {
-                    return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
-                }),
+
+            let lhs = expr.rhs.map(pair => {
+                return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
+            });
+
+            return {
+                type: "group",
+                value: expr.value,
                 position: expr.position,
-            };
-            return node;
+                lhs: node,
+                groupings: lhs,
+            }
         }
         case "proxy": {
             switch (expr.value) {
@@ -105,13 +109,14 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     if (node.type === "path") {
                         step = node.steps[node.steps.length - 1];
                     }
-                    if (typeof step.group !== "undefined") {
+                    if (step.type=="group") {
                         throw {
                             code: "S0209",
                             stack: new Error().stack,
                             position: expr.position,
                         };
                     }
+
                     // If no predicates are associated with this step, initialize the
                     // array to be empty.
                     if (typeof step.predicate === "undefined") {
