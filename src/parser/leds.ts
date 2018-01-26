@@ -4,13 +4,33 @@ import * as ast from "../ast";
 import { operators } from "../constants";
 
 export const infixDefaultLED = (bindingPower: number): LED => {
-    return (state: ParserState, left: ast.ASTNode): ast.BinaryOperationNode | ast.ProxyBinaryNode => {
+    return (state: ParserState, left: ast.ASTNode): ast.BinaryOperationNode | ast.ProxyBinaryNode | ast.BindNode | ast.ApplyNode => {
         let initialToken = state.previousToken;
         let rhs = state.expression(bindingPower);
         let value = initialToken.value;
         let position = initialToken.position;
-        let proxies = [".", "[", ":=", "~>"];
+        let proxies = [".", "["];
         let ops = ["+", "-", "*", "/", "%", "=", "!=", "<", "<=", ">", ">=", "&", "and", "or", "..", "in"];
+
+        if (value==":=") {
+            return {
+                type: "bind",
+                value: value,
+                position: position,
+                lhs: left,
+                rhs: rhs,
+            }
+        }
+
+        if (value=="~>") {
+            return {
+                type: "apply",
+                value: value,
+                position: position,
+                lhs: left,
+                rhs: rhs,
+            }            
+        }
         if (proxies.indexOf(value) >= 0) {
             return {
                 value: value,
@@ -19,19 +39,18 @@ export const infixDefaultLED = (bindingPower: number): LED => {
                 lhs: left,
                 rhs: rhs,
             };
+        }
+        /* istanbul ignore else */
+        if (ops.indexOf(value) >= 0) {
+            return {
+                value: value,
+                position: position,
+                type: "binary",
+                lhs: left,
+                rhs: rhs,
+            };
         } else {
-            /* istanbul ignore else */
-            if (ops.indexOf(value) >= 0) {
-                return {
-                    value: value,
-                    position: position,
-                    type: "binary",
-                    lhs: left,
-                    rhs: rhs,
-                };
-            } else {
-                throw new Error("Unknown binary operator: " + value);
-            }
+            throw new Error("Unknown binary operator: " + value);
         }
     };
 };

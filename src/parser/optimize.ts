@@ -123,33 +123,13 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     step.predicate.push(ast_optimize(expr.rhs, collect));
                     return node;
                 }
-                case ":=": {
-                    let lhs = ast_optimize(expr.lhs, collect);
-                    let rhs = ast_optimize(expr.rhs, collect);
-                    return {
-                        type: "bind",
-                        value: expr.value,
-                        position: expr.position,
-                        lhs: lhs,
-                        rhs: rhs,
-                    };
-                }
-                case "~>": {
-                    let lhs = ast_optimize(expr.lhs, collect);
-                    let rhs = ast_optimize(expr.rhs, collect);
-                    return {
-                        type: "apply",
-                        value: expr.value,
-                        position: expr.position,
-                        lhs: lhs,
-                        rhs: rhs,
-                    };
-                }
                 /* istanbul ignore next */
                 default:
                     throw new Error("Unknown proxy operator: " + expr.value);
             }
         }
+        case "apply":
+        case "bind":
         case "binary": {
             return {
                 ...expr,
