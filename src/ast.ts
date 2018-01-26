@@ -94,9 +94,16 @@ export type UnaryNode = UnaryMinusNode | ArrayConstructorNode | UnaryObjectNode;
 
 export interface BinaryOperationNode extends BaseNode {
     type: "binary";
-    value: "+" | "-" | "*" | "/" | "[" | ".." | "." | "[" | ":=" | "~>"; // TODO: There must be more?!? (e.g., comparisons)
+    value: "+" | "-" | "*" | "/" | "%" | "=" | "!=" | "<" | "<=" | ">" | ">=" | "&" | "and" | "or" | ".." | "in"; // TODO: There must be more?!? (e.g., comparisons)
     lhs: ASTNode;
     rhs: ASTNode; // ASTNode if operator is "." | "[" | ":=" | "~>"
+}
+
+export interface ProxyBinaryNode extends BaseNode {
+    type: "binary";
+    value: "." | "[" | ":=" | "~>";
+    lhs: ASTNode;
+    rhs: ASTNode;
 }
 
 export interface BinaryObjectNode extends BaseNode {
@@ -193,7 +200,8 @@ export type ASTNode =
     | RegexNode
     | OperatorNode
     | UnaryNode
-    | BinaryNode
+    | BinaryOperationNode
+    | ProxyBinaryNode
     | BinaryObjectNode
     | SortNode
     | TernaryNode

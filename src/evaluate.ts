@@ -138,7 +138,7 @@ export function* evaluate(expr: ast.ASTNode, input: any, environment: Environmen
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluatePath(expr, input, environment) {
+function* evaluatePath(expr: ast.PathNode, input: any, environment: Environment) {
     var inputSequence;
     // expr is an array of steps
     // if the first step is a variable reference ($...), including root reference ($$),
@@ -159,7 +159,7 @@ function* evaluatePath(expr, input, environment) {
         var step = expr.steps[ii];
 
         // if the first step is an explicit array constructor, then just evaluate that (i.e. don't iterate over a context array)
-        if (ii === 0 && step.consarray) {
+        if (ii === 0 && step.type==="array" && step.consarray) {
             resultSequence = yield* evaluate(step, inputSequence, environment);
         } else {
             resultSequence = yield* evaluateStep(step, inputSequence, environment, ii === expr.steps.length - 1);
@@ -303,7 +303,7 @@ function* evaluateFilter(predicate, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateBinary(expr, input, environment) {
+function* evaluateBinary(expr: ast.BinaryOperationNode, input: any, environment: Environment) {
     var result;
     var lhs = yield* evaluate(expr.lhs, input, environment);
     var rhs = yield* evaluate(expr.rhs, input, environment);
@@ -355,7 +355,7 @@ function* evaluateBinary(expr, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateArray(expr, input, environment) {
+function* evaluateArray(expr: ast.ArrayConstructorNode, input: any, environment: Environment) {
     // array constructor - evaluate each item
     let result = [];
     for (var ii = 0; ii < expr.expressions.length; ii++) {
@@ -386,7 +386,7 @@ function* evaluateArray(expr, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateUnary(expr, input, environment) {
+function* evaluateUnary(expr: ast.UnaryNode, input: any, environment: Environment) {
     var result;
 
     switch (expr.value) {
@@ -421,7 +421,7 @@ function* evaluateUnary(expr, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-export function evaluateName(expr, input, environment) {
+export function evaluateName(expr: ast.ASTNode, input: any, environment: Environment) {
     // lookup the 'name' item in the input
     var result;
     if (Array.isArray(input)) {
@@ -443,7 +443,7 @@ export function evaluateName(expr, input, environment) {
  * @param {Object} expr - JSONata expression
  * @returns {*} Evaluated input data
  */
-function evaluateLiteral(expr, input, environment) {
+function evaluateLiteral(expr: ast.ASTNode, input: any, environment: Environment) {
     return expr.value;
 }
 
@@ -453,7 +453,7 @@ function evaluateLiteral(expr, input, environment) {
  * @param {Object} input - Input data to evaluate against
  * @returns {*} Evaluated input data
  */
-function evaluateWildcard(expr, input, environment) {
+function evaluateWildcard(expr: ast.ASTNode, input: any, environment: Environment) {
     var results = createSequence();
     if (input !== null && typeof input === "object") {
         Object.keys(input).forEach(function(key) {
@@ -477,7 +477,7 @@ function evaluateWildcard(expr, input, environment) {
  * @param {Object} input - Input data to evaluate against
  * @returns {*} Evaluated input data
  */
-function evaluateDescendants(expr, input, environment) {
+function evaluateDescendants(expr: ast.ASTNode, input: any, environment: Environment) {
     var result;
     var resultSequence = createSequence();
     if (typeof input !== "undefined") {
@@ -704,12 +704,12 @@ function evaluateStringConcat(lhs, rhs) {
 
 /**
  * Evaluate group expression against input data
- * @param {Object} expr - JSONata expression
+ * @param {Object} grouping - JSONata expression
  * @param {Object} input - Input data to evaluate against
  * @param {Object} environment - Environment
  * @returns {{}} Evaluated input data
  */
-function* evaluateGroupExpression(expr, input, environment) {
+function* evaluateGroupExpression(grouping: any, input: any, environment: Environment) {
     var result = {};
     var groups = {};
     // group the input sequence by 'key' expression
@@ -718,15 +718,15 @@ function* evaluateGroupExpression(expr, input, environment) {
     }
     for (var itemIndex = 0; itemIndex < input.length; itemIndex++) {
         var item = input[itemIndex];
-        for (var pairIndex = 0; pairIndex < expr.lhs.length; pairIndex++) {
-            var pair = expr.lhs[pairIndex];
+        for (var pairIndex = 0; pairIndex < grouping.lhs.length; pairIndex++) {
+            var pair = grouping.lhs[pairIndex];
             var key = yield* evaluate(pair[0], item, environment);
             // key has to be a string
             if (typeof key !== "string") {
                 throw {
                     code: "T1003",
                     stack: new Error().stack,
-                    position: expr.position,
+                    position: grouping.position,
                     value: key,
                 };
             }
@@ -801,7 +801,7 @@ function evaluateRangeExpression(lhs, rhs) {
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateBindExpression(expr, input, environment) {
+function* evaluateBindExpression(expr: ast.BindNode, input: any, environment: Environment) {
     // The RHS is the expression to evaluate
     // The LHS is the name of the variable to bind to - should be a VARIABLE token
     var value = yield* evaluate(expr.rhs, input, environment);
@@ -825,7 +825,7 @@ function* evaluateBindExpression(expr, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateCondition(expr, input, environment) {
+function* evaluateCondition(expr: ast.TernaryNode, input: any, environment: Environment) {
     var result;
     var condition = yield* evaluate(expr.condition, input, environment);
     if (functionBoolean(condition)) {
@@ -843,7 +843,7 @@ function* evaluateCondition(expr, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateBlock(expr, input, environment) {
+function* evaluateBlock(expr: ast.BlockNode, input: any, environment: Environment) {
     var result;
     // create a new frame to limit the scope of variable assignments
     // TODO, only do this if the post-parse stage has flagged this as required
@@ -862,7 +862,7 @@ function* evaluateBlock(expr, input, environment) {
  * @param {Object} expr - expression containing regex
  * @returns {Function} Higher order function representing prepared regex
  */
-function evaluateRegex(expr, input, environment) {
+function evaluateRegex(expr: ast.ASTNode, input: any, environment: Environment) {
     expr.value.lastIndex = 0;
     var closure = function(str) {
         var re = expr.value;
@@ -911,7 +911,7 @@ function evaluateRegex(expr, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function evaluateVariable(expr, input, environment) {
+function evaluateVariable(expr: ast.VariableNode, input: any, environment: Environment) {
     // lookup the variable value in the environment
     var result;
     // if the variable name is empty string, then it refers to context value
@@ -930,7 +930,7 @@ function evaluateVariable(expr, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} Ordered sequence
  */
-function* evaluateSortExpression(expr, input, environment) {
+function* evaluateSortExpression(expr: ast.SortNode, input: any, environment: Environment) {
     var result;
 
     // evaluate the lhs, then sort the results in order according to rhs expression
@@ -1010,7 +1010,7 @@ function* evaluateSortExpression(expr, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} tranformer function
  */
-function evaluateTransformExpression(expr, input, environment) {
+function evaluateTransformExpression(expr: ast.TransformNode, input: any, environment: Environment) {
     // create a function to implement the transform definition
     var transformer = function*(obj) {
         // signature <(oa):o>
@@ -1096,7 +1096,7 @@ function evaluateTransformExpression(expr, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} result
  */
-function driveGenerator(expr, input, environment) {
+function driveGenerator(expr: ast.ASTNode, input: any, environment: Environment) {
     var gen = evaluate(expr, input, environment);
     // returns a generator - so iterate over it
     var comp = gen.next();
@@ -1113,7 +1113,7 @@ function driveGenerator(expr, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateApplyExpression(expr, input, environment) {
+function* evaluateApplyExpression(expr: ast.ApplyNode, input: any, environment: Environment) {
     var result;
 
     const standardFrame = createStandardFrame();
@@ -1160,7 +1160,7 @@ function* evaluateApplyExpression(expr, input, environment) {
  * @param {Object} [applyto] - LHS of ~> operator
  * @returns {*} Evaluated input data
  */
-function* evaluateFunction(expr, input, environment) {
+function* evaluateFunction(expr: ast.FunctionInvocationNode, input: any, environment: Environment) {
     var result;
 
     // create the procedure
@@ -1270,7 +1270,7 @@ function* applyInner(proc, args, self) {
  * @param {Object} environment - Environment
  * @returns {{lambda: boolean, input: *, environment: *, arguments: *, body: *}} Evaluated input data
  */
-function evaluateLambda(expr, input, environment) {
+function evaluateLambda(expr: ast.LambdaDefinitionNode, input: any, environment: Environment) {
     // make a function (closure)
     var procedure = {
         _jsonata_lambda: true,
@@ -1294,7 +1294,7 @@ function evaluateLambda(expr, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluatePartialApplication(expr, input, environment) {
+function* evaluatePartialApplication(expr: ast.FunctionInvocationNode, input: any, environment: Environment) {
     // partially apply a function
     var result;
     // evaluate the arguments
