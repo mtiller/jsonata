@@ -202,7 +202,7 @@ export const objectParserLED: LED = (state: ParserState, left: ast.ASTNode): ast
     return {
         value: "{",
         position: initialToken.position,
-        type: "binary",
+        type: "grouped-object",
         lhs: left,
         rhs: a,
     };

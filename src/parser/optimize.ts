@@ -9,6 +9,27 @@ import * as ast from "../ast";
 // following this, nodes containing '.' and '[' should be eliminated from the AST.
 export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollector): ast.ASTNode {
     switch (expr.type) {
+        case "grouped-object": {
+            // group-by
+            // LHS is a step or a predicated step
+            // RHS is the object constructor expr
+            let node = ast_optimize(expr.lhs, collect);
+            if (typeof node.group !== "undefined") {
+                throw {
+                    code: "S0210",
+                    stack: new Error().stack,
+                    position: expr.position,
+                };
+            }
+            // object constructor - process each pair
+            node.group = {
+                lhs: expr.rhs.map(pair => {
+                    return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
+                }),
+                position: expr.position,
+            };
+            return node;
+        }
         case "binary": {
             switch (expr.value) {
                 case ".":
@@ -55,15 +76,15 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                         // value of "["
 
                         let first = steps[0];
-                        let last = steps[steps.length-1];
+                        let last = steps[steps.length - 1];
 
                         // if first step is a path constructor, flag it for special handling
                         if (first.type === "array") {
                             first.consarray = true;
                         }
-                    
+
                         // if last step is an array constructor, flag ti for special handling
-                        if (last.type==="array") {
+                        if (last.type === "array") {
                             last.consarray = true;
                         }
                     }
@@ -100,27 +121,6 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     // Multiple predicates can accumulate (i.e., step.predicate may
                     // have already had elements in it before getting here).
                     step.predicate.push(ast_optimize(expr.rhs, collect));
-                    return node;
-                }
-                case "{": {
-                    // group-by
-                    // LHS is a step or a predicated step
-                    // RHS is the object constructor expr
-                    let node = ast_optimize(expr.lhs, collect);
-                    if (typeof node.group !== "undefined") {
-                        throw {
-                            code: "S0210",
-                            stack: new Error().stack,
-                            position: expr.position,
-                        };
-                    }
-                    // object constructor - process each pair
-                    node.group = {
-                        lhs: expr.rhs.map(pair => {
-                            return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
-                        }),
-                        position: expr.position,
-                    };
                     return node;
                 }
                 case ":=": {
@@ -285,13 +285,13 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
 
             // No matter which branch we take, we replace the singleton with
             // a path node with the keepSingleArray flag set.
-            if (opt.type==="path") {
+            if (opt.type === "path") {
                 // If this is a path, then we can simply set the keepSingleArray
                 // fields on it.
                 return {
                     ...opt,
                     keepSingletonArray: true,
-                }
+                };
             } else {
                 // If this isn't a path, create a length 1 path and mark it as preserving
                 // singleton arrays.
@@ -301,7 +301,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     position: opt.position,
                     steps: [opt],
                     keepSingletonArray: true,
-                }
+                };
             }
         }
         case "operator":

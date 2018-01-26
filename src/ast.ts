@@ -107,10 +107,10 @@ export interface ProxyBinaryNode extends BaseNode {
 }
 
 export interface BinaryObjectNode extends BaseNode {
-    type: "binary";
+    type: "grouped-object";
     value: "{";
     lhs: ASTNode;
-    rhs: ASTNode[]; // ASTNode[] if operator is "{"
+    rhs: ASTNode[];
 }
 
 export type BinaryNode = BinaryOperationNode | BinaryObjectNode;

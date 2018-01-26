@@ -92,7 +92,11 @@ export function* evaluate(expr: ast.ASTNode, input: any, environment: Environmen
         case "transform":
             result = evaluateTransformExpression(expr, input, environment);
             break;
+        case "grouped-object":
+            /* istanbul ignore next */
+            throw new Error("Raw AST node found in optimized tree");
     }
+    // TODO: Add exhaustion check.
 
     if (
         environment.lookup("__jsonata_async") &&
