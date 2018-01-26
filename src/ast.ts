@@ -18,6 +18,8 @@ export interface BaseNode {
     group?: { lhs: ASTNode[][], position: number };
     // This gets added to nodes to specify a list of predicates to filter on.
     predicate?: ASTNode[];
+    // TODO: Figure out exactly what this is
+    nextFunction?: any;
 }
 
 export interface WildcardNode extends BaseNode {

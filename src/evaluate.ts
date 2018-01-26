@@ -13,7 +13,11 @@ import {
 import { defineFunction } from "./signatures";
 import { parser } from './parser';
 import { functionBoolean, functionAppend, functionString, functionSort, createStandardFrame } from "./functions";
-// import * as ast from "./ast";
+import * as ast from "./ast";
+
+export interface Environment {
+    [key: string]: any;
+}
 
 /**
  * Evaluate expression against input data
@@ -22,7 +26,7 @@ import { functionBoolean, functionAppend, functionString, functionSort, createSt
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-export function* evaluate(expr, input, environment) {
+export function* evaluate(expr: ast.ASTNode, input: any, environment: Environment) {
     var result;
 
     var entryCallback = environment.lookup("__evaluate_entry");
@@ -1101,7 +1105,10 @@ function* evaluateApplyExpression(expr, input, environment) {
     var result;
 
     const standardFrame = createStandardFrame();
-    var chain = driveGenerator(parser("function($f, $g) { function($x){ $g($f($x)) } }"), null, standardFrame);
+
+    // NB - Errors are ignored here because we can be confident there will be
+    // no errors parsing this expression.
+    var chain = driveGenerator(parser("function($f, $g) { function($x){ $g($f($x)) } }", []), null, standardFrame);
 
     if (expr.rhs.type === "function") {
         // this is a function _invocation_; invoke it with lhs expression as the first argument
@@ -1364,7 +1371,9 @@ function partialApplyNativeFunction(native, args) {
     });
     var body = "function(" + sigArgs.join(", ") + "){ _ }";
 
-    var bodyAST = parser(body);
+    // NB - Errors are ignored here because we can be confident there will be
+    // no errors parsing this expression.
+    var bodyAST = parser(body, []);
 
     /* istanbul ignore else */
     if (bodyAST.type==="lambda") {
