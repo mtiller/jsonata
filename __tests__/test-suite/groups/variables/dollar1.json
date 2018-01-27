@@ -1,0 +1,17 @@
+{
+    "expr": "$",
+    "data": {
+        "price": {
+            "foo": {
+                "bar": 45
+            }
+        }
+    },
+    "result": {
+        "price": {
+            "foo": {
+                "bar": 45
+            }
+        }
+    }
+}

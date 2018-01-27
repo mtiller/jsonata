@@ -8,10 +8,11 @@
 
 var fs = require("fs");
 var path = require("path");
-var jsonata = require('../src').jsonata;
-import { timeboxExpression } from '../src/utils';
+var jsonata = require("../src").jsonata;
+let evaluate = require("../src").evaluate;
+import { timeboxExpression } from "../src/utils";
 
-let groups = fs.readdirSync(path.join(__dirname, "test-suite", "groups")).filter((name) => !name.endsWith(".json"));
+let groups = fs.readdirSync(path.join(__dirname, "test-suite", "groups")).filter(name => !name.endsWith(".json"));
 
 /**
  * Simple function to read in JSON
@@ -22,17 +23,19 @@ let groups = fs.readdirSync(path.join(__dirname, "test-suite", "groups")).filter
 function readJSON(dir, file) {
     try {
         return JSON.parse(fs.readFileSync(path.join(__dirname, dir, file)).toString());
-    } catch(e) {
-        throw new Error("Error reading "+file+" in "+dir+": "+e.message);
+    } catch (e) {
+        throw new Error("Error reading " + file + " in " + dir + ": " + e.message);
     }
 }
 
 let datasets = {};
 let datasetnames = fs.readdirSync(path.join(__dirname, "test-suite", "datasets"));
 
-datasetnames.forEach((name) => {
+datasetnames.forEach(name => {
     datasets[name.replace(".json", "")] = readJSON(path.join("test-suite", "datasets"), name);
 });
+
+const test2 = true;
 
 // This is the start of the set of tests associated with the test cases
 // found in the test-suite directory.
@@ -41,7 +44,7 @@ describe("JSONata Test Suite", () => {
     groups.forEach(group => {
         let casenames = fs.readdirSync(path.join(__dirname, "test-suite", "groups", group));
         // Read JSON file containing all cases for this group
-        let cases = casenames.map((name) => readJSON(path.join("test-suite", "groups", group), name));
+        let cases = casenames.map(name => readJSON(path.join("test-suite", "groups", group), name));
         describe("Group: " + group, () => {
             // Iterate over all cases
             for (let i = 0; i < cases.length; i++) {
@@ -49,7 +52,7 @@ describe("JSONata Test Suite", () => {
                 let testcase = cases[i];
 
                 // Create a test based on the data in this testcase
-                it(casenames[i]+": "+testcase.expr, function() {
+                test(casenames[i] + ": " + testcase.expr, function() {
                     var expr;
                     // Start by trying to compile the expression associated with this test case
                     try {
@@ -57,7 +60,7 @@ describe("JSONata Test Suite", () => {
                         // If there is a timelimit and depth limit for this case, use the
                         // `timeboxExpression` function to limit evaluation
                         if ("timelimit" in testcase && "depth" in testcase) {
-                            jest.setTimeout(testcase.timelimit*2);
+                            jest.setTimeout(testcase.timelimit * 2);
                             timeboxExpression(expr, testcase.timelimit, testcase.depth);
                         }
                     } catch (e) {
@@ -91,19 +94,29 @@ describe("JSONata Test Suite", () => {
                             // to see if the result we get from evaluation is undefined
                             let result = expr.evaluate(dataset, testcase.bindings);
                             expect(result).toBeUndefined();
+
+                            if (test2) {
+                                let res2 = evaluate(expr.ast());
+                                expect(res2).toBeUndefined();
+                            }
                         } else if ("result" in testcase) {
                             // Second is that a (defined) result was provided.  In this case,
                             // we do a deep equality check against the expected result.
                             let result = expr.evaluate(dataset, testcase.bindings);
                             expect(result).toEqual(testcase.result);
+
+                            if (test2) {
+                                let res2 = evaluate(expr.ast());
+                                expect(res2).toEqual(testcase.result);
+                            }
                         } else if ("code" in testcase) {
                             // Finally, if a `code` field was specified, we expected the
                             // evaluation to fail and include the specified code in the
                             // thrown exception.
                             let error = false;
                             try {
-                                expr.evaluate(dataset, testcase.bindings);                                
-                            } catch(e) {
+                                expr.evaluate(dataset, testcase.bindings);
+                            } catch (e) {
                                 expect(e.code).toEqual(testcase.code);
                                 error = true;
                             }
@@ -134,17 +147,23 @@ function resolveDataset(datasets, testcase) {
     if ("data" in testcase) {
         return testcase.data;
     }
-    if (testcase.dataset===null) {
+    if (testcase.dataset === null) {
         return undefined;
     }
     if (datasets.hasOwnProperty(testcase.dataset)) {
         return datasets[testcase.dataset];
     }
-    throw new Error("Unable to find dataset "+testcase.dataset+" among known datasets, are you sure the datasets directory has a file named "+testcase.dataset+".json?");
+    throw new Error(
+        "Unable to find dataset " +
+            testcase.dataset +
+            " among known datasets, are you sure the datasets directory has a file named " +
+            testcase.dataset +
+            ".json?",
+    );
 }
 
 describe("This is a jest test", () => {
     test("An actual test", async () => {
         return 5;
-    })
-})
+    });
+});

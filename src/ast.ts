@@ -50,6 +50,7 @@ export interface ErrorNode extends BaseNode {
 
 export interface VariableNode extends BaseNode {
     type: "variable";
+    value: string;
 }
 
 export interface NameNode extends BaseNode {
