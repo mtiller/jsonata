@@ -5,7 +5,7 @@ import { Box, JBox, ubox } from './box';
 
 var debug = require('debug');
 const evalDebug = debug("jsonata:eval");
-evalDebug.enabled = true;
+evalDebug.enabled = false;
 
 export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSValue {
     evalDebug("expr = %j", expr);
