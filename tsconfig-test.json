@@ -1,8 +1,5 @@
 {
     "extends": "./tsconfig",
     "compilerOptions": {
-        "sourceMap": true,
-        "outDir": "./testing", // Since we never compile with this tsconfig, the name here isn't used.
-        "mapRoot": "./testing"
     }
 }
