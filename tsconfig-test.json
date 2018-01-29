@@ -1,12 +1,8 @@
 {
-    "extends": "./tsconfig",
+    "extends": "./tsconfig-es5",
     "compilerOptions": {
-        "target": "es6",
-        "module": "commonjs",
         "sourceMap": true,
-        "inlineSourceMap": true,
-        "outDir": "./testing",
-        "downlevelIteration": true,
-        "mapRoot": "testing'"
+        "outDir": "./es5",
+        "mapRoot": "./es5"
     }
 }

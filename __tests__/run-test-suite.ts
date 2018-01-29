@@ -8,9 +8,7 @@
 
 var fs = require("fs");
 var path = require("path");
-var jsonata = require("../src").jsonata;
-let evaluate = require("../src").evaluate;
-import { timeboxExpression } from "../src/utils";
+import { jsonata, eval2, timeboxExpression } from '../src';
 
 let groups = fs.readdirSync(path.join(__dirname, "test-suite", "groups")).filter(name => !name.endsWith(".json"));
 
@@ -35,7 +33,7 @@ datasetnames.forEach(name => {
     datasets[name.replace(".json", "")] = readJSON(path.join("test-suite", "datasets"), name);
 });
 
-const test2 = true;
+const test2 = false;
 
 // This is the start of the set of tests associated with the test cases
 // found in the test-suite directory.
@@ -96,7 +94,7 @@ describe("JSONata Test Suite", () => {
                             expect(result).toBeUndefined();
 
                             if (test2) {
-                                let res2 = evaluate(expr.ast());
+                                let res2 = eval2(expr.ast(), dataset, testcase.bindings);
                                 expect(res2).toBeUndefined();
                             }
                         } else if ("result" in testcase) {
@@ -106,7 +104,7 @@ describe("JSONata Test Suite", () => {
                             expect(result).toEqual(testcase.result);
 
                             if (test2) {
-                                let res2 = evaluate(expr.ast());
+                                let res2 = eval2(expr.ast(), dataset, testcase.bindings);
                                 expect(res2).toEqual(testcase.result);
                             }
                         } else if ("code" in testcase) {

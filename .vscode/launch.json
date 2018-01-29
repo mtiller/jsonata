@@ -19,9 +19,8 @@
             ],
             "trace": "sm",
             "cwd": "${workspaceRoot}",
-            // "protocol": "inspector",
             "sourceMaps": true,
-            "outFiles": ["${workspaceRoot}/testing/**/*.js"],
+            "outFiles": ["${workspaceRoot}/es5/**/*.js"],
         }
     ]
 }
