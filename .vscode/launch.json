@@ -20,7 +20,7 @@
             "trace": "sm",
             "cwd": "${workspaceRoot}",
             "sourceMaps": true,
-            "outFiles": ["${workspaceRoot}/es5/**/*.js"],
+            // "outFiles": ["${workspaceRoot}/es5/**/*.js"],
         }
     ]
 }
