@@ -9,14 +9,10 @@
             "request": "launch",
             "name": "Debug Tests",
             "program": "${workspaceRoot}/node_modules/.bin/jest",
-            "args": [
-                "--runInBand",
-                "--collectCoverage",
-                "false"
-            ],
+            "args": ["--runInBand", "--collectCoverage", "false"],
             // "trace": "sm",
             "cwd": "${workspaceRoot}",
-            "sourceMaps": true,
+            "sourceMaps": true
             // NB - Don't use outFiles.  If there are actual files at these locations (with source maps) it will confuse
             // Visual Studio Code.
             // "outFiles": ["${workspaceRoot}/es5/**/*.js"],
@@ -26,16 +22,16 @@
             "request": "launch",
             "name": "Debug Tests Matching...",
             "program": "${workspaceRoot}/node_modules/.bin/jest",
-            "args": [
-                "--runInBand",
-                "--collectCoverage",
-                "false",
-                "-t",
-                "variables"
-            ],
+            "args": ["--runInBand", "--collectCoverage", "false", "-t", "variables"],
             "cwd": "${workspaceRoot}",
-            "sourceMaps": true,
+            "sourceMaps": true
+        },
+        {
+            "name": "Attach to Jest",
+            "type": "node",
+            "request": "attach",
+            "restart": true,
+            "port": 9229
         }
-
     ]
 }

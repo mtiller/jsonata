@@ -25,3 +25,18 @@ I've seen issues where you set a breakpoint on a given line and the debugger doe
 But you set it on another line close by and it does.  I have to assume this has something
 to do with how it maps back and forth between the TypeScript code and the generated 
 Javascript code.  I'm not sure what to do about it except for trying different lines.
+
+## Debugging while watching for changes
+
+If you invoke `jest` with the following command:
+
+```
+$ yarn jest:debug --watchAll
+```
+
+It will run `jest` and watch for changes to any files in the project.  In addition, it will
+open a port that will allow the debugger to attach to the running `jest` process.  This can
+be useful because it runs `jest` constantly as you edit the code and if you run into a case
+you wish to debug you can simply go to the debug pane and select the "Attach to Jest" option
+from the set of available configurations.  Once the debugger is connected, `jest` will stop
+at any breakpoints you have specified.
