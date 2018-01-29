@@ -8,19 +8,34 @@
             "type": "node",
             "request": "launch",
             "name": "Debug Tests",
-            // "preLaunchTask": "build",
             "program": "${workspaceRoot}/node_modules/.bin/jest",
             "args": [
-                //"--config",
-                //"${workspaceRoot}\\jest.json",
                 "--runInBand",
                 "--collectCoverage",
                 "false"
             ],
-            "trace": "sm",
+            // "trace": "sm",
             "cwd": "${workspaceRoot}",
             "sourceMaps": true,
+            // NB - Don't use outFiles.  If there are actual files at these locations (with source maps) it will confuse
+            // Visual Studio Code.
             // "outFiles": ["${workspaceRoot}/es5/**/*.js"],
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Tests Matching...",
+            "program": "${workspaceRoot}/node_modules/.bin/jest",
+            "args": [
+                "--runInBand",
+                "--collectCoverage",
+                "false",
+                "-t",
+                "variables"
+            ],
+            "cwd": "${workspaceRoot}",
+            "sourceMaps": true,
         }
+
     ]
 }

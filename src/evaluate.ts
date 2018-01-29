@@ -93,7 +93,11 @@ export function* evaluate(expr: ast.ASTNode, input: any, environment: Environmen
             break;
         case "group":
             result = yield* evaluate(expr.lhs, input, environment);
-            result = yield* evaluateGroupExpression({ lhs: expr.groupings, position: expr.position }, result, environment);
+            result = yield* evaluateGroupExpression(
+                { lhs: expr.groupings, position: expr.position },
+                result,
+                environment,
+            );
             break;
         case "transform":
             result = evaluateTransformExpression(expr, input, environment);
@@ -163,8 +167,8 @@ const verbose = false;
  */
 function* evaluatePath(expr: ast.PathNode, input: any, environment: Environment) {
     if (verbose) {
-    console.log("Evaluating path: "+JSON.stringify(expr));
-    console.log("  Input = ", JSON.stringify(input));
+        console.log("Evaluating path: " + JSON.stringify(expr));
+        console.log("  Input = ", JSON.stringify(input));
     }
     let inputSequence: any[];
     // expr is an array of steps
@@ -181,7 +185,7 @@ function* evaluatePath(expr: ast.PathNode, input: any, environment: Environment)
         if (verbose) console.log("    Not an array and step isn't a variable, creating sequence");
         inputSequence = createSequence(input);
     }
-    if (verbose) console.log("  Initial input Sequence = "+JSON.stringify(inputSequence));
+    if (verbose) console.log("  Initial input Sequence = " + JSON.stringify(inputSequence));
 
     let resultSequence: Sequence<any>;
 
@@ -189,16 +193,16 @@ function* evaluatePath(expr: ast.PathNode, input: any, environment: Environment)
     for (var ii = 0; ii < expr.steps.length; ii++) {
         var step = expr.steps[ii];
 
-        if (verbose) console.log("  Processing step: "+JSON.stringify(step));
+        if (verbose) console.log("  Processing step: " + JSON.stringify(step));
         // if the first step is an explicit array constructor, then just evaluate that (i.e. don't iterate over a context array)
         if (ii === 0 && step.type === "array" && step.consarray) {
-            if (verbose) console.log("    Evaluating expr with input = "+JSON.stringify(inputSequence));
+            if (verbose) console.log("    Evaluating expr with input = " + JSON.stringify(inputSequence));
             resultSequence = yield* evaluate(step, inputSequence, environment);
         } else {
-            if (verbose) console.log("    Evaluating step with input = "+JSON.stringify(inputSequence));
+            if (verbose) console.log("    Evaluating step with input = " + JSON.stringify(inputSequence));
             resultSequence = yield* evaluateStep(step, inputSequence, environment, ii === expr.steps.length - 1);
         }
-        if (verbose) console.log("  Result of step was: "+JSON.stringify(resultSequence));
+        if (verbose) console.log("  Result of step was: " + JSON.stringify(resultSequence));
 
         if (typeof resultSequence === "undefined" || resultSequence.length === 0) {
             break;
@@ -228,14 +232,14 @@ function* evaluateStep(expr, input, environment, lastStep) {
     var result = createSequence();
 
     for (var ii = 0; ii < input.length; ii++) {
-        if (verbose) console.log("        Evaluating step on input element "+ii+": "+JSON.stringify(input[ii]));
+        if (verbose) console.log("        Evaluating step on input element " + ii + ": " + JSON.stringify(input[ii]));
         var res = yield* evaluate(expr, input[ii], environment);
         if (typeof res !== "undefined") {
             result.push(res);
         }
-        if (verbose) console.log("          Result was: "+JSON.stringify(res));
+        if (verbose) console.log("          Result was: " + JSON.stringify(res));
     }
-    if (verbose) console.log("        Result was: "+JSON.stringify(result));
+    if (verbose) console.log("        Result was: " + JSON.stringify(result));
 
     var resultSequence = createSequence();
     if (lastStep && result.length === 1 && Array.isArray(result[0]) && !result[0].sequence) {
@@ -253,7 +257,7 @@ function* evaluateStep(expr, input, environment, lastStep) {
             }
         });
     }
-    if (verbose) console.log("        Result sequence was: "+JSON.stringify(resultSequence));
+    if (verbose) console.log("        Result sequence was: " + JSON.stringify(resultSequence));
 
     return resultSequence;
 }
@@ -750,7 +754,11 @@ function evaluateStringConcat(lhs, rhs) {
  * @param {Object} environment - Environment
  * @returns {{}} Evaluated input data
  */
-function* evaluateGroupExpression(grouping: { lhs: ast.ASTNode[][], position: number }, input: any, environment: Environment) {
+function* evaluateGroupExpression(
+    grouping: { lhs: ast.ASTNode[][]; position: number },
+    input: any,
+    environment: Environment,
+) {
     var result = {};
     var groups = {};
     // group the input sequence by 'key' expression
