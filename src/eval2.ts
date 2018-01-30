@@ -4,24 +4,37 @@ import { JEnv, JSValue } from './environment';
 import { Box, JBox, ubox } from './box';
 
 export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSValue {
-    let values = input == undefined ? undefined : (Array.isArray(input) ? (input as JSValue[]) : [input]);
-    let box: Box<JSValue> = { values: values, preserveSingleton: false };
-    let result = doEval(expr, box, environment, 0);
-    if (result.values==undefined) return undefined;
-    if (result.values.length==1 && !result.preserveSingleton) return result.values[0];
-    return result.values;
+    let box = boxValue(input);
+    let result = doEval(expr, box, environment);
+    return unbox(result);
 }
 
-function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv, depth: number): JBox {
+function boxValue(input: JSValue): JBox {
+    let values = input == undefined ? undefined : (Array.isArray(input) ? (input as JSValue[]) : [input]);
+    let box: Box<JSValue> = { values: values, preserveSingleton: false }; 
+    return box;  
+}
+
+function unbox(result: JBox): JSValue {
+    if (result.values==undefined) return undefined;
+    if (result.values.length==1 && !result.preserveSingleton) return result.values[0];
+    return result.values;    
+}
+
+function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv): JBox {
     switch(expr.type) {
         case "variable": {
             return evaluateVariable(expr, input, environment);
         }
-        case "path":
+        case "path": {
+            return evaluatePath(expr, input, environment);
+        }
         case "binary":
         case "array":
         case "unary":
-        case "name":
+        case "name": {
+            return evaluateName(expr, input, environment);
+        }
         case "literal":
         case "wildcard":
         case "descendant":
@@ -61,7 +74,7 @@ function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv, depth: number
     }
 }
 
-function evaluateVariable(expr: ast.VariableNode, input: Box<JSValue>, environment: JEnv): JBox {
+function evaluateVariable(expr: ast.VariableNode, input: JBox, environment: JEnv): JBox {
     /* Get the variable name */
     const varname = expr.value;
 
@@ -79,4 +92,27 @@ function evaluateVariable(expr: ast.VariableNode, input: Box<JSValue>, environme
         values: [result],
         preserveSingleton: true,
     }
+}
+
+function evaluatePath(expr: ast.PathNode, input: JBox, environment: JEnv): JBox {
+    if (input.values==undefined) return undefined;
+    let ret = input.values.map((elem) => unbox(applySteps(expr.steps, boxValue(elem), environment)));
+    return boxValue(ret);
+}
+
+function applySteps(steps: ast.ASTNode[], elem: JBox, environment: JEnv): JBox {
+    let result = elem;
+    steps.forEach((step) => result = doEval(step, result, environment));
+    return result;
+}
+
+function evaluateName(expr: ast.NameNode, input: JBox, environment: JEnv): JBox {
+    if (input.values==undefined) return undefined;
+    return boxmap(input, (elem) => elem[expr.value]);
+}
+
+function boxmap(box: JBox, f: (v: JSValue) => JSValue): JBox {
+    if (box.values==undefined) return { ...box };
+    let vals = box.values.map((v) => f(v));
+    return { ...box, values: vals };
 }
