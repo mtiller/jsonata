@@ -1,0 +1,19 @@
+{
+    "expr": "$.foo.blah",
+    "dataset": "dataset0",
+    "result": [
+        {
+            "baz": {
+                "fud": "hello"
+            }
+        },
+        {
+            "baz": {
+                "fud": "world"
+            }
+        },
+        {
+            "bazz": "gotcha"
+        }
+    ]
+}

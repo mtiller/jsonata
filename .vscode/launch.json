@@ -22,7 +22,7 @@
             "request": "launch",
             "name": "Debug Tests Matching...",
             "program": "${workspaceRoot}/node_modules/.bin/jest",
-            "args": ["--runInBand", "--collectCoverage", "false", "-t", "variables"],
+            "args": ["--runInBand", "--collectCoverage", "false", "-t", "examples"],
             "cwd": "${workspaceRoot}",
             "sourceMaps": true
         },

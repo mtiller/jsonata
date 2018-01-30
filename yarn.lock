@@ -16,10 +16,6 @@
   dependencies:
     acorn "^5.2.1"
 
-"@types/debug@^0.0.30":
-  version "0.0.30"
-  resolved "https://registry.npmjs.org/@types/debug/-/debug-0.0.30.tgz#dc1e40f7af3b9c815013a7860e6252f6352a84df"
-
 "@types/jest@^22.0.1":
   version "22.0.1"
   resolved "https://registry.npmjs.org/@types/jest/-/jest-22.0.1.tgz#6370a6d60cce3845e4cd5d00bf65f654264685bc"

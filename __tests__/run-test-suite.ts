@@ -33,7 +33,7 @@ datasetnames.forEach(name => {
     datasets[name.replace(".json", "")] = readJSON(path.join("test-suite", "datasets"), name);
 });
 
-const test2 = false;
+const test2 = true;
 
 // This is the start of the set of tests associated with the test cases
 // found in the test-suite directory.

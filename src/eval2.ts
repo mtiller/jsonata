@@ -3,21 +3,12 @@ import { unexpectedValue } from './utils';
 import { JEnv, JSValue } from './environment';
 import { Box, JBox, ubox } from './box';
 
-var debug = require('debug');
-const evalDebug = debug("jsonata:eval");
-evalDebug.enabled = false;
-
 export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSValue {
-    evalDebug("expr = %j", expr);
-    evalDebug("input = %j", input);
     let values = input == undefined ? undefined : (Array.isArray(input) ? (input as JSValue[]) : [input]);
     let box: Box<JSValue> = { values: values, preserveSingleton: false };
-    evalDebug("box = %j", box);
     let result = doEval(expr, box, environment, 0);
-    evalDebug("result = %j", result);
     if (result.values==undefined) return undefined;
     if (result.values.length==1 && !result.preserveSingleton) return result.values[0];
-    evalDebug("returning: %j", result.values);
     return result.values;
 }
 
