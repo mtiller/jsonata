@@ -29,12 +29,12 @@ function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv): JBox {
         case "path": {
             return evaluatePath(expr, input, environment);
         }
-        case "binary":
-        case "array":
-        case "unary":
         case "name": {
             return evaluateName(expr, input, environment);
         }
+        case "binary":
+        case "array":
+        case "unary":
         case "literal":
         case "wildcard":
         case "descendant":
