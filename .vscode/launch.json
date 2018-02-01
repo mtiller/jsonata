@@ -5,33 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug Jest Tests",
             "type": "node",
             "request": "launch",
-            "name": "Debug Tests",
-            "program": "${workspaceRoot}/node_modules/.bin/jest",
-            "args": ["--runInBand", "--collectCoverage", "false"],
-            // "trace": "sm",
-            "cwd": "${workspaceRoot}",
-            "sourceMaps": true
-            // NB - Don't use outFiles.  If there are actual files at these locations (with source maps) it will confuse
-            // Visual Studio Code.
-            // "outFiles": ["${workspaceRoot}/es5/**/*.js"],
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Debug Tests Matching...",
-            "program": "${workspaceRoot}/node_modules/.bin/jest",
-            "args": ["--runInBand", "--collectCoverage", "false", "-t", "examples"],
-            "cwd": "${workspaceRoot}",
-            "sourceMaps": true
-        },
-        {
-            "name": "Attach to Jest",
-            "type": "node",
-            "request": "attach",
-            "restart": true,
-            "port": 9229
+            "runtimeArgs": ["--inspect-brk", "${workspaceRoot}/node_modules/.bin/jest", "--runInBand"],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
         }
     ]
 }

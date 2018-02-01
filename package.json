@@ -20,7 +20,7 @@
     "minify": "uglifyjs dist/jsonata-browser.js -o dist/jsonata.min.js --compress --mangle",
     "compile-es2015": "tsc -p tsconfig-es2015.json",
     "compile-es5": "tsc -p tsconfig-es5.json",
-    "compile": "npm run compile-es2015 && npm run compile-es5",
+    "compile": "tsc",
     "doc": "jsdoc --configure jsdoc.json .",
     "cover": "jest --coverage",
     "spec": "spec-md ./specification/SPEC.md > ./specification/SPEC.html",
@@ -40,7 +40,7 @@
     "path"
   ],
   "devDependencies": {
-    "@types/jest": "^22.0.1",
+    "@types/jest": "^22.1.1",
     "@types/node": "^9.3.0",
     "browserify": "^15.2.0",
     "chai": "^4.1.2",
@@ -57,44 +57,11 @@
     "request": "^2.81.0",
     "rollup": "^0.54.1",
     "spec-md": "^0.5.1",
-    "ts-jest": "^22.0.1",
-    "typescript": "^2.6.2",
+    "ts-jest": "^22.0.2",
+    "typescript": "^2.7.1",
     "uglify-es": "^3.0.20"
   },
   "engines": {
     "node": ">= 4"
-  },
-  "jest": {
-    "globals": {
-      "ts-jest": {
-        "skipBabel": false,
-        "tsConfigFile": "tsconfig-test.json"
-      }
-    },
-    "coverageReporters": [
-      "json",
-      "lcov",
-      "text"
-    ],
-    "transform": {
-      "^.+\\.tsx?$": "ts-jest"
-    },
-    "collectCoverage": true,
-    "mapCoverage": true,
-    "testRegex": "/__tests__/.*\\.(ts|tsx)$",
-    "testPathIgnorePatterns": [
-      "/node_modules/",
-      "/lib/",
-      "/es2015",
-      "/es5"
-    ],
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js",
-      "jsx",
-      "json",
-      "node"
-    ]
   }
 }

@@ -9,4 +9,5 @@ npm-debug.log
 es2015/
 es5/
 dist/
+lib/
 specification/spec.html
