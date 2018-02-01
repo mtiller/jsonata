@@ -258,6 +258,7 @@ Number.isInteger =
         return typeof value === "number" && isFinite(value) && Math.floor(value) === value;
     };
 
+/* istanbul ignore next */
 export function unexpectedValue<T>(value: T, exp: never, msg: (v: T) => string): never {
     throw new Error(msg(value));
 }

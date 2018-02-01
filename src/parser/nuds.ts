@@ -73,7 +73,7 @@ export const terminalNUD: NUD = (state: ParserState): ast.TerminalNode => {
         default:
             /* istanbul ignore next */
             if (state.symbol.id !== "(end)") {
-                throw new Error("Unexpected terminal: " + JSON.stringify(self));
+                throw new Error("Unexpected terminal: " + JSON.stringify(state.symbol));
             }
             return {
                 type: "end",

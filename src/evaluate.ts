@@ -157,7 +157,6 @@ export function* evaluate(expr: ast.ASTNode, input: any, environment: Environmen
     return result;
 }
 
-const verbose = false;
 /**
  * Evaluate path expression against input data
  * @param {Object} expr - JSONata expression
@@ -166,26 +165,18 @@ const verbose = false;
  * @returns {*} Evaluated input data
  */
 function* evaluatePath(expr: ast.PathNode, input: any, environment: Environment) {
-    if (verbose) {
-        console.log("Evaluating path: " + JSON.stringify(expr));
-        console.log("  Input = ", JSON.stringify(input));
-    }
     let inputSequence: any[];
     // expr is an array of steps
     // if the first step is a variable reference ($...), including root reference ($$),
     //   then the path is absolute rather than relative
     if (expr.steps[0].type === "variable") {
-        if (verbose) console.log("    Step 0 is variable, creating sequence");
         inputSequence = createSequence(input); // dummy singleton sequence for first (absolute) step
     } else if (Array.isArray(input)) {
-        if (verbose) console.log("    Input is an array, already a sequence");
         inputSequence = input;
     } else {
         // if input is not an array, make it so
-        if (verbose) console.log("    Not an array and step isn't a variable, creating sequence");
         inputSequence = createSequence(input);
     }
-    if (verbose) console.log("  Initial input Sequence = " + JSON.stringify(inputSequence));
 
     let resultSequence: Sequence<any>;
 
@@ -193,16 +184,12 @@ function* evaluatePath(expr: ast.PathNode, input: any, environment: Environment)
     for (var ii = 0; ii < expr.steps.length; ii++) {
         var step = expr.steps[ii];
 
-        if (verbose) console.log("  Processing step: " + JSON.stringify(step));
         // if the first step is an explicit array constructor, then just evaluate that (i.e. don't iterate over a context array)
         if (ii === 0 && step.type === "array" && step.consarray) {
-            if (verbose) console.log("    Evaluating expr with input = " + JSON.stringify(inputSequence));
             resultSequence = yield* evaluate(step, inputSequence, environment);
         } else {
-            if (verbose) console.log("    Evaluating step with input = " + JSON.stringify(inputSequence));
             resultSequence = yield* evaluateStep(step, inputSequence, environment, ii === expr.steps.length - 1);
         }
-        if (verbose) console.log("  Result of step was: " + JSON.stringify(resultSequence));
 
         if (typeof resultSequence === "undefined" || resultSequence.length === 0) {
             break;
@@ -211,10 +198,7 @@ function* evaluatePath(expr: ast.PathNode, input: any, environment: Environment)
     }
 
     if (expr.keepSingletonArray) {
-        if (verbose) console.log("Done, keeping singletons as arrays");
         resultSequence.keepSingleton = true;
-    } else {
-        if (verbose) console.log("Done");
     }
 
     return resultSequence;
@@ -232,14 +216,11 @@ function* evaluateStep(expr, input, environment, lastStep) {
     var result = createSequence();
 
     for (var ii = 0; ii < input.length; ii++) {
-        if (verbose) console.log("        Evaluating step on input element " + ii + ": " + JSON.stringify(input[ii]));
         var res = yield* evaluate(expr, input[ii], environment);
         if (typeof res !== "undefined") {
             result.push(res);
         }
-        if (verbose) console.log("          Result was: " + JSON.stringify(res));
     }
-    if (verbose) console.log("        Result was: " + JSON.stringify(result));
 
     var resultSequence = createSequence();
     if (lastStep && result.length === 1 && Array.isArray(result[0]) && !result[0].sequence) {
@@ -257,7 +238,6 @@ function* evaluateStep(expr, input, environment, lastStep) {
             }
         });
     }
-    if (verbose) console.log("        Result sequence was: " + JSON.stringify(resultSequence));
 
     return resultSequence;
 }
