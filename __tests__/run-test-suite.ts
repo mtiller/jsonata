@@ -8,7 +8,7 @@
 
 var fs = require("fs");
 var path = require("path");
-import { jsonata, seval, JEnv, timeboxExpression } from '../src';
+import { jsonata, JEnv, eval2, timeboxExpression } from '../src';
 
 let groups = fs.readdirSync(path.join(__dirname, "test-suite", "groups")).filter(name => !name.endsWith(".json"));
 
@@ -48,6 +48,8 @@ describe("JSONata Test Suite", () => {
             for (let i = 0; i < cases.length; i++) {
                 // Extract the current test case of interest
                 let testcase = cases[i];
+                let env = new JEnv();
+                env.merge(testcase.bindings);
 
                 // Create a test based on the data in this testcase
                 test(casenames[i] + ": " + testcase.expr, function() {
@@ -96,7 +98,7 @@ describe("JSONata Test Suite", () => {
                             expect(result).toBeUndefined();
 
                             if (test2) {
-                                let res2 = expr.seval(dataset, testcase.bindings);
+                                let res2 = eval2(expr.ast(), dataset, env);
                                 expect(res2).toBeUndefined();
                             }
                         } else if ("result" in testcase) {
@@ -106,7 +108,7 @@ describe("JSONata Test Suite", () => {
                             expect(result).toEqual(testcase.result);
 
                             if (test2) {
-                                let res2 = expr.seval(dataset, testcase.bindings);
+                                let res2 = eval2(expr.ast(), dataset, env);
                                 //let res2 = eval2(expr.ast(), dataset, env);
                                 expect(res2).toEqual(testcase.result);
                             }
@@ -125,7 +127,7 @@ describe("JSONata Test Suite", () => {
                             if (test2) {
                                 error = false;
                                 try {
-                                    let res2 = expr.seval(dataset, testcase.bindings);
+                                    let res2 = eval2(expr.ast(), dataset, env);
                                     expect(res2).toBeUndefined();
                                 } catch (e) {
                                     expect(e.code).toEqual(testcase.code);

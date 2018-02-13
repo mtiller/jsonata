@@ -1,10 +1,10 @@
-import { parser } from './parser';
-import { lookupMessage, createFrame } from './utils';
-import { evaluate } from './evaluate';
-import { seval } from './seval';
-import { defineFunction } from './signatures';
-import { createStandardFrame } from './functions';
-import { ASTNode } from './ast';
+import { parser } from "./parser";
+import { lookupMessage, createFrame } from "./utils";
+import { evaluate } from "./evaluate";
+import { seval } from "./seval";
+import { defineFunction } from "./signatures";
+import { createStandardFrame } from "./functions";
+import { ASTNode } from "./ast";
 
 export interface Options {
     recover: boolean;
@@ -60,7 +60,7 @@ export function jsonata(expr: string, options?: Partial<Options>): Expression {
     return {
         evaluate: function(input, bindings, callback) {
             // throw if the expression compiled with syntax errors
-            if (typeof errors !== "undefined" && errors.length>0) {
+            if (typeof errors !== "undefined" && errors.length > 0) {
                 var err: any = {
                     code: "S0500",
                     position: 0,
@@ -120,9 +120,9 @@ export function jsonata(expr: string, options?: Partial<Options>): Expression {
                 }
             }
         },
-        seval: function(input, bindings, callback) {
+        seval: function(input, bindings) {
             // throw if the expression compiled with syntax errors
-            if (typeof errors !== "undefined" && errors.length>0) {
+            if (typeof errors !== "undefined" && errors.length > 0) {
                 var err: any = {
                     code: "S0500",
                     position: 0,
@@ -148,38 +148,13 @@ export function jsonata(expr: string, options?: Partial<Options>): Expression {
             // the $now() and $millis() functions will return this value - whenever it is called
             timestamp = new Date();
 
-            var result, it;
-            // if a callback function is supplied, then drive the generator in a promise chain
-            if (typeof callback === "function") {
-                exec_env.bind("__jsonata_async", true);
-                var thenHandler = function(response) {
-                    result = it.next(response);
-                    if (result.done) {
-                        callback(null, result.value);
-                    } else {
-                        result.value.then(thenHandler).catch(function(err) {
-                            err.message = lookupMessage(err);
-                            callback(err, null);
-                        });
-                    }
-                };
-                it = seval(ast, input, exec_env);
-                result = it.next();
-                result.value.then(thenHandler);
-            } else {
-                // no callback function - drive the generator to completion synchronously
-                try {
-                    it = seval(ast, input, exec_env);
-                    result = it.next();
-                    while (!result.done) {
-                        result = it.next(result.value);
-                    }
-                    return result.value;
-                } catch (err) {
-                    // insert error message into structure
-                    err.message = lookupMessage(err);
-                    throw err;
-                }
+            // no callback function - drive the generator to completion synchronously
+            try {
+                return seval(ast, input, exec_env);
+            } catch (err) {
+                // insert error message into structure
+                err.message = lookupMessage(err);
+                throw err;
             }
         },
         assign: function(name, value) {

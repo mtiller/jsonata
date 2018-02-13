@@ -28,7 +28,7 @@ export type Sequence<T> = Array<T> & { keepSingleton: boolean };
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-export function* seval(expr: ast.ASTNode, input: any, environment: Environment) {
+export function seval(expr: ast.ASTNode, input: any, environment: Environment) {
     var result;
 
     var entryCallback = environment.lookup("__evaluate_entry");
@@ -38,16 +38,16 @@ export function* seval(expr: ast.ASTNode, input: any, environment: Environment) 
 
     switch (expr.type) {
         case "path":
-            result = yield* evaluatePath(expr, input, environment);
+            result =  evaluatePath(expr, input, environment);
             break;
         case "binary":
-            result = yield* evaluateBinary(expr, input, environment);
+            result =  evaluateBinary(expr, input, environment);
             break;
         case "array":
-            result = yield* evaluateArray(expr, input, environment);
+            result =  evaluateArray(expr, input, environment);
             break;
         case "unary":
-            result = yield* evaluateUnary(expr, input, environment);
+            result =  evaluateUnary(expr, input, environment);
             break;
         case "name":
             result = evaluateName(expr, input, environment);
@@ -62,19 +62,19 @@ export function* seval(expr: ast.ASTNode, input: any, environment: Environment) 
             result = evaluateDescendants(expr, input, environment);
             break;
         case "condition":
-            result = yield* evaluateCondition(expr, input, environment);
+            result =  evaluateCondition(expr, input, environment);
             break;
         case "block":
-            result = yield* evaluateBlock(expr, input, environment);
+            result =  evaluateBlock(expr, input, environment);
             break;
         case "bind":
-            result = yield* evaluateBindExpression(expr, input, environment);
+            result =  evaluateBindExpression(expr, input, environment);
             break;
         case "regex":
             result = evaluateRegex(expr, input, environment);
             break;
         case "function":
-            result = yield* evaluateFunction(expr, input, environment);
+            result =  evaluateFunction(expr, input, environment);
             break;
         case "variable":
             result = evaluateVariable(expr, input, environment);
@@ -83,17 +83,17 @@ export function* seval(expr: ast.ASTNode, input: any, environment: Environment) 
             result = evaluateLambda(expr, input, environment);
             break;
         case "partial":
-            result = yield* evaluatePartialApplication(expr, input, environment);
+            result =  evaluatePartialApplication(expr, input, environment);
             break;
         case "apply":
-            result = yield* evaluateApplyExpression(expr, input, environment);
+            result =  evaluateApplyExpression(expr, input, environment);
             break;
         case "sort":
-            result = yield* evaluateSortExpression(expr, input, environment);
+            result =  evaluateSortExpression(expr, input, environment);
             break;
         case "group":
-            result = yield* seval(expr.lhs, input, environment);
-            result = yield* evaluateGroupExpression(
+            result =  seval(expr.lhs, input, environment);
+            result =  evaluateGroupExpression(
                 { lhs: expr.groupings, position: expr.position },
                 result,
                 environment,
@@ -138,11 +138,11 @@ export function* seval(expr: ast.ASTNode, input: any, environment: Environment) 
         // although this is a 'thenable', it is chaining a different function
         // so don't yield since yielding will trigger the .then()
     } else {
-        result = yield result;
+        result = result;
     }
 
     if (expr.hasOwnProperty("predicate")) {
-        result = yield* applyPredicates(expr.predicate, result, environment);
+        result =  applyPredicates(expr.predicate, result, environment);
     }
 
     var exitCallback = environment.lookup("__evaluate_exit");
@@ -164,7 +164,7 @@ export function* seval(expr: ast.ASTNode, input: any, environment: Environment) 
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluatePath(expr: ast.PathNode, input: any, environment: Environment) {
+function evaluatePath(expr: ast.PathNode, input: any, environment: Environment) {
     let inputSequence: any[];
     // expr is an array of steps
     // if the first step is a variable reference ($...), including root reference ($$),
@@ -186,9 +186,9 @@ function* evaluatePath(expr: ast.PathNode, input: any, environment: Environment)
 
         // if the first step is an explicit array constructor, then just evaluate that (i.e. don't iterate over a context array)
         if (ii === 0 && step.type === "array" && step.consarray) {
-            resultSequence = yield* seval(step, inputSequence, environment);
+            resultSequence =  seval(step, inputSequence, environment);
         } else {
-            resultSequence = yield* evaluateStep(step, inputSequence, environment, ii === expr.steps.length - 1);
+            resultSequence =  evaluateStep(step, inputSequence, environment, ii === expr.steps.length - 1);
         }
 
         if (typeof resultSequence === "undefined" || resultSequence.length === 0) {
@@ -212,11 +212,11 @@ function* evaluatePath(expr: ast.PathNode, input: any, environment: Environment)
  * @param {boolean} lastStep - flag the last step in a path
  * @returns {*} Evaluated input data
  */
-function* evaluateStep(expr, input, environment, lastStep) {
+function evaluateStep(expr, input, environment, lastStep) {
     var result = createSequence();
 
     for (var ii = 0; ii < input.length; ii++) {
-        var res = yield* seval(expr, input[ii], environment);
+        var res =  seval(expr, input[ii], environment);
         if (typeof res !== "undefined") {
             result.push(res);
         }
@@ -249,7 +249,7 @@ function* evaluateStep(expr, input, environment, lastStep) {
  * @param {Object} environment - Environment
  * @returns {*} Result after applying predicates
  */
-function* applyPredicates(predicates, input, environment) {
+function applyPredicates(predicates, input, environment) {
     var inputSequence = input;
     // lhs potentially holds an array
     // we want to iterate over the array, and only keep the items that are
@@ -278,7 +278,7 @@ function* applyPredicates(predicates, input, environment) {
             }
             results = inputSequence[index];
         } else {
-            results = yield* evaluateFilter(predicate, inputSequence, environment);
+            results =  evaluateFilter(predicate, inputSequence, environment);
         }
         inputSequence = results;
     }
@@ -292,11 +292,11 @@ function* applyPredicates(predicates, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} Result after applying predicates
  */
-function* evaluateFilter(predicate, input, environment) {
+function evaluateFilter(predicate, input, environment) {
     var results = createSequence();
     for (var index = 0; index < input.length; index++) {
         var item = input[index];
-        var res = yield* seval(predicate, item, environment);
+        var res =  seval(predicate, item, environment);
         if (isNumeric(res)) {
             res = [res];
         }
@@ -329,10 +329,10 @@ function* evaluateFilter(predicate, input, environment) {
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateBinary(expr: ast.BinaryOperationNode, input: any, environment: Environment) {
+function evaluateBinary(expr: ast.BinaryOperationNode, input: any, environment: Environment) {
     var result;
-    var lhs = yield* seval(expr.lhs, input, environment);
-    var rhs = yield* seval(expr.rhs, input, environment);
+    var lhs =  seval(expr.lhs, input, environment);
+    var rhs =  seval(expr.rhs, input, environment);
     var op = expr.value;
 
     try {
@@ -381,12 +381,12 @@ function* evaluateBinary(expr: ast.BinaryOperationNode, input: any, environment:
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateArray(expr: ast.ArrayConstructorNode, input: any, environment: Environment) {
+function evaluateArray(expr: ast.ArrayConstructorNode, input: any, environment: Environment) {
     // array constructor - evaluate each item
     let result = [];
     for (var ii = 0; ii < expr.expressions.length; ii++) {
         var item = expr.expressions[ii];
-        var value = yield* seval(item, input, environment);
+        var value =  seval(item, input, environment);
         if (typeof value !== "undefined") {
             if (item.value === "[") {
                 result.push(value);
@@ -412,12 +412,12 @@ function* evaluateArray(expr: ast.ArrayConstructorNode, input: any, environment:
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateUnary(expr: ast.UnaryNode, input: any, environment: Environment) {
+function evaluateUnary(expr: ast.UnaryNode, input: any, environment: Environment) {
     var result;
 
     switch (expr.value) {
         case "-":
-            result = yield* seval(expr.expression, input, environment);
+            result =  seval(expr.expression, input, environment);
             if (typeof result === "undefined") {
                 result = undefined;
             } else if (isNumeric(result)) {
@@ -434,7 +434,7 @@ function* evaluateUnary(expr: ast.UnaryNode, input: any, environment: Environmen
             break;
         case "{":
             // object constructor - apply grouping
-            result = yield* evaluateGroupExpression(expr, input, environment);
+            result =  evaluateGroupExpression(expr, input, environment);
             break;
     }
     return result;
@@ -734,7 +734,7 @@ function evaluateStringConcat(lhs, rhs) {
  * @param {Object} environment - Environment
  * @returns {{}} Evaluated input data
  */
-function* evaluateGroupExpression(
+function evaluateGroupExpression(
     grouping: { lhs: ast.ASTNode[][]; position: number },
     input: any,
     environment: Environment,
@@ -749,7 +749,7 @@ function* evaluateGroupExpression(
         var item = input[itemIndex];
         for (var pairIndex = 0; pairIndex < grouping.lhs.length; pairIndex++) {
             var pair = grouping.lhs[pairIndex];
-            var key = yield* seval(pair[0], item, environment);
+            var key =  seval(pair[0], item, environment);
             // key has to be a string
             if (typeof key !== "string") {
                 throw {
@@ -773,7 +773,7 @@ function* evaluateGroupExpression(
     // iterate over the groups to evaluate the 'value' expression
     for (key in groups) {
         entry = groups[key];
-        var value = yield* seval(entry.expr, entry.data, environment);
+        var value =  seval(entry.expr, entry.data, environment);
         if (typeof value !== "undefined") {
             result[key] = value;
         }
@@ -830,10 +830,10 @@ function evaluateRangeExpression(lhs, rhs) {
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateBindExpression(expr: ast.BindNode, input: any, environment: Environment) {
+function evaluateBindExpression(expr: ast.BindNode, input: any, environment: Environment) {
     // The RHS is the expression to evaluate
     // The LHS is the name of the variable to bind to - should be a VARIABLE token
-    var value = yield* seval(expr.rhs, input, environment);
+    var value =  seval(expr.rhs, input, environment);
     if (expr.lhs.type !== "variable") {
         throw {
             code: "D2005",
@@ -854,13 +854,13 @@ function* evaluateBindExpression(expr: ast.BindNode, input: any, environment: En
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateCondition(expr: ast.TernaryNode, input: any, environment: Environment) {
+function evaluateCondition(expr: ast.TernaryNode, input: any, environment: Environment) {
     var result;
-    var condition = yield* seval(expr.condition, input, environment);
+    var condition =  seval(expr.condition, input, environment);
     if (functionBoolean(condition)) {
-        result = yield* seval(expr.then, input, environment);
+        result =  seval(expr.then, input, environment);
     } else if (typeof expr.else !== "undefined") {
-        result = yield* seval(expr.else, input, environment);
+        result =  seval(expr.else, input, environment);
     }
     return result;
 }
@@ -872,7 +872,7 @@ function* evaluateCondition(expr: ast.TernaryNode, input: any, environment: Envi
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateBlock(expr: ast.BlockNode, input: any, environment: Environment) {
+function evaluateBlock(expr: ast.BlockNode, input: any, environment: Environment) {
     var result;
     // create a new frame to limit the scope of variable assignments
     // TODO, only do this if the post-parse stage has flagged this as required
@@ -880,7 +880,7 @@ function* evaluateBlock(expr: ast.BlockNode, input: any, environment: Environmen
     // invoke each expression in turn
     // only return the result of the last one
     for (var ii = 0; ii < expr.expressions.length; ii++) {
-        result = yield* seval(expr.expressions[ii], input, frame);
+        result =  seval(expr.expressions[ii], input, frame);
     }
 
     return result;
@@ -959,11 +959,11 @@ function evaluateVariable(expr: ast.VariableNode, input: any, environment: Envir
  * @param {Object} environment - Environment
  * @returns {*} Ordered sequence
  */
-function* evaluateSortExpression(expr: ast.SortNode, input: any, environment: Environment) {
+function evaluateSortExpression(expr: ast.SortNode, input: any, environment: Environment) {
     var result;
 
     // evaluate the lhs, then sort the results in order according to rhs expression
-    var lhs = yield* seval(expr.lhs, input, environment);
+    var lhs =  seval(expr.lhs, input, environment);
 
     // sort the lhs array
     // use comparator function
@@ -1041,7 +1041,7 @@ function* evaluateSortExpression(expr: ast.SortNode, input: any, environment: En
  */
 function evaluateTransformExpression(expr: ast.TransformNode, input: any, environment: Environment) {
     // create a function to implement the transform definition
-    var transformer = function*(obj) {
+    var transformer = function(obj) {
         // signature <(oa):o>
         // undefined inputs always return undefined
         if (typeof obj === "undefined") {
@@ -1058,8 +1058,8 @@ function evaluateTransformExpression(expr: ast.TransformNode, input: any, enviro
                 position: expr.position,
             };
         }
-        var result = yield* apply(cloneFunction, [obj], environment);
-        var matches = yield* seval(expr.pattern, result, environment);
+        var result =  apply(cloneFunction, [obj], environment);
+        var matches =  seval(expr.pattern, result, environment);
         if (typeof matches !== "undefined") {
             if (!Array.isArray(matches)) {
                 matches = [matches];
@@ -1067,7 +1067,7 @@ function evaluateTransformExpression(expr: ast.TransformNode, input: any, enviro
             for (var ii = 0; ii < matches.length; ii++) {
                 var match = matches[ii];
                 // evaluate the update value for each match
-                var update = yield* seval(expr.update, match, environment);
+                var update =  seval(expr.update, match, environment);
                 // update must be an object
                 var updateType = typeof update;
                 if (updateType !== "undefined") {
@@ -1088,7 +1088,7 @@ function evaluateTransformExpression(expr: ast.TransformNode, input: any, enviro
 
                 // delete, if specified, must be an array of strings (or single string)
                 if (typeof expr.delete !== "undefined") {
-                    var deletions = yield* seval(expr.delete, match, environment);
+                    var deletions =  seval(expr.delete, match, environment);
                     if (typeof deletions !== "undefined") {
                         var val = deletions;
                         if (!Array.isArray(deletions)) {
@@ -1142,7 +1142,7 @@ function driveGenerator(expr: ast.ASTNode, input: any, environment: Environment)
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateApplyExpression(expr: ast.ApplyNode, input: any, environment: Environment) {
+function evaluateApplyExpression(expr: ast.ApplyNode, input: any, environment: Environment) {
     var result;
 
     const standardFrame = createStandardFrame();
@@ -1154,11 +1154,11 @@ function* evaluateApplyExpression(expr: ast.ApplyNode, input: any, environment: 
     if (expr.rhs.type === "function") {
         // this is a function _invocation_; invoke it with lhs expression as the first argument
         expr.rhs.arguments.unshift(expr.lhs);
-        result = yield* evaluateFunction(expr.rhs, input, environment);
+        result =  evaluateFunction(expr.rhs, input, environment);
         expr.rhs.arguments.shift();
     } else {
-        var lhs = yield* seval(expr.lhs, input, environment);
-        var func = yield* seval(expr.rhs, input, environment);
+        var lhs =  seval(expr.lhs, input, environment);
+        var func =  seval(expr.rhs, input, environment);
 
         if (!isFunction(func)) {
             throw {
@@ -1172,9 +1172,9 @@ function* evaluateApplyExpression(expr: ast.ApplyNode, input: any, environment: 
         if (isFunction(lhs)) {
             // this is function chaining (func1 ~> func2)
             // λ($f, $g) { λ($x){ $g($f($x)) } }
-            result = yield* apply(chain, [lhs, func], environment);
+            result =  apply(chain, [lhs, func], environment);
         } else {
-            result = yield* apply(func, [lhs], environment);
+            result =  apply(func, [lhs], environment);
         }
     }
 
@@ -1189,14 +1189,14 @@ function* evaluateApplyExpression(expr: ast.ApplyNode, input: any, environment: 
  * @param {Object} [applyto] - LHS of ~> operator
  * @returns {*} Evaluated input data
  */
-function* evaluateFunction(expr: ast.FunctionInvocationNode, input: any, environment: Environment) {
+function evaluateFunction(expr: ast.FunctionInvocationNode, input: any, environment: Environment) {
     var result;
 
     // create the procedure
     // can't assume that expr.procedure is a lambda type directly
     // could be an expression that evaluates to a function (e.g. variable reference, parens expr etc.
     // evaluate it generically first, then check that it is a function.  Throw error if not.
-    var proc = yield* seval(expr.procedure, input, environment);
+    var proc =  seval(expr.procedure, input, environment);
 
     if (
         typeof proc === "undefined" &&
@@ -1215,11 +1215,11 @@ function* evaluateFunction(expr: ast.FunctionInvocationNode, input: any, environ
     var evaluatedArgs = [];
     // eager evaluation - evaluate the arguments
     for (var jj = 0; jj < expr.arguments.length; jj++) {
-        evaluatedArgs.push(yield* seval(expr.arguments[jj], input, environment));
+        evaluatedArgs.push( seval(expr.arguments[jj], input, environment));
     }
     // apply the procedure
     try {
-        result = yield* apply(proc, evaluatedArgs, input);
+        result =  apply(proc, evaluatedArgs, input);
     } catch (err) {
         // add the position field to the error
         err.position = expr.position;
@@ -1237,20 +1237,20 @@ function* evaluateFunction(expr: ast.FunctionInvocationNode, input: any, environ
  * @param {Object} self - Self
  * @returns {*} Result of procedure
  */
-export function* apply(proc, args, self) {
+export function apply(proc, args, self) {
     var result;
-    result = yield* applyInner(proc, args, self);
+    result =  applyInner(proc, args, self);
     while (isLambda(result) && result.thunk === true) {
         // trampoline loop - this gets invoked as a result of tail-call optimization
         // the function returned a tail-call thunk
         // unpack it, evaluate its arguments, and apply the tail call
-        var next = yield* seval(result.body.procedure, result.input, result.environment);
+        var next =  seval(result.body.procedure, result.input, result.environment);
         var evaluatedArgs = [];
         for (var ii = 0; ii < result.body.arguments.length; ii++) {
-            evaluatedArgs.push(yield* seval(result.body.arguments[ii], result.input, result.environment));
+            evaluatedArgs.push( seval(result.body.arguments[ii], result.input, result.environment));
         }
 
-        result = yield* applyInner(next, evaluatedArgs, self);
+        result =  applyInner(next, evaluatedArgs, self);
     }
     return result;
 }
@@ -1262,26 +1262,26 @@ export function* apply(proc, args, self) {
  * @param {Object} self - Self
  * @returns {*} Result of procedure
  */
-function* applyInner(proc, args, self) {
+function applyInner(proc, args, self) {
     var result;
     var validatedArgs = args;
     if (proc) {
         validatedArgs = validateArguments(proc.signature, args, self);
     }
     if (isLambda(proc)) {
-        result = yield* applyProcedure(proc, validatedArgs);
+        result =  applyProcedure(proc, validatedArgs);
     } else if (proc && proc._jsonata_function === true) {
         result = proc.implementation.apply(self, validatedArgs);
         // `proc.implementation` might be a generator function
         // and `result` might be a generator - if so, yield
         if (isGenerator(result)) {
-            result = yield* result;
+            result =  result;
         }
     } else if (typeof proc === "function") {
         result = proc.apply(self, validatedArgs);
         /* istanbul ignore next */
         if (isGenerator(result)) {
-            result = yield* result;
+            result =  result;
         }
     } else {
         throw {
@@ -1323,7 +1323,7 @@ function evaluateLambda(expr: ast.LambdaDefinitionNode, input: any, environment:
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluatePartialApplication(expr: ast.FunctionInvocationNode, input: any, environment: Environment) {
+function evaluatePartialApplication(expr: ast.FunctionInvocationNode, input: any, environment: Environment) {
     // partially apply a function
     var result;
     // evaluate the arguments
@@ -1333,11 +1333,11 @@ function* evaluatePartialApplication(expr: ast.FunctionInvocationNode, input: an
         if (arg.type === "operator" && arg.value === "?") {
             evaluatedArgs.push(arg);
         } else {
-            evaluatedArgs.push(yield* seval(arg, input, environment));
+            evaluatedArgs.push( seval(arg, input, environment));
         }
     }
     // lookup the procedure
-    var proc = yield* seval(expr.procedure, input, environment);
+    var proc =  seval(expr.procedure, input, environment);
     if (
         typeof proc === "undefined" &&
         expr.procedure.type === "path" &&
@@ -1434,7 +1434,7 @@ function partialApplyNativeFunction(native, args) {
  * @param {Object} env - Environment
  * @returns {*} Result of applying native function
  */
-function* applyNativeFunction(proc, env) {
+function applyNativeFunction(proc, env) {
     var sigArgs = getNativeFunctionArguments(proc);
     // generate the array of arguments for invoking the function - look them up in the environment
     var args = sigArgs.map(function(sigArg) {
@@ -1443,7 +1443,7 @@ function* applyNativeFunction(proc, env) {
 
     var result = proc.apply(null, args);
     if (isGenerator(result)) {
-        result = yield* result;
+        result =  result;
     }
     return result;
 }
@@ -1482,7 +1482,7 @@ function validateArguments(signature, args, context) {
  * @param {Array} args - Arguments
  * @returns {*} Result of procedure
  */
-function* applyProcedure(proc, args) {
+function applyProcedure(proc, args) {
     var result;
     var env = createFrame(proc.environment);
     proc.arguments.forEach(function(param, index) {
@@ -1490,9 +1490,9 @@ function* applyProcedure(proc, args) {
     });
     if (typeof proc.body === "function") {
         // this is a lambda that wraps a native function - generated by partially evaluating a native
-        result = yield* applyNativeFunction(proc.body, env);
+        result =  applyNativeFunction(proc.body, env);
     } else {
-        result = yield* seval(proc.body, proc.input, env);
+        result =  seval(proc.body, proc.input, env);
     }
     return result;
 }

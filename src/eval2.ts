@@ -1,5 +1,5 @@
 import * as ast from './ast';
-import { unexpectedValue } from './utils';
+import { unexpectedValue, isNumeric } from './utils';
 import { JEnv, JSValue } from './environment';
 import { Box, JBox, ubox } from './box';
 
@@ -96,7 +96,10 @@ function evaluateVariable(expr: ast.VariableNode, input: JBox, environment: JEnv
 
 function evaluatePath(expr: ast.PathNode, input: JBox, environment: JEnv): JBox {
     if (input.values==undefined) return undefined;
-    let ret = input.values.map((elem) => unbox(applySteps(expr.steps, boxValue(elem), environment)));
+    let ret: JBox = boxValue(input.values.map((elem) => unbox(applySteps(expr.steps, boxValue(elem), environment))));
+    expr.predicate.forEach((predicate) => {
+        ret = applyPredicate(predicate, ret);
+    });
     return boxValue(ret);
 }
 
@@ -104,6 +107,15 @@ function applySteps(steps: ast.ASTNode[], elem: JBox, environment: JEnv): JBox {
     let result = elem;
     steps.forEach((step) => result = doEval(step, result, environment));
     return result;
+}
+
+function applyPredicate(predicate: ast.ASTNode, input: JBox): JBox {
+    if (predicate.type==="literal" && isNumeric(predicate.value)) {
+        let index = Math.floor(predicate.value);
+        if (index<0) index += input.values.length;
+        if (index<0 || index>=input.values.length) return undefined;
+        return boxValue(input.values[index]);
+    }
 }
 
 function evaluateName(expr: ast.NameNode, input: JBox, environment: JEnv): JBox {
