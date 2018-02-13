@@ -25,7 +25,7 @@ export const defaultNUD = (recover: boolean, errors: string[], remainingTokens: 
 };
 
 export const prefixDefaultNUD = (bindingPower: number): NUD => {
-    return (state: ParserState): ast.UnaryNode => {
+    return (state: ParserState): ast.ASTNode => {
         let initialToken = state.previousToken;
         let expr = state.expression(bindingPower);
         return {
@@ -37,7 +37,7 @@ export const prefixDefaultNUD = (bindingPower: number): NUD => {
     };
 };
 
-export const terminalNUD: NUD = (state: ParserState): ast.TerminalNode => {
+export const terminalNUD: NUD = (state: ParserState): ast.ASTNode => {
     let token = state.previousToken;
     switch (token.type) {
         case "variable":
@@ -129,7 +129,7 @@ export const arrayNUD = (state: ParserState): ast.ArrayConstructorNode => {
                 // range operator
                 state.advance("..");
                 let rhs = state.expression(0);
-                var range: ast.BinaryNode = {
+                var range: ast.ASTNode = {
                     type: "binary",
                     value: "..",
                     position: position,
@@ -155,7 +155,7 @@ export const arrayNUD = (state: ParserState): ast.ArrayConstructorNode => {
     };
 };
 
-export const objectParserNUD: NUD = (state: ParserState): ast.UnaryNode => {
+export const objectParserNUD: NUD = (state: ParserState): ast.ASTNode => {
     var a = [];
     let initialToken = state.previousToken;
     /* istanbul ignore else */

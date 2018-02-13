@@ -1,7 +1,9 @@
 import { isNumeric } from "../utils";
 import { tail_call_optimize } from "./tail_call";
-import { ErrorCollector } from "./types";
+// import { ErrorCollector } from "../types";
 import * as ast from "../ast";
+
+export type ErrorCollector = (err: any) => void;
 
 // post-parse stage
 // the purpose of this is flatten the parts of the AST representing location paths,
@@ -267,6 +269,10 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
         case "descendant":
         case "variable":
         case "regex":
+            return expr;
+        /* istanbul ignore next */
+        // This won't be in the AST
+        case "predicate":
             return expr;
         case "singleton": {
             // Optimize the AST node wrapped by this singleton decorator

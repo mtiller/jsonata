@@ -33,7 +33,7 @@ datasetnames.forEach(name => {
     datasets[name.replace(".json", "")] = readJSON(path.join("test-suite", "datasets"), name);
 });
 
-const test2 = true;
+const test2 = false;
 
 // This is the start of the set of tests associated with the test cases
 // found in the test-suite directory.
@@ -49,7 +49,7 @@ describe("JSONata Test Suite", () => {
                 // Extract the current test case of interest
                 let testcase = cases[i];
                 let env = new JEnv();
-                env.merge(testcase.bindings);
+                env.merge(testcase.bindings || {});
 
                 // Create a test based on the data in this testcase
                 test(casenames[i] + ": " + testcase.expr, function() {

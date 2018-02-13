@@ -1,5 +1,5 @@
 import { tokenizer, Tokenizer, Token } from "../tokenizer";
-import { ast_optimize } from "./optimize";
+import { ast_optimize } from "../transforms/optimize";
 import { createTable } from "./symbols";
 import * as ast from "../ast";
 

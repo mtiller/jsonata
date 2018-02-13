@@ -93,6 +93,7 @@ export const functionLED: LED = (
             type: type,
             arguments: args,
             procedure: left,
+            nextFunction: null,
         };
         return alt;
     }
@@ -219,7 +220,7 @@ export const orderByLED: LED = (state: ParserState, left: ast.ASTNode): ast.Sort
     };
 };
 
-export const objectParserLED: LED = (state: ParserState, left: ast.ASTNode): ast.BinaryObjectNode => {
+export const objectParserLED: LED = (state: ParserState, left: ast.ASTNode): ast.GroupedObjectNode => {
     var a = [];
     let initialToken = state.previousToken;
     /* istanbul ignore else */

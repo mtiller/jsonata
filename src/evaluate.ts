@@ -117,6 +117,11 @@ export function* evaluate(expr: ast.ASTNode, input: any, environment: Environmen
             /* istanbul ignore next */
             throw new Error("Raw AST node found in optimized tree");
         }
+        /* instanbul ignore next */
+        case "predicate": {
+            /* istanbul ignore next */
+            throw new Error("Found predicate node in legacy evaluation");
+        }
         /* istanbul ignore next */
         default:
             /* istanbul ignore next */
@@ -412,7 +417,7 @@ function* evaluateArray(expr: ast.ArrayConstructorNode, input: any, environment:
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateUnary(expr: ast.UnaryNode, input: any, environment: Environment) {
+function* evaluateUnary(expr: ast.UnaryMinusNode | ast.UnaryObjectNode, input: any, environment: Environment) {
     var result;
 
     switch (expr.value) {

@@ -24,4 +24,4 @@ export interface ParserState {
 
 export type SymbolTable = { [id: string]: Symbol };
 
-export type ErrorCollector = (err: any) => void;
+// export type ErrorCollector = (err: any) => void;
