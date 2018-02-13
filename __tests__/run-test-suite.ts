@@ -8,7 +8,7 @@
 
 var fs = require("fs");
 var path = require("path");
-import { jsonata, eval2, timeboxExpression } from '../src';
+import { jsonata, seval, JEnv, timeboxExpression } from '../src';
 
 let groups = fs.readdirSync(path.join(__dirname, "test-suite", "groups")).filter(name => !name.endsWith(".json"));
 
@@ -33,7 +33,7 @@ datasetnames.forEach(name => {
     datasets[name.replace(".json", "")] = readJSON(path.join("test-suite", "datasets"), name);
 });
 
-const test2 = false;
+const test2 = true;
 
 // This is the start of the set of tests associated with the test cases
 // found in the test-suite directory.
@@ -85,6 +85,8 @@ describe("JSONata Test Suite", () => {
                         // means there is no data (so use undefined).  If there is a dataset number, look up the
                         // input data in the datasets array.
                         let dataset = resolveDataset(datasets, testcase);
+                        // let env = new JEnv();
+                        // env.merge(testcase.bindings);
 
                         // Test cases have three possible outcomes from evaluation...
                         if ("undefinedResult" in testcase) {
@@ -94,7 +96,7 @@ describe("JSONata Test Suite", () => {
                             expect(result).toBeUndefined();
 
                             if (test2) {
-                                let res2 = eval2(expr.ast(), dataset, testcase.bindings);
+                                let res2 = expr.seval(dataset, testcase.bindings);
                                 expect(res2).toBeUndefined();
                             }
                         } else if ("result" in testcase) {
@@ -104,7 +106,8 @@ describe("JSONata Test Suite", () => {
                             expect(result).toEqual(testcase.result);
 
                             if (test2) {
-                                let res2 = eval2(expr.ast(), dataset, testcase.bindings);
+                                let res2 = expr.seval(dataset, testcase.bindings);
+                                //let res2 = eval2(expr.ast(), dataset, env);
                                 expect(res2).toEqual(testcase.result);
                             }
                         } else if ("code" in testcase) {
@@ -117,6 +120,17 @@ describe("JSONata Test Suite", () => {
                             } catch (e) {
                                 expect(e.code).toEqual(testcase.code);
                                 error = true;
+                            }
+
+                            if (test2) {
+                                error = false;
+                                try {
+                                    let res2 = expr.seval(dataset, testcase.bindings);
+                                    expect(res2).toBeUndefined();
+                                } catch (e) {
+                                    expect(e.code).toEqual(testcase.code);
+                                    error = true;
+                                }
                             }
                             // If this is thrown, it is because we expected an error to be
                             // thrown but it wasn't.

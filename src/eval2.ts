@@ -90,7 +90,7 @@ function evaluateVariable(expr: ast.VariableNode, input: JBox, environment: JEnv
     /* Otherwise, return a value */
     return {
         values: [result],
-        preserveSingleton: true,
+        preserveSingleton: false,
     }
 }
 

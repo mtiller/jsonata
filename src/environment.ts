@@ -1,11 +1,13 @@
 export type JSValue = number | string | boolean | object | Function;
-export type JEnv = EvalEnv<JSValue>;
 
 export class EvalEnv<T> {
     protected bindings: { [key: string]: T } = {}
     constructor(public enclosing?: EvalEnv<T>) {}
     bind(name: string, value: T) {
         this.bindings[name] = value;
+    }
+    merge(bindings: { [key: string]: T }) {
+        Object.keys(bindings).forEach((key) => this.bindings[key] = bindings[key]);
     }
     lookup(name: string): T {
         if (this.bindings.hasOwnProperty(name)) {
@@ -20,4 +22,8 @@ export class EvalEnv<T> {
     nested() {
         return new EvalEnv(this);
     }
+}
+
+export class JEnv extends EvalEnv<JSValue> {
+
 }
