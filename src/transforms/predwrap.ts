@@ -1,5 +1,5 @@
-import * as ast from '../ast';
-import { unexpectedValue } from '../utils';
+import * as ast from "../ast";
+import { unexpectedValue } from "../utils";
 
 export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
     let predicates: ast.ASTNode[] = Array.isArray(orig.predicate) ? orig.predicate : [];
@@ -12,6 +12,8 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
         case "name":
         case "literal":
         case "regex":
+            expr = { ...orig };
+            delete expr["predicate"];
             // These have no children, so do nothing (except wrap in predicates at the end).
             break;
         case "unary": {
@@ -118,7 +120,7 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
                 ...base(expr),
                 steps: expr.steps.map(elaboratePredicates),
                 keepSingletonArray: expr.keepSingletonArray,
-            }
+            };
             break;
         }
         case "bind": {
@@ -127,7 +129,7 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
                 lhs: elaboratePredicates(expr.lhs),
                 rhs: elaboratePredicates(expr.rhs),
             };
-            break;            
+            break;
         }
         case "apply": {
             expr = {
@@ -169,6 +171,7 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
             value: "[",
             position: predicate.position,
             condition: predicate,
+            lhs: cur,
         }),
         expr,
     );

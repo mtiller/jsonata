@@ -1,8 +1,9 @@
-import * as ast from "./ast";
-import { unexpectedValue, isNumeric } from "./utils";
+import * as ast from "../ast";
+import { unexpectedValue, isNumeric } from "../utils";
 import { JEnv, JSValue } from "./environment";
-import { Box, JBox, ubox } from "./box";
-import { elaboratePredicates } from './transforms/predwrap';
+import { Box, JBox, ubox, boxmap } from "./box";
+import { elaboratePredicates } from "../transforms/predwrap";
+import { isNumber } from "util";
 
 export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSValue {
     let box = boxValue(input);
@@ -12,6 +13,7 @@ export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSV
 }
 
 function boxValue(input: JSValue): JBox {
+    // TODO: Have to flatten here
     let values = input == undefined ? undefined : Array.isArray(input) ? (input as JSValue[]) : [input];
     let box: Box<JSValue> = { values: values, preserveSingleton: false };
     return box;
@@ -37,15 +39,23 @@ function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv): JBox {
         case "predicate": {
             return evaluatePredicate(expr, input, environment);
         }
-        case "binary":
+        case "bind": {
+            return evaluateBinding(expr, input, environment);
+        }
+        case "literal": {
+            return boxValue(expr.value);
+        }
+        case "block": {
+            return evaluateBlock(expr, input, environment);
+        }
+        case "binary": {
+            return evaluateBinaryOperation(expr, input, environment);
+        }
         case "array":
         case "unary":
-        case "literal":
         case "wildcard":
         case "descendant":
         case "condition":
-        case "block":
-        case "bind":
         case "regex":
         case "function":
         case "lambda":
@@ -86,27 +96,19 @@ function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv): JBox {
 function evaluateVariable(expr: ast.VariableNode, input: JBox, environment: JEnv): JBox {
     /* Get the variable name */
     const varname = expr.value;
-
     /* If the variable name is empty, then just return the input */
     if (varname == "") return input;
-
     /* Otherwise, lookup the variable in the environment */
     let result = environment.lookup(varname);
-
     /* If not found, return an undefined value */
     if (result == undefined) return ubox;
-
-    /* Otherwise, return a value */
-    return {
-        values: [result],
-        preserveSingleton: false,
-    };
+    return boxValue(result);
 }
 
 function evaluatePath(expr: ast.PathNode, input: JBox, environment: JEnv): JBox {
-    if (input.values == undefined) return undefined;
+    if (input.values == undefined) return ubox;
     let ret: JBox = boxValue(input.values.map(elem => unbox(applySteps(expr.steps, boxValue(elem), environment))));
-    return boxValue(ret);
+    return ret;
 }
 
 function applySteps(steps: ast.ASTNode[], elem: JBox, environment: JEnv): JBox {
@@ -115,24 +117,77 @@ function applySteps(steps: ast.ASTNode[], elem: JBox, environment: JEnv): JBox {
     return result;
 }
 
+function evaluateName(expr: ast.NameNode, input: JBox, environment: JEnv): JBox {
+    if (input.values == undefined) return ubox;
+    return boxmap(input, elem => elem[expr.value]);
+}
+
 function evaluatePredicate(expr: ast.PredicateNode, input: JBox, environment: JEnv): JBox {
     let predicate = expr.condition;
+    // First, evaluate the core value of the predicate
+    let value = doEval(expr.lhs, input, environment);
     if (predicate.type === "literal" && isNumeric(predicate.value)) {
         let index = Math.floor(predicate.value);
-        if (index < 0) index += input.values.length;
-        if (index < 0 || index >= input.values.length) return undefined;
-        return boxValue(input.values[index]);
+        if (index < 0) index += value.values.length;
+        if (index < 0 || index >= value.values.length) return ubox;
+        return boxValue(value.values[index]);
     }
     throw new Error("Complex filters not yet implemented");
 }
 
-function evaluateName(expr: ast.NameNode, input: JBox, environment: JEnv): JBox {
-    if (input.values == undefined) return undefined;
-    return boxmap(input, elem => elem[expr.value]);
+function evaluateBinding(expr: ast.BindNode, input: JBox, environment: JEnv): JBox {
+    let lhs = expr.lhs;
+    if (lhs.type==="variable") {
+        let x = lhs;
+        let val = doEval(expr.rhs, input, environment);
+        environment.bind(x.value, unbox(val));
+        return val;
+    } else {
+        throw new Error("Left hand side of binding must be a variable (at "+expr.lhs.position+")");
+    }
 }
 
-function boxmap(box: JBox, f: (v: JSValue) => JSValue): JBox {
-    if (box.values == undefined) return { ...box };
-    let vals = box.values.map(v => f(v));
-    return { ...box, values: vals };
+export function evaluateBlock(expr: ast.BlockNode, input: JBox, enclosing: JEnv): JBox {
+    let environment = new JEnv(enclosing);
+    return expr.expressions.reduce((prev, e) => doEval(e, input, environment), ubox);
 }
+
+export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: JBox, environment: JEnv): JBox {
+    let lhs = unbox(doEval(expr.lhs, input, environment));
+    let rhs = unbox(doEval(expr.rhs, input, environment));
+    let value = expr.value;
+    switch(value) {
+        case "+": {
+            if (isNumber(lhs) && isNumber(rhs)) {
+                return boxValue(lhs+rhs)
+            }
+            throw new Error("Invalid operands for +");
+        }
+        case "-":
+        case "*":
+        case "/":
+        case "%":
+        case "=":
+        case "!=":
+        case "<":
+        case "<=":
+        case ">":
+        case ">=":
+        case "&":
+        case "and":
+        case "or":
+        case "..":
+        case "in": {
+            throw new Error("Operator "+expr.value+" unimplemented");
+        }
+        default:
+                 /* istanbul ignore next */
+                 return unexpectedValue<string>(
+                    value,
+                    value,
+                    v => "Evaluate failed to handle case where binary operation was " + v,
+                );
+       
+    }
+}
+

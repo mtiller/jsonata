@@ -23,4 +23,5 @@ export interface PredicateNode extends BaseNode {
     type: "predicate";
     value: "[";
     condition: ASTNode;
+    lhs: ASTNode;
 }

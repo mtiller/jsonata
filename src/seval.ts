@@ -113,6 +113,8 @@ export function seval(expr: ast.ASTNode, input: any, environment: Environment) {
         /* istanbul ignore next */
         case "operator":
         /* istanbul ignore next */
+        case "predicate":
+        /* istanbul ignore next */
         case "singleton": {
             /* istanbul ignore next */
             throw new Error("Raw AST node found in optimized tree");
@@ -412,7 +414,7 @@ function evaluateArray(expr: ast.ArrayConstructorNode, input: any, environment: 
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function evaluateUnary(expr: ast.UnaryNode, input: any, environment: Environment) {
+function evaluateUnary(expr: ast.UnaryMinusNode | ast.UnaryObjectNode, input: any, environment: Environment) {
     var result;
 
     switch (expr.value) {

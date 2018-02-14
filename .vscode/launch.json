@@ -16,7 +16,7 @@
             "name": "Watch and Debug Jest Tests",
             "type": "node",
             "request": "launch",
-            "runtimeArgs": ["--inspect-brk", "${workspaceRoot}/node_modules/.bin/jest", "--runInBand", "--watchAll"],
+            "runtimeArgs": ["--inspect-brk", "${workspaceRoot}/node_modules/.bin/jest", "--runInBand", "--watchAll", "--no-cache", "-t", "variables", "--coverage", "false"],
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen"
         }
