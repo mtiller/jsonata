@@ -60,6 +60,12 @@ export interface BinaryOperationNode extends BaseNode {
     rhs: ASTNode; // ASTNode if operator is "." | "[" | ":=" | "~>"
 }
 
+export interface BindNode extends BaseNode {
+    type: "bind";
+    lhs: VariableNode;
+    rhs: ASTNode;
+}
+
 export interface SortTerm {
     descending: boolean;
     expression: ASTNode;

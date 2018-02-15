@@ -7,12 +7,6 @@ export interface PathNode extends BaseNode {
     keepSingletonArray: boolean;
 }
 
-export interface BindNode extends BaseNode {
-    type: "bind";
-    lhs: ASTNode;
-    rhs: ASTNode;
-}
-
 export interface ApplyNode extends BaseNode {
     type: "apply";
     lhs: ASTNode;

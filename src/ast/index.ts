@@ -5,6 +5,7 @@ import * as opt from './opt';
 export * from './raw';
 export * from './core';
 export * from './opt';
+export * from './base';
 
 /**
  * These are the AST nodes that come directly out of the parser before
@@ -28,6 +29,7 @@ export type ASTNode =
     | core.UnaryObjectNode
     | core.ArrayConstructorNode
     | core.BinaryOperationNode
+    | core.BindNode
     | core.SortNode
     | core.TernaryNode
     | core.BlockNode
@@ -35,6 +37,5 @@ export type ASTNode =
     | core.FunctionInvocationNode
     | core.LambdaDefinitionNode
     | opt.PathNode
-    | opt.BindNode
     | opt.ApplyNode
     | opt.PredicateNode;
