@@ -10,7 +10,10 @@ var fs = require("fs");
 var path = require("path");
 import { jsonata, JEnv, eval2, timeboxExpression } from '../src';
 
-let groups = fs.readdirSync(path.join(__dirname, "test-suite", "groups")).filter(name => !name.endsWith(".json"));
+let tsDir = path.join(__dirname, process.env["JSONATA_TESTSUITE"] || "test-suite");
+let groupDir = path.join(tsDir, process.env["JSONATA_GROUPS"] || "groups");
+let datasetDir = path.join(tsDir, process.env["JSONATA_DATASETS"] || "datasets");
+let groups = fs.readdirSync(groupDir).filter(name => !name.endsWith(".json"));
 
 /**
  * Simple function to read in JSON
@@ -20,17 +23,17 @@ let groups = fs.readdirSync(path.join(__dirname, "test-suite", "groups")).filter
  */
 function readJSON(dir, file) {
     try {
-        return JSON.parse(fs.readFileSync(path.join(__dirname, dir, file)).toString());
+        return JSON.parse(fs.readFileSync(path.join(dir, file)).toString());
     } catch (e) {
         throw new Error("Error reading " + file + " in " + dir + ": " + e.message);
     }
 }
 
 let datasets = {};
-let datasetnames = fs.readdirSync(path.join(__dirname, "test-suite", "datasets"));
+let datasetnames = fs.readdirSync(datasetDir);
 
 datasetnames.forEach(name => {
-    datasets[name.replace(".json", "")] = readJSON(path.join("test-suite", "datasets"), name);
+    datasets[name.replace(".json", "")] = readJSON(datasetDir, name);
 });
 
 const test2 = true;
@@ -40,9 +43,9 @@ const test2 = true;
 describe("JSONata Test Suite", () => {
     // Iterate over all groups of tests
     groups.forEach(group => {
-        let casenames = fs.readdirSync(path.join(__dirname, "test-suite", "groups", group));
+        let casenames = fs.readdirSync(path.join(groupDir, group));
         // Read JSON file containing all cases for this group
-        let cases = casenames.map(name => readJSON(path.join("test-suite", "groups", group), name));
+        let cases = casenames.map(name => readJSON(path.join(groupDir, group), name));
         describe("Group: " + group, () => {
             // Iterate over all cases
             for (let i = 0; i < cases.length; i++) {
