@@ -16,7 +16,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
             // LHS is a step or a predicated step
             // RHS is the object constructor expr
             let node = ast_optimize(expr.lhs, collect);
-            if (node.type=="group") {
+            if (node.type == "group") {
                 throw {
                     code: "S0210",
                     stack: new Error().stack,
@@ -34,7 +34,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 position: expr.position,
                 lhs: node,
                 groupings: lhs,
-            }
+            };
         }
         case "proxy": {
             switch (expr.value) {
@@ -111,7 +111,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     if (node.type === "path") {
                         step = node.steps[node.steps.length - 1];
                     }
-                    if (step.type=="group") {
+                    if (step.type == "group") {
                         throw {
                             code: "S0209",
                             stack: new Error().stack,
@@ -135,8 +135,14 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     throw new Error("Unknown proxy operator: " + expr.value);
             }
         }
+        case "bind": {
+            return {
+                ...expr,
+                lhs: expr.lhs,
+                rhs: ast_optimize(expr.rhs, collect),
+            };
+        }
         case "apply":
-        case "bind":
         case "binary": {
             return {
                 ...expr,

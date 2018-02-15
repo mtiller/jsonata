@@ -839,15 +839,6 @@ function* evaluateBindExpression(expr: ast.BindNode, input: any, environment: En
     // The RHS is the expression to evaluate
     // The LHS is the name of the variable to bind to - should be a VARIABLE token
     var value = yield* evaluate(expr.rhs, input, environment);
-    if (expr.lhs.type !== "variable") {
-        throw {
-            code: "D2005",
-            stack: new Error().stack,
-            position: expr.position,
-            token: expr.value,
-            value: expr.lhs.type === "path" ? expr.lhs.steps[0].value : expr.lhs.value,
-        };
-    }
     environment.bind(expr.lhs.value, value);
     return value;
 }

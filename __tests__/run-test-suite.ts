@@ -36,7 +36,7 @@ datasetnames.forEach(name => {
     datasets[name.replace(".json", "")] = readJSON(datasetDir, name);
 });
 
-const test2 = true;
+const test2 = process.env.hasOwnProperty("JSONATA_SKIP_EVAL2") ? false : true;
 
 // This is the start of the set of tests associated with the test cases
 // found in the test-suite directory.

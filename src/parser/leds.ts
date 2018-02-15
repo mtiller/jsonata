@@ -4,7 +4,10 @@ import * as ast from "../ast";
 import { operators } from "../constants";
 
 export const infixDefaultLED = (bindingPower: number): LED => {
-    return (state: ParserState, left: ast.ASTNode): ast.BinaryOperationNode | ast.ProxyBinaryNode | ast.BindNode | ast.ApplyNode => {
+    return (
+        state: ParserState,
+        left: ast.ASTNode,
+    ): ast.BinaryOperationNode | ast.ProxyBinaryNode | ast.BindNode | ast.ApplyNode => {
         let initialToken = state.previousToken;
         let rhs = state.expression(bindingPower);
         let value = initialToken.value;
@@ -12,24 +15,35 @@ export const infixDefaultLED = (bindingPower: number): LED => {
         let proxies = [".", "["];
         let ops = ["+", "-", "*", "/", "%", "=", "!=", "<", "<=", ">", ">=", "&", "and", "or", "..", "in"];
 
-        if (value==":=") {
-            return {
-                type: "bind",
-                value: value,
-                position: position,
-                lhs: left,
-                rhs: rhs,
+        if (value == ":=") {
+            if (left.type === "variable") {
+                return {
+                    type: "bind",
+                    value: value,
+                    position: position,
+                    lhs: left,
+                    rhs: rhs,
+                };
+            } else {
+                let err = {
+                    code: "S0212",
+                    stack: new Error().stack,
+                    position: left.position,
+                    token: left.value,
+                };
+                state.handleError(err);
+                throw err;
             }
         }
 
-        if (value=="~>") {
+        if (value == "~>") {
             return {
                 type: "apply",
                 value: value,
                 position: position,
                 lhs: left,
                 rhs: rhs,
-            }            
+            };
         }
         if (proxies.indexOf(value) >= 0) {
             return {

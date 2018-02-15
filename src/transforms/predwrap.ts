@@ -126,7 +126,7 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
         case "bind": {
             expr = {
                 ...base(expr),
-                lhs: elaboratePredicates(expr.lhs),
+                lhs: expr.lhs,
                 rhs: elaboratePredicates(expr.rhs),
             };
             break;
