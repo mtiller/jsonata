@@ -92,21 +92,11 @@ export function isArrayOfNumbers(arg) {
 /**
  * Returns a flattened array
  * @param {Array} arg - the array to be flatten
- * @param {Array} flattened - carries the flattened array - if not defined, will initialize to []
  * @returns {Array} - the flattened array
  */
-export function flatten(arg, flattened?) {
-    if (typeof flattened === "undefined") {
-        flattened = [];
-    }
-    if (Array.isArray(arg)) {
-        arg.forEach(function(item) {
-            flatten(item, flattened);
-        });
-    } else {
-        flattened.push(arg);
-    }
-    return flattened;
+export function flatten(arg: any) {
+    if (!Array.isArray(arg)) return arg;
+    return arg.reduce((prev, item) => (Array.isArray(item) ? [...prev, ...flatten(item)] : [...prev, item]), []);
 }
 
 /**
@@ -226,7 +216,7 @@ export function timeboxExpression(expr, timeout, maxDepth) {
                 message:
                     "Stack overflow error: Check for non-terminating recursive function.  Consider rewriting as tail-recursive.",
                 stack: new Error().stack,
-                code: "U1001"
+                code: "U1001",
             };
         }
         if (Date.now() - time > timeout) {
@@ -234,7 +224,7 @@ export function timeboxExpression(expr, timeout, maxDepth) {
             throw {
                 message: "Expression evaluation timeout: Check for infinite loop",
                 stack: new Error().stack,
-                code: "U1001"
+                code: "U1001",
             };
         }
     };
