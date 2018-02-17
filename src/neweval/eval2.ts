@@ -1,7 +1,7 @@
 import * as ast from "../ast";
-import { unexpectedValue, isNumeric } from "../utils";
+import { unexpectedValue, isArrayOfNumbers } from "../utils";
 import { JEnv, JSValue } from "./environment";
-import { Box, JBox, ubox, boxmap } from "./box";
+import { JBox, ubox, boxmap, boxValue, unbox } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber } from "util";
 
@@ -12,29 +12,21 @@ export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSV
     return unbox(result);
 }
 
-function boxValue(input: JSValue): JBox {
-    // TODO: Have to flatten here
-    let values = input == undefined ? undefined : Array.isArray(input) ? (input as JSValue[]) : [input];
-    let box: Box<JSValue> = { values: values, preserveSingleton: false };
-    return box;
-}
-
-function unbox(result: JBox): JSValue {
-    if (result.values == undefined) return undefined;
-    if (result.values.length == 1 && !result.preserveSingleton) return result.values[0];
-    return result.values;
-}
-
 function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv): JBox {
     switch (expr.type) {
+        /* These are all leaf node types (have no children) */
+        case "literal": {
+            return boxValue(expr.value);
+        }
         case "variable": {
             return evaluateVariable(expr, input, environment);
         }
-        case "path": {
-            return evaluatePath(expr, input, environment);
-        }
         case "name": {
             return evaluateName(expr, input, environment);
+        }
+        /* These are all operator nodes of some kind (they have children) */
+        case "array": {
+            return evaluateArray(expr, input, environment);
         }
         case "predicate": {
             return evaluatePredicate(expr, input, environment);
@@ -42,16 +34,15 @@ function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv): JBox {
         case "bind": {
             return evaluateBinding(expr, input, environment);
         }
-        case "literal": {
-            return boxValue(expr.value);
-        }
         case "block": {
             return evaluateBlock(expr, input, environment);
+        }
+        case "path": {
+            return evaluatePath(expr, input, environment);
         }
         case "binary": {
             return evaluateBinaryOperation(expr, input, environment);
         }
-        case "array":
         case "unary":
         case "wildcard":
         case "descendant":
@@ -64,7 +55,6 @@ function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv): JBox {
         case "sort":
         case "group":
         case "transform": {
-            /* istanbul ignore next */
             throw new Error("AST node type '" + expr.type + "' is unimplemented");
         }
         /* istanbul ignore next */
@@ -125,14 +115,18 @@ function evaluateName(expr: ast.NameNode, input: JBox, environment: JEnv): JBox 
 function evaluatePredicate(expr: ast.PredicateNode, input: JBox, environment: JEnv): JBox {
     let predicate = expr.condition;
     // First, evaluate the core value of the predicate
-    let value = doEval(expr.lhs, input, environment);
-    if (predicate.type === "literal" && isNumeric(predicate.value)) {
-        let index = Math.floor(predicate.value);
-        if (index < 0) index += value.values.length;
-        if (index < 0 || index >= value.values.length) return ubox;
-        return boxValue(value.values[index]);
+    let lhs = doEval(expr.lhs, input, environment);
+    // Then evaluate the predicate
+    let pval = doEval(predicate, lhs, environment);
+    if (isArrayOfNumbers(pval.values)) {
+        let indices = pval.values
+        .map((x) => Math.floor(x as number))
+        .map((x) => x < 0 ? x+lhs.values.length : x);
+        return boxValue(indices.map((i) => lhs.values[i]));
     }
-    throw new Error("Complex filters not yet implemented");
+    // Treat pvals as truthy values indicating whether to keep the i_th element
+    // in the left hand side.
+    return boxValue(lhs.values.filter((x, i) => !!pval.values[i]));
 }
 
 function evaluateBinding(expr: ast.BindNode, input: JBox, environment: JEnv): JBox {
@@ -191,3 +185,14 @@ export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: JB
     }
 }
 
+function evaluateArray(expr: ast.ArrayConstructorNode, input: JBox, environment: JEnv): JBox {
+    let elems = expr.expressions.map((e) => {
+        let v = doEval(e, input, environment);
+        return v.scalar ? v.values[0] : v.values;
+    });
+    return {
+        values: elems,
+        scalar: false,
+        preserveSingleton: false,
+    }
+}

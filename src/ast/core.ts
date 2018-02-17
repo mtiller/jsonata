@@ -2,20 +2,6 @@ import { BaseNode } from './base';
 import { ASTNode } from './index';
 import { Signature } from "../signatures";
 
-export interface WildcardNode extends BaseNode {
-    type: "wildcard";
-}
-
-export interface DescendantNode extends BaseNode {
-    type: "descendant";
-}
-
-export interface GroupNode extends BaseNode {
-    type: "group";
-    lhs: ASTNode;
-    groupings: ASTNode[][];
-}
-
 export interface LiteralNode extends BaseNode {
     type: "literal";
 }
@@ -31,6 +17,20 @@ export interface NameNode extends BaseNode {
 
 export interface RegexNode extends BaseNode {
     type: "regex";
+}
+
+export interface WildcardNode extends BaseNode {
+    type: "wildcard";
+}
+
+export interface DescendantNode extends BaseNode {
+    type: "descendant";
+}
+
+export interface GroupNode extends BaseNode {
+    type: "group";
+    lhs: ASTNode;
+    groupings: ASTNode[][];
 }
 
 export interface ArrayConstructorNode extends BaseNode {
