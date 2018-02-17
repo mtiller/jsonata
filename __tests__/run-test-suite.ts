@@ -8,7 +8,7 @@
 
 var fs = require("fs");
 var path = require("path");
-import { jsonata, JEnv, eval2, timeboxExpression } from '../src';
+import { jsonata, JEnv, eval2, timeboxExpression } from "../src";
 
 let tsDir = path.join(__dirname, process.env["JSONATA_TESTSUITE"] || "test-suite");
 let groupDir = path.join(tsDir, process.env["JSONATA_GROUPS"] || "groups");
@@ -53,9 +53,10 @@ describe("JSONata Test Suite", () => {
                 let testcase = cases[i];
                 let env = new JEnv();
                 env.merge(testcase.bindings || {});
+                let run = testcase.skip ? test.skip : testcase.only ? test.only : test;
 
                 // Create a test based on the data in this testcase
-                test(casenames[i] + ": " + testcase.expr, function() {
+                run(casenames[i] + ": " + testcase.expr, function() {
                     var expr;
                     // Start by trying to compile the expression associated with this test case
                     try {

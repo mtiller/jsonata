@@ -1,6 +1,6 @@
 {
     // To avoid different format settings from
     // triggering cosmetic changes.
-    "editor.formatOnSave": false,
+    "editor.formatOnSave": true,
     "typescript.tsdk": "node_modules/typescript/lib",
 }

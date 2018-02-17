@@ -6,21 +6,21 @@ was transformed into a series of JSON files.
 
 ## `datasets` directory
 
-The `datasets` directory contains a set of JSON files.  Each file represents
-potential input data to a `jsonata` test.  The point of putting this input in
+The `datasets` directory contains a set of JSON files. Each file represents
+potential input data to a `jsonata` test. The point of putting this input in
 named files is so that it can be re-used (rather than repeated) by different
 test cases.
 
 ## `groups/<groupname>/case###.json`
 
-Each `<groupname>` directory is a bundle of test cases related to a given 
-topic.  Inside each of those directories are JSON files that represent
-individual test cases.  Each JSON file contains a test case and each test
+Each `<groupname>` directory is a bundle of test cases related to a given
+topic. Inside each of those directories are JSON files that represent
+individual test cases. Each JSON file contains a test case and each test
 case includes the following fields:
 
 * `expr`: The `jsonata` expression to be evaluated.
 * `data` or `dataset`: If `data` is defined, use the value of the `data` field
-  as the input data for the test case.  Otherwise, the `dataset` field contains
+  as the input data for the test case. Otherwise, the `dataset` field contains
   the name of the dataset (in the `datasets` directory) to use as input data.
   If value of the `dataset` field is `null`, then use `undefined` as the input
   data when evaluating the `jsonata` expression.
@@ -37,3 +37,12 @@ In addition, (exactly) one of the following fields is specified for each test ca
 
 If the `code` field is present, an optional `token` field may also be present indicating which token token the exception
 should be associated with.
+
+## Debugging
+
+There are two additional fields that can be added to a test case to provide
+instructions on how the tests should be run. They are:
+
+* `skip`: Set to `true` if you want a given case to be skipped
+* `only`: Set to `true` if you want only this test (and any others with the `only`
+  flag set to `true`) to be run.
