@@ -102,24 +102,24 @@ function evaluatePath(expr: ast.PathNode, input: JBox, environment: JEnv): JBox 
     if (expr.steps.length == 0) return input; // ???
 
     let [step0, ...rest] = expr.steps;
-    let cur = boxValues(flatten(doEval(step0, input, environment)));
-    console.log("cur = ", JSON.stringify(cur));
+    let cur = boxValues(doEval(step0, input, environment));
+    //console.log("cur = ", JSON.stringify(cur));
     rest.forEach(step => {
         let next = cur.map(c => {
-            console.log("  Applying " + JSON.stringify(step));
-            console.log("    to: ", JSON.stringify(c));
+            //console.log("  Applying " + JSON.stringify(step));
+            //console.log("    to: ", JSON.stringify(c));
             let result = doEval(step, c, environment);
-            console.log("    result: ", JSON.stringify(result));
+            //console.log("    result: ", JSON.stringify(result));
             return result;
         });
-        console.log("next = ", JSON.stringify(next));
+        //console.log("next = ", JSON.stringify(next));
         let all = flatten(next.map(n => n.values));
-        console.log("all = ", JSON.stringify(all));
+        //console.log("all = ", JSON.stringify(all));
         cur = boxValues(boxValue(all));
-        console.log("cur = ", JSON.stringify(cur));
+        //console.log("cur = ", JSON.stringify(cur));
     });
     let ret = unboxValues(cur);
-    console.log("ret = ", JSON.stringify(ret));
+    //console.log("ret = ", JSON.stringify(ret));
     return ret;
 }
 
