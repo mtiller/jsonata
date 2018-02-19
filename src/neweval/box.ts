@@ -46,6 +46,7 @@ export function unboxValues(boxes: JBox[]): JBox {
 }
 
 function isBox(val: any): boolean {
+    if (typeof val !== "object") return false;
     return val.hasOwnProperty("scalar") && val.hasOwnProperty("values");
 }
 

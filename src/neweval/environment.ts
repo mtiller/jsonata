@@ -4,11 +4,11 @@ export class EvalEnv<T> {
     protected bindings: { [key: string]: T } = {};
     constructor(public enclosing?: EvalEnv<T>) {
         // TODO: This shouldn't be needed and should be removed!
-        if (enclosing) {
-            Object.keys(enclosing).forEach(key => {
-                this.bind(key, enclosing[key]);
-            });
-        }
+        // if (enclosing) {
+        //     Object.keys(enclosing).forEach(key => {
+        //         this.bind(key, enclosing[key]);
+        //     });
+        // }
     }
     bind(name: string, value: T) {
         this.bindings[name] = value;
