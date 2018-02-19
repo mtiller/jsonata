@@ -123,57 +123,41 @@ function evaluateWildcard(expr: ast.WildcardNode, input: JBox, environment: JEnv
 }
 
 function evaluatePredicate(expr: ast.PredicateNode, input: JBox, environment: JEnv): JBox {
-    /* Loop over every value on the left hand side */
-    /*   Evaluate predicate in the context of each value */
-    /*   If the result is a number, promote to array of numbers */
-    /*   If the result is an array of numbers, iterate over indices and push
-           element in input with matching index */
-    /*   If result is not an array of numbers, treat as truthy */
+    /* First, fragement all values in the left and side into their own box */
+    let lhs = fragmentBox(doEval(expr.lhs, input, environment));
+    /* Construct a predicate function that we can filter this list based on */
+    let predicate = filterPredicate(expr.condition, environment);
+    /* Filter the LHS values that satisfy the predicate */
+    let vals = lhs.filter(predicate);
+    /* Defragment back into a single box */
+    return defragmentBox(vals);
+}
 
-    let predicate = expr.condition;
-    // First, evaluate the left hand side
-    let lhs = doEval(expr.lhs, input, environment);
-
-    // TODO: Simplify?
-    let pvals = evalOverValues(lhs, predicate, environment);
-    let vals: JSValue[] = [];
-
-    pvals.values.forEach((pv: JSValue, ind: number) => {
-        let res: JSValue = pv;
-        let rev = ind - lhs.values.length;
-        if (isNumber(pv)) {
-            res = [pv];
-        }
+/**
+ * This function returns a closure that we can use to filter a JBox[].
+ * @param predicate The AST node for the predicate expression
+ * @param environment The environment in which the evaluation is done.
+ */
+function filterPredicate(predicate: ast.ASTNode, environment: JEnv) {
+    return (item: JBox, ind: number, lhs: JBox[]) => {
+        // Perform the evaluation of the predicate in the context of the value
+        // it applies to
+        let pv = doEval(predicate, item, environment);
+        // Get the array of JS values associated with the predicate evaluation
+        let res: JSValue[] = pv.values;
+        // Compute the reverse index (negative number) for the item we evaluated
+        let rev = ind - lhs.length;
+        // Check if the predicate evaluated to an array of numbers?
         if (isArrayOfNumbers(res)) {
-            if ((res as number[]).findIndex(n => Math.floor(n) === ind || Math.floor(n) === rev) >= 0) {
-                vals.push(lhs.values[ind]);
-            }
+            // If so, floor all numbers and see our index or reverse index is in
+            // the list of values.
+            return res.map(Math.floor).some(n => n === ind || n === rev);
         } else {
-            if (!!res) {
-                vals.push(lhs.values[ind]);
-            }
+            // If this isn't an array of numbers, treat the result of the predicate
+            // evaluation as truthy in deciding whether we include the item or not.
+            return !!unbox(pv);
         }
-    });
-
-    // vals = lhs.values.filter((x, ind) => {
-    //     let pv = pvals.values[ind];
-    //     let res: JSValue = pv;
-    //     let rev = ind - lhs.values.length;
-    //     if (isNumber(pv)) {
-    //         res = [pv];
-    //     }
-    //     if (isArrayOfNumbers(res)) {
-    //         if ((res as number[]).findIndex(n => Math.floor(n) === ind || Math.floor(n) === rev) >= 0) {
-    //             return true;
-    //         }
-    //     } else {
-    //         if (!!res) {
-    //             return true;
-    //         }
-    //     }
-    //     return false;
-    // });
-    return boxValue(vals);
+    };
 }
 
 function evaluateBinding(expr: ast.BindNode, input: JBox, environment: JEnv): JBox {
@@ -285,6 +269,14 @@ export function evalOverValues(box: JBox, expr: ast.ASTNode, environment: JEnv):
     let fragments = fragmentBox(box);
     // Eval each boxed value
     let mapped = fragments.map(c => doEval(expr, c, environment));
+    // Defragment values back into a single boxed collection of values
+    return defragmentBox(mapped);
+}
+
+export function filterOverValues(box: JBox, predicate: (item: JBox, index: number, boxes: JBox[]) => boolean): JBox {
+    let fragments = fragmentBox(box);
+    // Eval each boxed value
+    let mapped = fragments.filter(predicate);
     // Defragment values back into a single boxed collection of values
     return defragmentBox(mapped);
 }
