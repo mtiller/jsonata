@@ -3,6 +3,7 @@ export type JSValue = number | string | boolean | object | Function;
 export class EvalEnv<T> {
     protected bindings: { [key: string]: T } = {};
     constructor(public enclosing?: EvalEnv<T>) {
+        // TODO: This shouldn't be needed and should be removed!
         if (enclosing) {
             Object.keys(enclosing).forEach(key => {
                 this.bind(key, enclosing[key]);

@@ -9,10 +9,7 @@
         },
         {
             "type": "home",
-            "address": [
-                "freddy@my-social.com",
-                "frederic.smith@very-serious.com"
-            ]
+            "address": ["freddy@my-social.com", "frederic.smith@very-serious.com"]
         }
     ]
 }

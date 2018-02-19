@@ -1,13 +1,14 @@
 import * as ast from "../ast";
 import { unexpectedValue, isArrayOfNumbers, flatten } from "../utils";
 import { JEnv, JSValue } from "./environment";
-import { JBox, ubox, boxmap, boxValue, unbox, boxValues, unboxValues } from "./box";
+import { JBox, ubox, boxmap, boxValue, unbox, fragmentBox, defragmentBox } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
-import { isNumber } from "util";
+import { isNumber, isString } from "util";
 
 export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSValue {
     let box = boxValue(input);
     let nexpr = elaboratePredicates(expr);
+    environment.bind("$", input);
     let result = doEval(nexpr, box, environment);
     return unbox(result);
 }
@@ -99,35 +100,16 @@ function evaluateVariable(expr: ast.VariableNode, input: JBox, environment: JEnv
 
 function evaluatePath(expr: ast.PathNode, input: JBox, environment: JEnv): JBox {
     if (input.values == undefined) return ubox;
-    if (expr.steps.length == 0) return input; // ???
+    if (expr.steps.length == 0) throw new Error("Path without zero steps...this shouldn't happen");
 
     let [step0, ...rest] = expr.steps;
-    let cur = boxValues(doEval(step0, input, environment));
-    //console.log("cur = ", JSON.stringify(cur));
+    let ret = doEval(step0, input, environment);
+    // TODO: Use reduce
     rest.forEach(step => {
-        let next = cur.map(c => {
-            //console.log("  Applying " + JSON.stringify(step));
-            //console.log("    to: ", JSON.stringify(c));
-            let result = doEval(step, c, environment);
-            //console.log("    result: ", JSON.stringify(result));
-            return result;
-        });
-        //console.log("next = ", JSON.stringify(next));
-        let all = flatten(next.map(n => n.values));
-        //console.log("all = ", JSON.stringify(all));
-        cur = boxValues(boxValue(all));
-        //console.log("cur = ", JSON.stringify(cur));
+        ret = mapOverValues(ret, step, environment);
     });
-    let ret = unboxValues(cur);
-    //console.log("ret = ", JSON.stringify(ret));
     return ret;
 }
-
-// function applySteps(steps: ast.ASTNode[], elem: JBox, environment: JEnv): JBox {
-//     let result = elem;
-//     steps.forEach(step => (result = doEval(step, result, environment)));
-//     return result;
-// }
 
 function evaluateName(expr: ast.NameNode, input: JBox, environment: JEnv): JBox {
     if (input.values === undefined) return ubox;
@@ -144,18 +126,55 @@ function evaluateWildcard(expr: ast.WildcardNode, input: JBox, environment: JEnv
 }
 
 function evaluatePredicate(expr: ast.PredicateNode, input: JBox, environment: JEnv): JBox {
+    /* Loop over every value on the left hand side */
+    /*   Evaluate predicate in the context of each value */
+    /*   If the result is a number, promote to array of numbers */
+    /*   If the result is an array of numbers, iterate over indices and push
+           element in input with matching index */
+    /*   If result is not an array of numbers, treat as truthy */
+    let indexify = (i: number, len: number) => {
+        let index = Math.floor(i);
+        if (index < 0) return index + len;
+        return index;
+    };
+
     let predicate = expr.condition;
-    // First, evaluate the core value of the predicate
+    // First, evaluate the left hand side
     let lhs = doEval(expr.lhs, input, environment);
-    // Then evaluate the predicate
-    let pval = doEval(predicate, lhs, environment);
-    if (isArrayOfNumbers(pval.values)) {
-        let indices = pval.values.map(x => Math.floor(x as number)).map(x => (x < 0 ? x + lhs.values.length : x));
-        return boxValue(indices.map(i => lhs.values[i]));
-    }
-    // Treat pvals as truthy values indicating whether to keep the i_th element
-    // in the left hand side.
-    return boxValue(lhs.values.filter((x, i) => !!pval.values[i]));
+
+    let pvals = mapOverValues(lhs, predicate, environment);
+    let vals: JSValue[] = [];
+    pvals.values.forEach((pv: JSValue, ind: number) => {
+        let res: JSValue = pv;
+        if (isNumber(pv)) {
+            res = [pv];
+        }
+        if (isArrayOfNumbers(res)) {
+            // Use contains to map to a boolean?
+            (res as number[]).forEach(n => {
+                if (indexify(n, lhs.values.length) === ind) vals.push(lhs.values[ind]);
+            });
+        } else {
+            if (!!res) {
+                vals.push(lhs.values[ind]);
+            }
+        }
+    });
+    return boxValue(vals);
+
+    // // Next, evaluate the predicate expression in the context of the LHS value and
+    // // see if we get an array of integers (in which case, we treat them as indices)
+    // let pvals = doEval(predicate, lhs, environment);
+    // if (isArrayOfNumbers(pvals.values)) {
+    //     let indices = pvals.values.map(x => Math.floor(x as number)).map(x => (x < 0 ? x + lhs.values.length : x));
+    //     return boxValue(indices.map(i => lhs.values[i]));
+    // }
+    // // If they aren't indices, then apply the predicates element wise and treat
+    // // them as booleans indicating whether a given value should be kept or not.
+    // pvals = mapOverValues(lhs, predicate, environment);
+    // // Treat pvals as truthy values indicating whether to keep the i_th element
+    // // in the left hand side.
+    // return boxValue(lhs.values.filter((x, i) => !!pvals.values[i]));
 }
 
 function evaluateBinding(expr: ast.BindNode, input: JBox, environment: JEnv): JBox {
@@ -180,22 +199,68 @@ export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: JB
     let rhs = unbox(doEval(expr.rhs, input, environment));
     let value = expr.value;
     switch (value) {
-        case "+": {
-            if (isNumber(lhs) && isNumber(rhs)) {
-                return boxValue(lhs + rhs);
-            }
-            throw new Error("Invalid operands for +");
-        }
+        case "+":
         case "-":
         case "*":
         case "/":
-        case "%":
+        case "%": {
+            if (lhs === undefined || rhs === undefined) return ubox;
+            if (!isNumber(lhs) || !isNumber(rhs)) {
+                throw new Error("Invalid operands for " + value);
+            }
+            switch (value) {
+                case "+":
+                    return boxValue(lhs + rhs);
+                case "-":
+                    return boxValue(lhs - rhs);
+                case "*":
+                    return boxValue(lhs * rhs);
+                case "/":
+                    return boxValue(lhs / rhs);
+                case "%":
+                    return boxValue(lhs % rhs);
+                default:
+                    return unexpectedValue<string>(
+                        value,
+                        value,
+                        v => "Evaluate failed to handle case where binary operation was " + v,
+                    );
+            }
+        }
         case "=":
         case "!=":
         case "<":
         case "<=":
         case ">":
-        case ">=":
+        case ">=": {
+            if (lhs === undefined || rhs === undefined) return boxValue(false);
+            if (!isNumber(lhs) && !isString(lhs)) {
+                throw new Error("Invalid operand for LHS of " + value + " operator: " + JSON.stringify(lhs));
+            }
+            if (!isNumber(rhs) && !isString(rhs)) {
+                throw new Error("Invalid operand for RHS of " + value + " operator: " + JSON.stringify(rhs));
+            }
+            switch (value) {
+                case "=":
+                    return boxValue(lhs === rhs);
+                case "!=":
+                    return boxValue(lhs !== rhs);
+                case "<":
+                    return boxValue(lhs < rhs);
+                case "<=":
+                    return boxValue(lhs <= rhs);
+                case ">":
+                    return boxValue(lhs > rhs);
+                case ">=":
+                    return boxValue(lhs >= rhs);
+                default:
+                    return unexpectedValue<string>(
+                        value,
+                        value,
+                        v => "Evaluate failed to handle case where binary operation was " + v,
+                    );
+            }
+        }
         case "&":
         case "and":
         case "or":
@@ -218,9 +283,13 @@ function evaluateArray(expr: ast.ArrayConstructorNode, input: JBox, environment:
         let v = doEval(e, input, environment);
         return v.scalar ? v.values[0] : v.values;
     });
-    return {
-        values: elems,
-        scalar: false,
-        preserveSingleton: false,
-    };
+    return boxValue(elems);
+}
+
+export function mapOverValues(box: JBox, expr: ast.ASTNode, environment: JEnv): JBox {
+    let fragments = fragmentBox(box);
+    // Eval each boxed value
+    let mapped = fragments.map(c => doEval(expr, c, environment));
+    // Defragment values back into a single boxed collection of values
+    return defragmentBox(mapped);
 }

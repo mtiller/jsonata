@@ -14,27 +14,56 @@ export function boxmap(box: JBox, f: (v: JSValue) => JSValue): JBox {
     // TODO: This is probably where flattening needs to happen
     if (box.values == undefined) return { ...box };
     let vals = box.values.map(v => f(v)).filter(x => x !== undefined);
-    //return boxValue(vals);
-    return { ...box, values: vals };
+    return boxValue(vals);
+    //return { ...box, values: vals };
 }
 
-export function boxValues(box: JBox): JBox[] {
+/**
+ * This function takes a box full of values and creates a box for each
+ * value contained in the original box.
+ * @param box
+ */
+export function fragmentBox(box: JBox): JBox[] {
     if (box.values === undefined) return [];
     return box.values.map(v => boxValue(v));
 }
 
+/**
+ * This function takes an array of boxes and defragments their values
+ * into a single set of values.  This involves concatenating all the
+ * individual values together and then flattening all of them into
+ * a single value array and then boxing that up.
+ * @param box
+ */
+export function defragmentBox(box: JBox[]): JBox {
+    // Merge all values together
+    let values = flatten(box.map(n => n.values));
+    // Create a new box
+    return boxValue(values);
+}
 export function unboxValues(boxes: JBox[]): JBox {
     return boxValue(flatten(boxes.map(box => box.values)));
 }
 
+function isBox(val: any): boolean {
+    return val.hasOwnProperty("scalar") && val.hasOwnProperty("values");
+}
+
 export function boxValue(input: JSValue): JBox {
+    // TODO: Remove eventually
+    if (isBox(input)) {
+        throw new Error("Boxed value being boxed!?!");
+    }
     if (Array.isArray(input)) {
+        let values = input.filter(x => x !== undefined);
+        if (values.length === 0) return ubox;
         return {
-            values: input.filter(x => x !== undefined), // Remove any undefined values
+            values: values, // Remove any undefined values
             scalar: false,
             preserveSingleton: false,
         };
     } else {
+        if (input === undefined) return ubox;
         return {
             values: [input],
             scalar: true,
@@ -44,6 +73,10 @@ export function boxValue(input: JSValue): JBox {
 }
 
 export function unbox(result: JBox, preserveSingleton?: boolean): JSValue {
+    // TODO: Remove eventually
+    if (!isBox(result)) {
+        throw new Error("Trying to unbox non-box");
+    }
     if (result.values == undefined) return undefined;
     if (result.values.length == 1 && (!preserveSingleton || !result.preserveSingleton)) return result.values[0];
     return result.values;

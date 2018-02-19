@@ -73,6 +73,8 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                     });
 
                     /* istanbul ignore else */
+                    // TODO: Steps should never be empty...can we ensure this
+                    // and avoid this check?
                     if (steps.length > 0) {
                         // If I understand the previous comments, if the first "step" is a
                         // unary node with a value of "[", that indicates it is a path constructor.
