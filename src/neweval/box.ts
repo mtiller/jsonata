@@ -80,3 +80,19 @@ export function unbox(result: JBox, preserveSingleton?: boolean): JSValue {
     if (result.values.length == 1 && (!preserveSingleton || !result.preserveSingleton)) return result.values[0];
     return result.values;
 }
+
+export function mapOverValues(box: JBox, f: (input: JBox) => JBox): JBox {
+    // Break all values out into individual boxes
+    let fragments = fragmentBox(box);
+    // Map over each box
+    let mapped = fragments.map(f);
+    // Now defragment back to a single boxed value
+    return defragmentBox(mapped);
+}
+export function filterOverValues(box: JBox, predicate: (item: JBox, index: number, boxes: JBox[]) => boolean): JBox {
+    let fragments = fragmentBox(box);
+    // Eval each boxed value
+    let mapped = fragments.filter(predicate);
+    // Defragment values back into a single boxed collection of values
+    return defragmentBox(mapped);
+}

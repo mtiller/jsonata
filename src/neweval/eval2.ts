@@ -1,7 +1,7 @@
 import * as ast from "../ast";
 import { unexpectedValue, isArrayOfNumbers, flatten } from "../utils";
 import { JEnv, JSValue } from "./environment";
-import { JBox, ubox, boxmap, boxValue, unbox, fragmentBox, defragmentBox } from "./box";
+import { JBox, ubox, boxmap, boxValue, unbox, mapOverValues, filterOverValues } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber, isString } from "util";
 
@@ -105,7 +105,7 @@ function evaluatePath(expr: ast.PathNode, input: JBox, environment: JEnv): JBox 
     let [step0, ...rest] = expr.steps;
     let res0 = doEval(step0, input, environment);
 
-    return rest.reduce((prev, step) => evalOverValues(prev, step, environment), res0);
+    return rest.reduce((prev, step) => mapOverValues(prev, c => doEval(step, c, environment)), res0);
 }
 
 function evaluateName(expr: ast.NameNode, input: JBox, environment: JEnv): JBox {
@@ -124,13 +124,11 @@ function evaluateWildcard(expr: ast.WildcardNode, input: JBox, environment: JEnv
 
 function evaluatePredicate(expr: ast.PredicateNode, input: JBox, environment: JEnv): JBox {
     /* First, fragement all values in the left and side into their own box */
-    let lhs = fragmentBox(doEval(expr.lhs, input, environment));
+    let lhs = doEval(expr.lhs, input, environment);
     /* Construct a predicate function that we can filter this list based on */
     let predicate = filterPredicate(expr.condition, environment);
-    /* Filter the LHS values that satisfy the predicate */
-    let vals = lhs.filter(predicate);
-    /* Defragment back into a single box */
-    return defragmentBox(vals);
+    /* Use the predicate closure to filter the values in LHS */
+    return filterOverValues(lhs, predicate);
 }
 
 /**
@@ -263,20 +261,4 @@ function evaluateArray(expr: ast.ArrayConstructorNode, input: JBox, environment:
         return v.scalar ? v.values[0] : v.values;
     });
     return boxValue(elems);
-}
-
-export function evalOverValues(box: JBox, expr: ast.ASTNode, environment: JEnv): JBox {
-    let fragments = fragmentBox(box);
-    // Eval each boxed value
-    let mapped = fragments.map(c => doEval(expr, c, environment));
-    // Defragment values back into a single boxed collection of values
-    return defragmentBox(mapped);
-}
-
-export function filterOverValues(box: JBox, predicate: (item: JBox, index: number, boxes: JBox[]) => boolean): JBox {
-    let fragments = fragmentBox(box);
-    // Eval each boxed value
-    let mapped = fragments.filter(predicate);
-    // Defragment values back into a single boxed collection of values
-    return defragmentBox(mapped);
 }
