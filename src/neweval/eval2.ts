@@ -105,7 +105,7 @@ function evaluatePath(expr: ast.PathNode, input: JBox, environment: JEnv): JBox 
     let [step0, ...rest] = expr.steps;
     let res0 = doEval(step0, input, environment);
 
-    return rest.reduce((prev, step) => mapOverValues(prev, step, environment), res0);
+    return rest.reduce((prev, step) => evalOverValues(prev, step, environment), res0);
 }
 
 function evaluateName(expr: ast.NameNode, input: JBox, environment: JEnv): JBox {
@@ -135,7 +135,7 @@ function evaluatePredicate(expr: ast.PredicateNode, input: JBox, environment: JE
     let lhs = doEval(expr.lhs, input, environment);
 
     // TODO: Simplify?
-    let pvals = mapOverValues(lhs, predicate, environment);
+    let pvals = evalOverValues(lhs, predicate, environment);
     let vals: JSValue[] = [];
 
     pvals.values.forEach((pv: JSValue, ind: number) => {
@@ -281,7 +281,7 @@ function evaluateArray(expr: ast.ArrayConstructorNode, input: JBox, environment:
     return boxValue(elems);
 }
 
-export function mapOverValues(box: JBox, expr: ast.ASTNode, environment: JEnv): JBox {
+export function evalOverValues(box: JBox, expr: ast.ASTNode, environment: JEnv): JBox {
     let fragments = fragmentBox(box);
     // Eval each boxed value
     let mapped = fragments.map(c => doEval(expr, c, environment));
