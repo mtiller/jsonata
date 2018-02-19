@@ -55,16 +55,15 @@ export function boxValue(input: JSValue): JBox {
     if (isBox(input)) {
         throw new Error("Boxed value being boxed!?!");
     }
+    if (input === undefined) return ubox;
     if (Array.isArray(input)) {
         let values = input.filter(x => x !== undefined);
-        if (values.length === 0) return ubox;
         return {
             values: values, // Remove any undefined values
             scalar: false,
             preserveSingleton: false,
         };
     } else {
-        if (input === undefined) return ubox;
         return {
             values: [input],
             scalar: true,
@@ -79,6 +78,7 @@ export function unbox(result: JBox, preserveSingleton?: boolean): JSValue {
         throw new Error("Trying to unbox non-box");
     }
     if (result.values == undefined) return undefined;
+    if (result.values.length === 0) return undefined;
     if (result.values.length == 1 && (!preserveSingleton || !result.preserveSingleton)) return result.values[0];
     return result.values;
 }

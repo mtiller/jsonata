@@ -113,7 +113,7 @@ function evaluatePath(expr: ast.PathNode, input: JBox, environment: JEnv): JBox 
 
 function evaluateName(expr: ast.NameNode, input: JBox, environment: JEnv): JBox {
     if (input.values === undefined) return ubox;
-    return boxmap(input, elem => elem[expr.value]);
+    return boxmap(input, elem => (typeof elem === "object" ? elem[expr.value] : undefined));
 }
 
 function evaluateWildcard(expr: ast.WildcardNode, input: JBox, environment: JEnv): JBox {
@@ -142,6 +142,7 @@ function evaluatePredicate(expr: ast.PredicateNode, input: JBox, environment: JE
     // First, evaluate the left hand side
     let lhs = doEval(expr.lhs, input, environment);
 
+    // TODO: Simplify?
     let pvals = mapOverValues(lhs, predicate, environment);
     let vals: JSValue[] = [];
     pvals.values.forEach((pv: JSValue, ind: number) => {
@@ -161,24 +162,11 @@ function evaluatePredicate(expr: ast.PredicateNode, input: JBox, environment: JE
         }
     });
     return boxValue(vals);
-
-    // // Next, evaluate the predicate expression in the context of the LHS value and
-    // // see if we get an array of integers (in which case, we treat them as indices)
-    // let pvals = doEval(predicate, lhs, environment);
-    // if (isArrayOfNumbers(pvals.values)) {
-    //     let indices = pvals.values.map(x => Math.floor(x as number)).map(x => (x < 0 ? x + lhs.values.length : x));
-    //     return boxValue(indices.map(i => lhs.values[i]));
-    // }
-    // // If they aren't indices, then apply the predicates element wise and treat
-    // // them as booleans indicating whether a given value should be kept or not.
-    // pvals = mapOverValues(lhs, predicate, environment);
-    // // Treat pvals as truthy values indicating whether to keep the i_th element
-    // // in the left hand side.
-    // return boxValue(lhs.values.filter((x, i) => !!pvals.values[i]));
 }
 
 function evaluateBinding(expr: ast.BindNode, input: JBox, environment: JEnv): JBox {
     let lhs = expr.lhs;
+    // TODO: Don't need this check
     if (lhs.type === "variable") {
         let x = lhs;
         let val = doEval(expr.rhs, input, environment);

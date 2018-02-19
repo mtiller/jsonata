@@ -23,8 +23,6 @@
                 "--runInBand",
                 "--watchAll",
                 "--no-cache",
-                "-t",
-                "wildcards",
                 "--coverage",
                 "false"
             ],
