@@ -103,12 +103,9 @@ function evaluatePath(expr: ast.PathNode, input: JBox, environment: JEnv): JBox 
     if (expr.steps.length == 0) throw new Error("Path without zero steps...this shouldn't happen");
 
     let [step0, ...rest] = expr.steps;
-    let ret = doEval(step0, input, environment);
-    // TODO: Use reduce
-    rest.forEach(step => {
-        ret = mapOverValues(ret, step, environment);
-    });
-    return ret;
+    let res0 = doEval(step0, input, environment);
+
+    return rest.reduce((prev, step) => mapOverValues(prev, step, environment), res0);
 }
 
 function evaluateName(expr: ast.NameNode, input: JBox, environment: JEnv): JBox {
@@ -132,11 +129,6 @@ function evaluatePredicate(expr: ast.PredicateNode, input: JBox, environment: JE
     /*   If the result is an array of numbers, iterate over indices and push
            element in input with matching index */
     /*   If result is not an array of numbers, treat as truthy */
-    let indexify = (i: number, len: number) => {
-        let index = Math.floor(i);
-        if (index < 0) return index + len;
-        return index;
-    };
 
     let predicate = expr.condition;
     // First, evaluate the left hand side
@@ -145,36 +137,51 @@ function evaluatePredicate(expr: ast.PredicateNode, input: JBox, environment: JE
     // TODO: Simplify?
     let pvals = mapOverValues(lhs, predicate, environment);
     let vals: JSValue[] = [];
+
     pvals.values.forEach((pv: JSValue, ind: number) => {
         let res: JSValue = pv;
+        let rev = ind - lhs.values.length;
         if (isNumber(pv)) {
             res = [pv];
         }
         if (isArrayOfNumbers(res)) {
-            // Use contains to map to a boolean?
-            (res as number[]).forEach(n => {
-                if (indexify(n, lhs.values.length) === ind) vals.push(lhs.values[ind]);
-            });
+            if ((res as number[]).findIndex(n => Math.floor(n) === ind || Math.floor(n) === rev) >= 0) {
+                vals.push(lhs.values[ind]);
+            }
         } else {
             if (!!res) {
                 vals.push(lhs.values[ind]);
             }
         }
     });
+
+    // vals = lhs.values.filter((x, ind) => {
+    //     let pv = pvals.values[ind];
+    //     let res: JSValue = pv;
+    //     let rev = ind - lhs.values.length;
+    //     if (isNumber(pv)) {
+    //         res = [pv];
+    //     }
+    //     if (isArrayOfNumbers(res)) {
+    //         if ((res as number[]).findIndex(n => Math.floor(n) === ind || Math.floor(n) === rev) >= 0) {
+    //             return true;
+    //         }
+    //     } else {
+    //         if (!!res) {
+    //             return true;
+    //         }
+    //     }
+    //     return false;
+    // });
     return boxValue(vals);
 }
 
 function evaluateBinding(expr: ast.BindNode, input: JBox, environment: JEnv): JBox {
     let lhs = expr.lhs;
-    // TODO: Don't need this check
-    if (lhs.type === "variable") {
-        let x = lhs;
-        let val = doEval(expr.rhs, input, environment);
-        environment.bind(x.value, unbox(val));
-        return val;
-    } else {
-        throw new Error("Left hand side of binding must be a variable (at " + expr.lhs.position + ")");
-    }
+    let x = lhs;
+    let val = doEval(expr.rhs, input, environment);
+    environment.bind(x.value, unbox(val));
+    return val;
 }
 
 export function evaluateBlock(expr: ast.BlockNode, input: JBox, enclosing: JEnv): JBox {

@@ -11,11 +11,9 @@ export const ubox: Box<JSValue> = { values: undefined, scalar: true, preserveSin
 export type JBox = Box<JSValue>;
 
 export function boxmap(box: JBox, f: (v: JSValue) => JSValue): JBox {
-    // TODO: This is probably where flattening needs to happen
     if (box.values == undefined) return { ...box };
     let vals = box.values.map(v => f(v)).filter(x => x !== undefined);
     return boxValue(vals);
-    //return { ...box, values: vals };
 }
 
 /**
