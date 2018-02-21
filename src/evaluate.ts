@@ -1304,7 +1304,7 @@ function evaluateLambda(expr: ast.LambdaDefinitionNode, input: any, environment:
         arguments: expr.arguments,
         signature: expr.signature,
         body: expr.body,
-        thunk: undefined,
+        thunk: false,
     };
     if (expr.thunk === true) {
         procedure.thunk = true;

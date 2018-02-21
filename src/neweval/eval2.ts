@@ -1,9 +1,19 @@
 import * as ast from "../ast";
+import { Signature } from "../signatures";
 import { unexpectedValue, isArrayOfNumbers, flatten } from "../utils";
 import { JEnv, JSValue } from "./environment";
 import { JBox, ubox, boxmap, boxValue, unbox, mapOverValues, filterOverValues, defragmentBox } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber, isString } from "util";
+
+export interface LambdaDefinition {
+    input: JBox;
+    environment: JEnv;
+    arguments: ast.ASTNode[];
+    signature: Signature;
+    body: ast.ASTNode;
+    thunk: boolean;
+}
 
 export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSValue {
     let box = boxValue(input);
@@ -47,12 +57,14 @@ function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv): JBox {
         case "binary": {
             return evaluateBinaryOperation(expr, input, environment);
         }
+        case "lambda": {
+            return evaluateLambda(expr, input, environment);
+        }
         case "unary":
         case "descendant":
         case "condition":
         case "regex":
         case "function":
-        case "lambda":
         case "partial":
         case "apply":
         case "sort":
@@ -262,4 +274,19 @@ function evaluateArray(expr: ast.ArrayConstructorNode, input: JBox, environment:
     // allowed) but mark this result of all this as an array (preserve=true).
     let vals = expr.expressions.map(c => doEval(c, input, environment));
     return defragmentBox(vals, { preserve: true });
+}
+
+function evaluateLambda(expr: ast.LambdaDefinitionNode, input: JBox, environment: JEnv): JBox {
+    let procedure: LambdaDefinition = {
+        input: input,
+        environment: environment,
+        arguments: expr.arguments,
+        signature: expr.signature,
+        body: expr.body,
+        thunk: false,
+    };
+    if (expr.thunk === true) {
+        procedure.thunk = true;
+    }
+    return boxValue(procedure, { lambda: true });
 }
