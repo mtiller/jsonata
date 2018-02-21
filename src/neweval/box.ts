@@ -1,19 +1,22 @@
 import { JSValue } from "./environment";
-import { flatten } from "../utils";
 
-export interface Box<T> {
+export interface BoxFlags {
+    scalar: boolean; // Started life as a scalar (for cases when `1` and `[1]` should be treated differently)
+    preserve: boolean; // i.e., do not flatten
+}
+export interface Box<T> extends BoxFlags {
     values: T[] | undefined;
-    scalar: boolean;
-    preserveSingleton: boolean;
 }
 
-export const ubox: Box<JSValue> = { values: undefined, scalar: true, preserveSingleton: false };
+export const ubox: Box<JSValue> = { values: undefined, scalar: true, preserve: false };
 export type JBox = Box<JSValue>;
+export type BoxPredicate = (item: JBox, index: number, boxes: JBox[]) => boolean;
 
-export function boxmap(box: JBox, f: (v: JSValue) => JSValue): JBox {
+export function boxmap(box: JBox, f: (v: JSValue) => JSValue, options: Partial<BoxFlags> = {}): JBox {
     if (box.values == undefined) return { ...box };
     let vals = box.values.map(v => f(v)).filter(x => x !== undefined);
-    return boxValue(vals);
+    if (vals.length == 1) return boxValue(vals[0], options);
+    return boxValue(vals, options);
 }
 
 /**
@@ -33,22 +36,23 @@ export function fragmentBox(box: JBox): JBox[] {
  * a single value array and then boxing that up.
  * @param box
  */
-export function defragmentBox(box: JBox[]): JBox {
-    // Merge all values together
-    let values = flatten(box.map(n => n.values));
+export function defragmentBox(box: JBox[], options: Partial<BoxFlags> = {}): JBox {
+    let values = box.reduce((prev, box) => {
+        if (box.preserve) return [...prev, box.values];
+        return [...prev, ...box.values];
+    }, []);
     // Create a new box
-    return boxValue(values);
-}
-export function unboxValues(boxes: JBox[]): JBox {
-    return boxValue(flatten(boxes.map(box => box.values)));
+    if (values.length == 1) return boxValue(values[0], options);
+    return boxValue(values, options);
 }
 
 function isBox(val: any): boolean {
+    if (val === undefined || val === null) return false;
     if (typeof val !== "object") return false;
     return val.hasOwnProperty("scalar") && val.hasOwnProperty("values");
 }
 
-export function boxValue(input: JSValue): JBox {
+export function boxValue(input: JSValue, options: Partial<BoxFlags> = {}): JBox {
     // TODO: Remove eventually
     if (isBox(input)) {
         throw new Error("Boxed value being boxed!?!");
@@ -59,40 +63,48 @@ export function boxValue(input: JSValue): JBox {
         return {
             values: values, // Remove any undefined values
             scalar: false,
-            preserveSingleton: false,
+            preserve: false,
+            ...options,
         };
     } else {
         return {
             values: [input],
             scalar: true,
-            preserveSingleton: false,
+            preserve: false,
+            ...options,
         };
     }
 }
 
-export function unbox(result: JBox, preserveSingleton?: boolean): JSValue {
+export function unbox(result: JBox): JSValue {
     // TODO: Remove eventually
     if (!isBox(result)) {
         throw new Error("Trying to unbox non-box");
     }
-    if (result.values == undefined) return undefined;
-    if (result.values.length === 0) return undefined;
-    if (result.values.length == 1 && (!preserveSingleton || !result.preserveSingleton)) return result.values[0];
-    return result.values;
+    if (result.scalar) {
+        if (result.values == undefined) return undefined;
+        if (result.values.length === 0) return undefined;
+        if (result.values.length == 1 && !result.preserve) return result.values[0];
+        // I don't think this should happen if something is marked scalar
+        return result.values;
+    } else {
+        if (result.values.length === 0 && !result.preserve) return undefined;
+        return result.values;
+    }
 }
 
-export function mapOverValues(box: JBox, f: (input: JBox) => JBox): JBox {
+export function mapOverValues(box: JBox, f: (input: JBox) => JBox, options: Partial<BoxFlags> = {}): JBox {
     // Break all values out into individual boxes
     let fragments = fragmentBox(box);
     // Map over each box
     let mapped = fragments.map(f);
     // Now defragment back to a single boxed value
-    return defragmentBox(mapped);
+    return defragmentBox(mapped, options);
 }
-export function filterOverValues(box: JBox, predicate: (item: JBox, index: number, boxes: JBox[]) => boolean): JBox {
+export function filterOverValues(box: JBox, predicate: BoxPredicate, options: Partial<BoxFlags> = {}): JBox {
     let fragments = fragmentBox(box);
     // Eval each boxed value
     let mapped = fragments.filter(predicate);
     // Defragment values back into a single boxed collection of values
-    return defragmentBox(mapped);
+    return defragmentBox(mapped, options);
 }

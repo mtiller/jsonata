@@ -1,7 +1,7 @@
 import * as ast from "../ast";
 import { unexpectedValue, isArrayOfNumbers, flatten } from "../utils";
 import { JEnv, JSValue } from "./environment";
-import { JBox, ubox, boxmap, boxValue, unbox, mapOverValues, filterOverValues } from "./box";
+import { JBox, ubox, boxmap, boxValue, unbox, mapOverValues, filterOverValues, defragmentBox } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber, isString } from "util";
 
@@ -99,13 +99,15 @@ function evaluateVariable(expr: ast.VariableNode, input: JBox, environment: JEnv
 }
 
 function evaluatePath(expr: ast.PathNode, input: JBox, environment: JEnv): JBox {
-    if (input.values == undefined) return ubox;
+    //if (input.values == undefined) return ubox;
     if (expr.steps.length == 0) throw new Error("Path without zero steps...this shouldn't happen");
 
     let [step0, ...rest] = expr.steps;
     let res0 = doEval(step0, input, environment);
 
-    return rest.reduce((prev, step) => mapOverValues(prev, c => doEval(step, c, environment)), res0);
+    return rest.reduce((prev, step) => {
+        return mapOverValues(prev, c => doEval(step, c, environment));
+    }, res0);
 }
 
 function evaluateName(expr: ast.NameNode, input: JBox, environment: JEnv): JBox {
@@ -256,9 +258,8 @@ export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: JB
 }
 
 function evaluateArray(expr: ast.ArrayConstructorNode, input: JBox, environment: JEnv): JBox {
-    let elems = expr.expressions.map(e => {
-        let v = doEval(e, input, environment);
-        return v.scalar ? v.values[0] : v.values;
-    });
-    return boxValue(elems);
+    // Evaluate every expression and reconstitute them by flattening (where
+    // allowed) but mark this result of all this as an array (preserve=true).
+    let vals = expr.expressions.map(c => doEval(c, input, environment));
+    return defragmentBox(vals, { preserve: true });
 }
