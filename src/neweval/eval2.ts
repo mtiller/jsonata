@@ -1,19 +1,11 @@
 import * as ast from "../ast";
-import { Signature } from "../signatures";
+import { ProcedureDetails } from "./procs";
 import { unexpectedValue, isArrayOfNumbers, flatten } from "../utils";
 import { JEnv, JSValue } from "./environment";
 import { JBox, ubox, boxmap, boxValue, unbox, mapOverValues, filterOverValues, defragmentBox } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber, isString } from "util";
-
-export interface LambdaDefinition {
-    input: JBox;
-    environment: JEnv;
-    arguments: ast.ASTNode[];
-    signature: Signature;
-    body: ast.ASTNode;
-    thunk: boolean;
-}
+import { apply } from "./apply";
 
 export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSValue {
     let box = boxValue(input);
@@ -23,7 +15,7 @@ export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSV
     return unbox(result);
 }
 
-function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv): JBox {
+export function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv): JBox {
     switch (expr.type) {
         /* These are all leaf node types (have no children) */
         case "literal": {
@@ -59,6 +51,9 @@ function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv): JBox {
         }
         case "lambda": {
             return evaluateLambda(expr, input, environment);
+        }
+        case "function": {
+            return evaluateFunction(expr, input, environment);
         }
         case "unary":
         case "descendant":
@@ -105,6 +100,7 @@ function evaluateVariable(expr: ast.VariableNode, input: JBox, environment: JEnv
     if (varname == "") return input;
     /* Otherwise, lookup the variable in the environment */
     let result = environment.lookup(varname);
+
     /* If not found, return an undefined value */
     if (result == undefined) return ubox;
     return boxValue(result);
@@ -277,7 +273,7 @@ function evaluateArray(expr: ast.ArrayConstructorNode, input: JBox, environment:
 }
 
 function evaluateLambda(expr: ast.LambdaDefinitionNode, input: JBox, environment: JEnv): JBox {
-    let procedure: LambdaDefinition = {
+    let procedure: ProcedureDetails = {
         input: input,
         environment: environment,
         arguments: expr.arguments,
@@ -289,4 +285,47 @@ function evaluateLambda(expr: ast.LambdaDefinitionNode, input: JBox, environment
         procedure.thunk = true;
     }
     return boxValue(procedure, { lambda: true });
+}
+
+/**
+ * Evaluate function against input data
+ * @param {Object} expr - JSONata expression
+ * @param {Object} input - Input data to evaluate against
+ * @param {Object} environment - Environment
+ * @param {Object} [applyto] - LHS of ~> operator
+ * @returns {*} Evaluated input data
+ */
+function evaluateFunction(expr: ast.FunctionInvocationNode, input: JBox, environment: JEnv): JBox {
+    // create the procedure
+    // can't assume that expr.procedure is a lambda type directly
+    // could be an expression that evaluates to a function (e.g. variable reference, parens expr etc.
+    // evaluate it generically first, then check that it is a function.  Throw error if not.
+    let proc = doEval(expr.procedure, input, environment);
+
+    if (
+        typeof proc === "undefined" &&
+        expr.procedure.type === "path" &&
+        environment.lookup(expr.procedure.steps[0].value)
+    ) {
+        // help the user out here if they simply forgot the leading $
+        throw {
+            code: "T1005",
+            stack: new Error().stack,
+            position: expr.position,
+            token: expr.procedure.steps[0].value,
+        };
+    }
+
+    let evaluatedArgs = expr.arguments.map(arg => doEval(arg, input, environment));
+
+    // apply the procedure
+    try {
+        return apply(proc, evaluatedArgs, input);
+    } catch (err) {
+        // add the position field to the error
+        err.position = expr.position;
+        // and the function identifier
+        err.token = expr.procedure.type === "path" ? expr.procedure.steps[0].value : expr.procedure.value;
+        throw err;
+    }
 }

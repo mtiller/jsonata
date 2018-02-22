@@ -1,5 +1,5 @@
-import { BaseNode } from './base';
-import { ASTNode } from './index';
+import { BaseNode } from "./base";
+import { ASTNode } from "./index";
 import { Signature } from "../signatures";
 
 export interface LiteralNode extends BaseNode {
