@@ -1,15 +1,18 @@
-export type JSValue = number | string | boolean | object | Function;
+import { Box, boxValue, BoxFlags, JSValue, ubox } from "./box";
 
-export class EvalEnv<T> {
-    protected bindings: { [key: string]: T } = {};
-    constructor(public enclosing?: EvalEnv<T>) {}
-    bind(name: string, value: T) {
-        this.bindings[name] = value;
+export class JEnv {
+    protected bindings: { [key: string]: Box } = {};
+    constructor(public enclosing?: JEnv) {}
+    bind(name: string, value: JSValue, options: Partial<BoxFlags> = {}) {
+        this.bindings[name] = boxValue(value, options);
     }
-    merge(bindings: { [key: string]: T }) {
-        Object.keys(bindings).forEach(key => (this.bindings[key] = bindings[key]));
+    bindBox(name: string, box: Box) {
+        this.bindings[name] = box;
     }
-    lookup(name: string): T {
+    merge(bindings: { [key: string]: JSValue }, options: Partial<BoxFlags> = {}) {
+        Object.keys(bindings).forEach(key => (this.bindings[key] = boxValue(bindings[key], options)));
+    }
+    lookup(name: string): Box {
         if (this.bindings.hasOwnProperty(name)) {
             return this.bindings[name];
         }
@@ -17,11 +20,9 @@ export class EvalEnv<T> {
             return this.enclosing.lookup(name);
         }
         // TODO: Throw exception instead?!?
-        return undefined;
+        return ubox;
     }
     nested() {
-        return new EvalEnv(this);
+        return new JEnv(this);
     }
 }
-
-export class JEnv extends EvalEnv<JSValue> {}

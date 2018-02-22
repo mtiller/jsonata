@@ -1,16 +1,16 @@
-import { JSValue } from "./environment";
+export type JSValue = number | string | boolean | object | Function;
 
 export interface BoxFlags {
     scalar: boolean; // Started life as a scalar (for cases when `1` and `[1]` should be treated differently)
     preserve: boolean; // i.e., do not flatten
     lambda: boolean; // i.e., is values[0] a lambda?
 }
-export interface Box<T> extends BoxFlags {
-    values: T[] | undefined;
+export interface Box extends BoxFlags {
+    values: JSValue[] | undefined;
 }
 
-export const ubox: Box<JSValue> = { values: undefined, scalar: true, preserve: false, lambda: false };
-export type JBox = Box<JSValue>;
+export const ubox: Box = { values: undefined, scalar: true, preserve: false, lambda: false };
+export type JBox = Box;
 export type BoxPredicate = (item: JBox, index: number, boxes: JBox[]) => boolean;
 
 export function boxmap(box: JBox, f: (v: JSValue) => JSValue, options: Partial<BoxFlags> = {}): JBox {

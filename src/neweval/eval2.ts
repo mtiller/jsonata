@@ -1,8 +1,8 @@
 import * as ast from "../ast";
 import { ProcedureDetails } from "./procs";
 import { unexpectedValue, isArrayOfNumbers, flatten } from "../utils";
-import { JEnv, JSValue } from "./environment";
-import { JBox, ubox, boxmap, boxValue, unbox, mapOverValues, filterOverValues, defragmentBox } from "./box";
+import { JEnv } from "./environment";
+import { JSValue, JBox, ubox, boxmap, boxValue, unbox, mapOverValues, filterOverValues, defragmentBox } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber, isString } from "util";
 import { apply } from "./apply";
@@ -99,11 +99,7 @@ function evaluateVariable(expr: ast.VariableNode, input: JBox, environment: JEnv
     /* If the variable name is empty, then just return the input */
     if (varname == "") return input;
     /* Otherwise, lookup the variable in the environment */
-    let result = environment.lookup(varname);
-
-    /* If not found, return an undefined value */
-    if (result == undefined) return ubox;
-    return boxValue(result);
+    return environment.lookup(varname);
 }
 
 function evaluatePath(expr: ast.PathNode, input: JBox, environment: JEnv): JBox {
@@ -172,7 +168,7 @@ function evaluateBinding(expr: ast.BindNode, input: JBox, environment: JEnv): JB
     let lhs = expr.lhs;
     let x = lhs;
     let val = doEval(expr.rhs, input, environment);
-    environment.bind(x.value, unbox(val));
+    environment.bindBox(x.value, val);
     return val;
 }
 
