@@ -21,6 +21,7 @@ export interface FunctionBox extends BoxFlags {
 
 export interface ValueBox extends BoxFlags {
     type: BoxType.Value;
+    scalar: boolean; // Started life as a scalar (for cases when `1` and `[1]` should be treated differently)
     values: JSValue[];
 }
 
@@ -29,17 +30,11 @@ export interface ArrayBox extends BoxFlags {
     values: JSValue[];
 }
 
-export interface BoxFlags {
-    scalar: boolean; // Started life as a scalar (for cases when `1` and `[1]` should be treated differently)
-    preserve: boolean; // i.e., do not flatten
-}
-// export interface Box extends BoxFlags {
-//     values: JSValue[] | undefined;
-// }
+export interface BoxFlags {}
 
 export type Box = ValueBox | FunctionBox | LambdaBox | ArrayBox;
 
-export const ubox: ValueBox = { values: undefined, scalar: true, preserve: false, type: BoxType.Value };
+export const ubox: ValueBox = { values: undefined, scalar: true, type: BoxType.Value };
 export type BoxPredicate = (item: Box, index: number, boxes: Box[]) => boolean;
 
 export function boxmap(box: Box, f: (v: JSValue) => JSValue): Box {
@@ -109,7 +104,15 @@ export function defragmentBox(boxes: Box[], array: boolean = false): Box {
 function isBox(val: any): boolean {
     if (val === undefined || val === null) return false;
     if (typeof val !== "object") return false;
-    return val.hasOwnProperty("scalar") && val.hasOwnProperty("values");
+    switch (val.type) {
+        case BoxType.Array:
+        case BoxType.Value:
+        case BoxType.Lambda:
+        case BoxType.Function:
+            return true;
+        default:
+            return false;
+    }
 }
 
 export function boxLambda(input: ProcedureDetails): Box {
@@ -120,8 +123,6 @@ export function boxLambda(input: ProcedureDetails): Box {
     if (input === undefined) return ubox;
     return {
         values: [input],
-        scalar: true,
-        preserve: false,
         type: BoxType.Lambda,
     };
 }
@@ -134,8 +135,6 @@ export function boxArray(input: JSValue[]): Box {
     let values = input;
     return {
         values: values, // Remove any undefined values
-        scalar: false,
-        preserve: true,
         type: BoxType.Array,
     };
 }
@@ -151,7 +150,6 @@ export function boxValue(input: JSValue, options: Partial<BoxFlags> = {}): Value
         return {
             values: values, // Remove any undefined values
             scalar: false,
-            preserve: false,
             type: BoxType.Value,
             ...options,
         };
@@ -159,7 +157,6 @@ export function boxValue(input: JSValue, options: Partial<BoxFlags> = {}): Value
         return {
             values: [input],
             scalar: true,
-            preserve: false,
             type: BoxType.Value,
             ...options,
         };
