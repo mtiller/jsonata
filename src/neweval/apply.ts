@@ -1,8 +1,9 @@
 import { doEval } from "./eval2";
-import { ProcedureDetails } from "./procs";
-import { JBox, unbox, boxValue } from "./box";
+import { ProcedureDetails, FunctionDetails } from "./procs";
+import { JBox, unbox, boxValue, BoxType } from "./box";
 import { JEnv } from "./environment";
 import { Signature } from "../signatures";
+import { unexpectedValue } from "../utils";
 
 /**
  * Apply procedure or function
@@ -17,7 +18,7 @@ export function apply(proc: JBox, args: JBox[], context: JBox): JBox {
     // As long as this is a lambda AND it has a thunk, we continue in this loop.
     // First we establish if it is a lambda (which allows us to extract the
     // ProcedureDetails) and then we determine if it is a thunk.
-    while (result.lambda) {
+    while (result.type === BoxType.Lambda) {
         let details = result.values[0] as ProcedureDetails;
         if (details.thunk) {
             let body = details.body;
@@ -54,38 +55,37 @@ export function apply(proc: JBox, args: JBox[], context: JBox): JBox {
 function applyInner(proc: JBox, args: JBox[], context: JBox): JBox {
     var validatedArgs = args;
 
-    // TODO: Could be a native function structure as well...but I don't have a
-    // type for that yet.
-    if (proc.lambda) {
-        let details = proc.values[0] as ProcedureDetails;
-        validatedArgs = validateArguments(details.signature, args, context);
-        return applyProcedure(details, validatedArgs);
-    } else {
-        // TODO: Add a contingency for native functions and _jsonata_function values
-        throw new Error("Attempted to call applyInner on non-lambda function");
+    switch (proc.type) {
+        case BoxType.Lambda: {
+            let details = proc.values[0] as ProcedureDetails;
+            validatedArgs = validateArguments(details.signature, args, context);
+            return applyProcedure(details, validatedArgs);
+        }
+        case BoxType.Function: {
+            let details = proc.values[0] as FunctionDetails;
+            let self = unbox(context);
+            return details.implementation.apply(self, validatedArgs);
+        }
+        case BoxType.Value: {
+            let f = unbox(proc);
+            let self = unbox(context);
+            if (typeof f === "function") {
+                return f.apply(self, validatedArgs);
+            } else {
+                throw {
+                    code: "T1006",
+                    stack: new Error().stack,
+                };
+            }
+        }
+        default: {
+            return unexpectedValue<BoxType>(
+                proc.type,
+                proc.type,
+                v => "applyInner failed to handle case where result type was " + v,
+            );
+        }
     }
-
-    // if (proc.lambda) {
-    // } else if (proc && proc._jsonata_function === true) {
-    //     result = proc.implementation.apply(self, validatedArgs);
-    //     // `proc.implementation` might be a generator function
-    //     // and `result` might be a generator - if so, yield
-    //     if (isGenerator(result)) {
-    //         result = yield * result;
-    //     }
-    // } else if (typeof proc === "function") {
-    //     result = proc.apply(self, validatedArgs);
-    //     /* istanbul ignore next */
-    //     if (isGenerator(result)) {
-    //         result = yield * result;
-    //     }
-    // } else {
-    //     throw {
-    //         code: "T1006",
-    //         stack: new Error().stack,
-    //     };
-    // }
-    // return result;
 }
 
 /**

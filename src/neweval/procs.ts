@@ -11,3 +11,8 @@ export interface ProcedureDetails {
     body: ast.ASTNode;
     thunk: boolean;
 }
+
+export interface FunctionDetails {
+    implementation: Function;
+    signature: Signature;
+}

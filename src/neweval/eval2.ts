@@ -2,7 +2,18 @@ import * as ast from "../ast";
 import { ProcedureDetails } from "./procs";
 import { unexpectedValue, isArrayOfNumbers, flatten } from "../utils";
 import { JEnv } from "./environment";
-import { JSValue, JBox, ubox, boxmap, boxValue, unbox, mapOverValues, filterOverValues, defragmentBox } from "./box";
+import {
+    JSValue,
+    JBox,
+    ubox,
+    boxmap,
+    boxValue,
+    unbox,
+    mapOverValues,
+    filterOverValues,
+    defragmentBox,
+    BoxType,
+} from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber, isString } from "util";
 import { apply } from "./apply";
@@ -280,7 +291,7 @@ function evaluateLambda(expr: ast.LambdaDefinitionNode, input: JBox, environment
     if (expr.thunk === true) {
         procedure.thunk = true;
     }
-    return boxValue(procedure, { lambda: true });
+    return boxValue(procedure, { type: BoxType.Lambda });
 }
 
 /**

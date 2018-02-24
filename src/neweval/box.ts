@@ -1,15 +1,20 @@
 export type JSValue = number | string | boolean | object | Function;
 
+export enum BoxType {
+    Lambda = "lambda",
+    Function = "function",
+    Value = "value",
+}
 export interface BoxFlags {
     scalar: boolean; // Started life as a scalar (for cases when `1` and `[1]` should be treated differently)
     preserve: boolean; // i.e., do not flatten
-    lambda: boolean; // i.e., is values[0] a lambda?
+    type: BoxType;
 }
 export interface Box extends BoxFlags {
     values: JSValue[] | undefined;
 }
 
-export const ubox: Box = { values: undefined, scalar: true, preserve: false, lambda: false };
+export const ubox: Box = { values: undefined, scalar: true, preserve: false, type: BoxType.Lambda };
 export type JBox = Box;
 export type BoxPredicate = (item: JBox, index: number, boxes: JBox[]) => boolean;
 
@@ -65,8 +70,7 @@ export function boxValue(input: JSValue, options: Partial<BoxFlags> = {}): JBox 
             values: values, // Remove any undefined values
             scalar: false,
             preserve: false,
-            // TODO: Check if function?!?
-            lambda: false,
+            type: BoxType.Value,
             ...options,
         };
     } else {
@@ -74,8 +78,7 @@ export function boxValue(input: JSValue, options: Partial<BoxFlags> = {}): JBox 
             values: [input],
             scalar: true,
             preserve: false,
-            // TODO: Check if function?!?
-            lambda: false,
+            type: BoxType.Value,
             ...options,
         };
     }
