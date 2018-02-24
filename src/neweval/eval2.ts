@@ -4,7 +4,7 @@ import { unexpectedValue, isArrayOfNumbers, flatten } from "../utils";
 import { JEnv } from "./environment";
 import {
     JSValue,
-    JBox,
+    Box,
     ubox,
     boxmap,
     boxValue,
@@ -12,7 +12,7 @@ import {
     mapOverValues,
     filterOverValues,
     defragmentBox,
-    BoxType,
+    boxLambda,
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber, isString } from "util";
@@ -26,7 +26,7 @@ export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSV
     return unbox(result);
 }
 
-export function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv): JBox {
+export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv): Box {
     switch (expr.type) {
         /* These are all leaf node types (have no children) */
         case "literal": {
@@ -104,7 +104,7 @@ export function doEval(expr: ast.ASTNode, input: JBox, environment: JEnv): JBox 
     }
 }
 
-function evaluateVariable(expr: ast.VariableNode, input: JBox, environment: JEnv): JBox {
+function evaluateVariable(expr: ast.VariableNode, input: Box, environment: JEnv): Box {
     /* Get the variable name */
     const varname = expr.value;
     /* If the variable name is empty, then just return the input */
@@ -113,7 +113,7 @@ function evaluateVariable(expr: ast.VariableNode, input: JBox, environment: JEnv
     return environment.lookup(varname);
 }
 
-function evaluatePath(expr: ast.PathNode, input: JBox, environment: JEnv): JBox {
+function evaluatePath(expr: ast.PathNode, input: Box, environment: JEnv): Box {
     //if (input.values == undefined) return ubox;
     if (expr.steps.length == 0) throw new Error("Path without zero steps...this shouldn't happen");
 
@@ -125,12 +125,12 @@ function evaluatePath(expr: ast.PathNode, input: JBox, environment: JEnv): JBox 
     }, res0);
 }
 
-function evaluateName(expr: ast.NameNode, input: JBox, environment: JEnv): JBox {
+function evaluateName(expr: ast.NameNode, input: Box, environment: JEnv): Box {
     if (input.values === undefined) return ubox;
     return boxmap(input, elem => (typeof elem === "object" ? elem[expr.value] : undefined));
 }
 
-function evaluateWildcard(expr: ast.WildcardNode, input: JBox, environment: JEnv): JBox {
+function evaluateWildcard(expr: ast.WildcardNode, input: Box, environment: JEnv): Box {
     if (input.values === undefined) return ubox;
     let val = input.scalar ? input.values[0] : input.values;
     if (val === undefined || val === null) return ubox;
@@ -139,7 +139,7 @@ function evaluateWildcard(expr: ast.WildcardNode, input: JBox, environment: JEnv
     return boxValue(flatten(Object.keys(val).map((k, i) => val[k])));
 }
 
-function evaluatePredicate(expr: ast.PredicateNode, input: JBox, environment: JEnv): JBox {
+function evaluatePredicate(expr: ast.PredicateNode, input: Box, environment: JEnv): Box {
     /* First, fragement all values in the left and side into their own box */
     let lhs = doEval(expr.lhs, input, environment);
     /* Construct a predicate function that we can filter this list based on */
@@ -149,12 +149,12 @@ function evaluatePredicate(expr: ast.PredicateNode, input: JBox, environment: JE
 }
 
 /**
- * This function returns a closure that we can use to filter a JBox[].
+ * This function returns a closure that we can use to filter a Box[].
  * @param predicate The AST node for the predicate expression
  * @param environment The environment in which the evaluation is done.
  */
 function filterPredicate(predicate: ast.ASTNode, environment: JEnv) {
-    return (item: JBox, ind: number, lhs: JBox[]) => {
+    return (item: Box, ind: number, lhs: Box[]) => {
         // Perform the evaluation of the predicate in the context of the value
         // it applies to
         let pv = doEval(predicate, item, environment);
@@ -175,7 +175,7 @@ function filterPredicate(predicate: ast.ASTNode, environment: JEnv) {
     };
 }
 
-function evaluateBinding(expr: ast.BindNode, input: JBox, environment: JEnv): JBox {
+function evaluateBinding(expr: ast.BindNode, input: Box, environment: JEnv): Box {
     let lhs = expr.lhs;
     let x = lhs;
     let val = doEval(expr.rhs, input, environment);
@@ -183,12 +183,12 @@ function evaluateBinding(expr: ast.BindNode, input: JBox, environment: JEnv): JB
     return val;
 }
 
-export function evaluateBlock(expr: ast.BlockNode, input: JBox, enclosing: JEnv): JBox {
+export function evaluateBlock(expr: ast.BlockNode, input: Box, enclosing: JEnv): Box {
     let environment = new JEnv(enclosing);
     return expr.expressions.reduce((prev, e) => doEval(e, input, environment), ubox);
 }
 
-export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: JBox, environment: JEnv): JBox {
+export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: Box, environment: JEnv): Box {
     let lhs = unbox(doEval(expr.lhs, input, environment));
     let rhs = unbox(doEval(expr.rhs, input, environment));
     let value = expr.value;
@@ -272,14 +272,14 @@ export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: JB
     }
 }
 
-function evaluateArray(expr: ast.ArrayConstructorNode, input: JBox, environment: JEnv): JBox {
+function evaluateArray(expr: ast.ArrayConstructorNode, input: Box, environment: JEnv): Box {
     // Evaluate every expression and reconstitute them by flattening (where
     // allowed) but mark this result of all this as an array (preserve=true).
     let vals = expr.expressions.map(c => doEval(c, input, environment));
     return defragmentBox(vals, { preserve: true });
 }
 
-function evaluateLambda(expr: ast.LambdaDefinitionNode, input: JBox, environment: JEnv): JBox {
+function evaluateLambda(expr: ast.LambdaDefinitionNode, input: Box, environment: JEnv): Box {
     let procedure: ProcedureDetails = {
         input: input,
         environment: environment,
@@ -291,7 +291,7 @@ function evaluateLambda(expr: ast.LambdaDefinitionNode, input: JBox, environment
     if (expr.thunk === true) {
         procedure.thunk = true;
     }
-    return boxValue(procedure, { type: BoxType.Lambda });
+    return boxLambda(procedure);
 }
 
 /**
@@ -302,7 +302,7 @@ function evaluateLambda(expr: ast.LambdaDefinitionNode, input: JBox, environment
  * @param {Object} [applyto] - LHS of ~> operator
  * @returns {*} Evaluated input data
  */
-function evaluateFunction(expr: ast.FunctionInvocationNode, input: JBox, environment: JEnv): JBox {
+function evaluateFunction(expr: ast.FunctionInvocationNode, input: Box, environment: JEnv): Box {
     // create the procedure
     // can't assume that expr.procedure is a lambda type directly
     // could be an expression that evaluates to a function (e.g. variable reference, parens expr etc.

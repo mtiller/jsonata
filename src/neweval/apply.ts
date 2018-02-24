@@ -1,6 +1,6 @@
 import { doEval } from "./eval2";
 import { ProcedureDetails, FunctionDetails } from "./procs";
-import { JBox, unbox, boxValue, BoxType } from "./box";
+import { unbox, boxValue, BoxType, Box } from "./box";
 import { JEnv } from "./environment";
 import { Signature } from "../signatures";
 import { unexpectedValue } from "../utils";
@@ -12,7 +12,7 @@ import { unexpectedValue } from "../utils";
  * @param {Object} self - Self
  * @returns {*} Result of procedure
  */
-export function apply(proc: JBox, args: JBox[], context: JBox): JBox {
+export function apply(proc: Box, args: Box[], context: Box): Box {
     let result = applyInner(proc, args, context);
 
     // As long as this is a lambda AND it has a thunk, we continue in this loop.
@@ -52,7 +52,7 @@ export function apply(proc: JBox, args: JBox[], context: JBox): JBox {
  * @param {Object} self - Self
  * @returns {*} Result of procedure
  */
-function applyInner(proc: JBox, args: JBox[], context: JBox): JBox {
+function applyInner(proc: Box, args: Box[], context: Box): Box {
     var validatedArgs = args;
 
     switch (proc.type) {
@@ -79,10 +79,10 @@ function applyInner(proc: JBox, args: JBox[], context: JBox): JBox {
             }
         }
         default: {
-            return unexpectedValue<BoxType>(
-                proc.type,
-                proc.type,
-                v => "applyInner failed to handle case where result type was " + v,
+            return unexpectedValue<Box>(
+                proc,
+                proc,
+                v => "applyInner failed to handle case where result type was " + v.type,
             );
         }
     }
@@ -95,7 +95,7 @@ function applyInner(proc: JBox, args: JBox[], context: JBox): JBox {
  * @param {*} context - context value
  * @returns {Array} - validated arguments
  */
-function validateArguments(signature: Signature, args: JBox[], context: JBox): JBox[] {
+function validateArguments(signature: Signature, args: Box[], context: Box): Box[] {
     if (typeof signature === "undefined") {
         // nothing to validate
         return args;
@@ -110,7 +110,7 @@ function validateArguments(signature: Signature, args: JBox[], context: JBox): J
  * @param {Array} args - Arguments
  * @returns {*} Result of procedure
  */
-function applyProcedure(details: ProcedureDetails, args: JBox[]) {
+function applyProcedure(details: ProcedureDetails, args: Box[]) {
     let env = new JEnv();
 
     details.arguments.forEach((param, index) => {
