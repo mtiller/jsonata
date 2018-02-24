@@ -90,11 +90,11 @@ export function fragmentBox(box: Box): Box[] {
  * into a single set of values.  This involves concatenating all the
  * individual values together and then flattening all of them into
  * a single value array and then boxing that up.
- * @param box
+ * @param boxes
  */
-export function defragmentBox(box: Box[], array: boolean = false): Box {
-    let values = box.reduce((prev, box) => {
-        if (box.preserve) return [...prev, box.values];
+export function defragmentBox(boxes: Box[], array: boolean = false): Box {
+    let values = boxes.reduce((prev, box) => {
+        if (box.type === BoxType.Array) return [...prev, box.values];
         return [...prev, ...box.values];
     }, []);
     // Create a new box
@@ -171,15 +171,21 @@ export function unbox(result: Box): JSValue {
     if (!isBox(result)) {
         throw new Error("Trying to unbox non-box");
     }
-    if (result.scalar) {
-        if (result.values == undefined) return undefined;
-        if (result.values.length === 0) return undefined;
-        if (result.values.length == 1 && !result.preserve) return result.values[0];
-        // I don't think this should happen if something is marked scalar
-        return result.values;
-    } else {
-        if (result.values.length === 0 && !result.preserve) return undefined;
-        return result.values;
+    switch (result.type) {
+        case BoxType.Value: {
+            if (result.values == undefined) return undefined;
+            if (result.values.length === 0) return undefined;
+            return result.scalar ? result.values[0] : result.values;
+        }
+        case BoxType.Array: {
+            return result.values;
+        }
+        case BoxType.Lambda: {
+            return result.values[0];
+        }
+        case BoxType.Function: {
+            return result.values[0];
+        }
     }
 }
 
