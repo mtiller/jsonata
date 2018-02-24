@@ -13,6 +13,7 @@ import {
     filterOverValues,
     defragmentBox,
     boxLambda,
+    BoxType,
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber, isString } from "util";
@@ -126,12 +127,12 @@ function evaluatePath(expr: ast.PathNode, input: Box, environment: JEnv): Box {
 }
 
 function evaluateName(expr: ast.NameNode, input: Box, environment: JEnv): Box {
-    if (input.values === undefined) return ubox;
+    if (input.type === BoxType.Void) return ubox;
     return boxmap(input, elem => (typeof elem === "object" ? elem[expr.value] : undefined));
 }
 
 function evaluateWildcard(expr: ast.WildcardNode, input: Box, environment: JEnv): Box {
-    if (input.values === undefined) return ubox;
+    if (input.type === BoxType.Void) return ubox;
     let val = unbox(input);
     if (val === undefined || val === null) return ubox;
     // We don't need to check if val is an object because Object.keys() works
@@ -159,7 +160,7 @@ function filterPredicate(predicate: ast.ASTNode, environment: JEnv) {
         // it applies to
         let pv = doEval(predicate, item, environment);
         // Get the array of JS values associated with the predicate evaluation
-        let res: JSValue[] = pv.values;
+        let res: JSValue[] = pv.type === BoxType.Value ? pv.values : [];
         // Compute the reverse index (negative number) for the item we evaluated
         let rev = ind - lhs.length;
         // Check if the predicate evaluated to an array of numbers?

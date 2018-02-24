@@ -1,6 +1,6 @@
 import { doEval } from "./eval2";
 import { ProcedureDetails, FunctionDetails } from "./procs";
-import { unbox, boxValue, BoxType, Box } from "./box";
+import { unbox, boxValue, BoxType, Box, ubox } from "./box";
 import { JEnv } from "./environment";
 import { Signature } from "../signatures";
 import { unexpectedValue } from "../utils";
@@ -79,6 +79,8 @@ function applyInner(proc: Box, args: Box[], context: Box): Box {
                 };
             }
         }
+        case BoxType.Void:
+            return ubox;
         default: {
             return unexpectedValue<Box>(
                 proc,

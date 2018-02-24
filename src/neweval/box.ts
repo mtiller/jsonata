@@ -3,10 +3,15 @@ import { ProcedureDetails, FunctionDetails } from "./procs";
 import { unexpectedValue } from "../utils";
 
 export enum BoxType {
+    Void = "void",
     Lambda = "lambda",
     Function = "function",
     Value = "value",
     Array = "array",
+}
+
+export interface VoidBox extends BoxFlags {
+    type: BoxType.Void;
 }
 
 export interface LambdaBox extends BoxFlags {
@@ -32,14 +37,17 @@ export interface ArrayBox extends BoxFlags {
 
 export interface BoxFlags {}
 
-export type Box = ValueBox | FunctionBox | LambdaBox | ArrayBox;
+export type Box = ValueBox | FunctionBox | LambdaBox | ArrayBox | VoidBox;
 
-export const ubox: ValueBox = { values: undefined, scalar: true, type: BoxType.Value };
+export const ubox: VoidBox = { type: BoxType.Void };
 export type BoxPredicate = (item: Box, index: number, boxes: Box[]) => boolean;
 
 export function boxmap(box: Box, f: (v: JSValue) => JSValue): Box {
-    if (box.values == undefined) return ubox;
+    // if (box.values == undefined) return ubox;
     switch (box.type) {
+        case BoxType.Void: {
+            return ubox;
+        }
         case BoxType.Array: {
             let vals = box.values.map(v => f(v)).filter(x => x !== undefined);
             return boxArray(vals);
@@ -67,8 +75,9 @@ export function boxmap(box: Box, f: (v: JSValue) => JSValue): Box {
  * @param box
  */
 export function fragmentBox(box: Box): Box[] {
-    if (box.values === undefined) return [];
     switch (box.type) {
+        case BoxType.Void:
+            return [];
         case BoxType.Array:
         case BoxType.Value:
             return box.values.map(v => boxValue(v));
@@ -89,8 +98,18 @@ export function fragmentBox(box: Box): Box[] {
  */
 export function defragmentBox(boxes: Box[], array: boolean = false): Box {
     let values = boxes.reduce((prev, box) => {
-        if (box.type === BoxType.Array) return [...prev, box.values];
-        return [...prev, ...box.values];
+        switch (box.type) {
+            case BoxType.Void:
+                return [];
+            case BoxType.Array:
+                return [...prev, box.values];
+            case BoxType.Lambda:
+            case BoxType.Function:
+            case BoxType.Value:
+                return [...prev, ...box.values];
+            default:
+                return unexpectedValue<Box>(box, box, v => "Couldn't defrag unknown box type " + v.type);
+        }
     }, []);
     // Create a new box
     if (array) {
@@ -105,6 +124,7 @@ function isBox(val: any): boolean {
     if (val === undefined || val === null) return false;
     if (typeof val !== "object") return false;
     switch (val.type) {
+        case BoxType.Void:
         case BoxType.Array:
         case BoxType.Value:
         case BoxType.Lambda:
@@ -139,7 +159,7 @@ export function boxArray(input: JSValue[]): ArrayBox {
     };
 }
 
-export function boxValue(input: JSValue, options: Partial<BoxFlags> = {}): ValueBox {
+export function boxValue(input: JSValue, options: Partial<BoxFlags> = {}): Box {
     // TODO: Remove eventually
     if (isBox(input)) {
         throw new Error("Boxed value being boxed!?!");
@@ -183,6 +203,11 @@ export function unbox(result: Box): JSValue {
         case BoxType.Function: {
             return result.values[0];
         }
+        case BoxType.Void: {
+            return undefined;
+        }
+        default:
+            return unexpectedValue<Box>(result, result, v => "Unboxed unexpected box type: " + v.type);
     }
 }
 
