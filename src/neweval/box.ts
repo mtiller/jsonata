@@ -16,12 +16,12 @@ export interface VoidBox extends BoxFlags {
 
 export interface LambdaBox extends BoxFlags {
     type: BoxType.Lambda;
-    values: ProcedureDetails[];
+    details: ProcedureDetails;
 }
 
 export interface FunctionBox extends BoxFlags {
     type: BoxType.Function;
-    values: FunctionDetails[];
+    details: FunctionDetails;
 }
 
 export interface ValueBox extends BoxFlags {
@@ -104,7 +104,9 @@ export function defragmentBox(boxes: Box[], array: boolean = false): Box {
             case BoxType.Array:
                 return [...prev, box.values];
             case BoxType.Lambda:
+                return [...prev, box.details];
             case BoxType.Function:
+                return [...prev, box.details];
             case BoxType.Value:
                 return [...prev, ...box.values];
             default:
@@ -142,7 +144,7 @@ export function boxLambda(input: ProcedureDetails): Box {
     }
     if (input === undefined) return ubox;
     return {
-        values: [input],
+        details: input,
         type: BoxType.Lambda,
     };
 }
@@ -198,10 +200,10 @@ export function unbox(result: Box): JSValue {
             return result.values;
         }
         case BoxType.Lambda: {
-            return result.values[0];
+            return result.details;
         }
         case BoxType.Function: {
-            return result.values[0];
+            return result.details;
         }
         case BoxType.Void: {
             return undefined;

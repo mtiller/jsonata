@@ -1,5 +1,5 @@
 import { doEval } from "./eval2";
-import { ProcedureDetails, FunctionDetails } from "./procs";
+import { ProcedureDetails } from "./procs";
 import { unbox, boxValue, BoxType, Box, ubox } from "./box";
 import { JEnv } from "./environment";
 import { Signature } from "../signatures";
@@ -19,7 +19,7 @@ export function apply(proc: Box, args: Box[], context: Box): Box {
     // First we establish if it is a lambda (which allows us to extract the
     // ProcedureDetails) and then we determine if it is a thunk.
     while (result.type === BoxType.Lambda) {
-        let details = result.values[0] as ProcedureDetails;
+        let details = result.details;
         if (details.thunk) {
             let body = details.body;
             if (body.type === "function" || body.type === "partial") {
@@ -57,12 +57,12 @@ function applyInner(proc: Box, args: Box[], context: Box): Box {
 
     switch (proc.type) {
         case BoxType.Lambda: {
-            let details = proc.values[0] as ProcedureDetails;
+            let details = proc.details;
             validatedArgs = validateArguments(details.signature, args, context);
             return applyProcedure(details, validatedArgs);
         }
         case BoxType.Function: {
-            let details = proc.values[0] as FunctionDetails;
+            let details = proc.details;
             let self = unbox(context);
             return details.implementation.apply(self, validatedArgs);
         }
