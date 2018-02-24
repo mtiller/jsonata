@@ -276,7 +276,7 @@ function evaluateArray(expr: ast.ArrayConstructorNode, input: Box, environment: 
     // Evaluate every expression and reconstitute them by flattening (where
     // allowed) but mark this result of all this as an array (preserve=true).
     let vals = expr.expressions.map(c => doEval(c, input, environment));
-    return defragmentBox(vals, { preserve: true });
+    return defragmentBox(vals, true);
 }
 
 function evaluateLambda(expr: ast.LambdaDefinitionNode, input: Box, environment: JEnv): Box {

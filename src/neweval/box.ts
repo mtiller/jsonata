@@ -5,6 +5,7 @@ export enum BoxType {
     Lambda = "lambda",
     Function = "function",
     Value = "value",
+    Array = "array",
 }
 
 export interface LambdaBox extends BoxFlags {
@@ -22,6 +23,11 @@ export interface ValueBox extends BoxFlags {
     values: JSValue[];
 }
 
+export interface ArrayBox extends BoxFlags {
+    type: BoxType.Array;
+    values: JSValue[];
+}
+
 export interface BoxFlags {
     scalar: boolean; // Started life as a scalar (for cases when `1` and `[1]` should be treated differently)
     preserve: boolean; // i.e., do not flatten
@@ -30,17 +36,17 @@ export interface BoxFlags {
 //     values: JSValue[] | undefined;
 // }
 
-export type Box = ValueBox | FunctionBox | LambdaBox;
+export type Box = ValueBox | FunctionBox | LambdaBox | ArrayBox;
 
 export const ubox: ValueBox = { values: undefined, scalar: true, preserve: false, type: BoxType.Value };
 export type BoxPredicate = (item: Box, index: number, boxes: Box[]) => boolean;
 
-export function boxmap(box: Box, f: (v: JSValue) => JSValue, options: Partial<BoxFlags> = {}): Box {
+export function boxmap(box: Box, f: (v: JSValue) => JSValue): Box {
     if (box.values == undefined) return ubox;
     if (box.type === BoxType.Value) {
         let vals = box.values.map(v => f(v)).filter(x => x !== undefined);
-        if (vals.length == 1) return boxValue(vals[0], options);
-        return boxValue(vals, options);
+        if (vals.length == 1) return boxValue(vals[0]);
+        return boxValue(vals);
     }
     return ubox;
 }
@@ -65,14 +71,14 @@ export function fragmentBox(box: Box): Box[] {
  * a single value array and then boxing that up.
  * @param box
  */
-export function defragmentBox(box: Box[], options: Partial<BoxFlags> = {}): Box {
+export function defragmentBox(box: Box[], array: boolean = false): Box {
     let values = box.reduce((prev, box) => {
         if (box.preserve) return [...prev, box.values];
         return [...prev, ...box.values];
     }, []);
     // Create a new box
-    if (values.length == 1) return boxValue(values[0], options);
-    return boxValue(values, options);
+    if (values.length == 1) return boxValue(values[0], array ? { preserve: true } : {});
+    return boxValue(values, array ? { preserve: true } : {});
 }
 
 function isBox(val: any): boolean {
@@ -92,6 +98,19 @@ export function boxLambda(input: ProcedureDetails): Box {
         scalar: true,
         preserve: false,
         type: BoxType.Lambda,
+    };
+}
+
+export function boxArray(input: JSValue[]): ArrayBox {
+    // TODO: Remove eventually
+    if (isBox(input)) {
+        throw new Error("Boxed value being boxed!?!");
+    }
+    return {
+        values: input, // Remove any undefined values
+        scalar: false,
+        preserve: true,
+        type: BoxType.Array,
     };
 }
 
@@ -138,18 +157,18 @@ export function unbox(result: Box): JSValue {
     }
 }
 
-export function mapOverValues(box: Box, f: (input: Box) => Box, options: Partial<BoxFlags> = {}): Box {
+export function mapOverValues(box: Box, f: (input: Box) => Box, array: boolean = false): Box {
     // Break all values out into individual boxes
     let fragments = fragmentBox(box);
     // Map over each box
     let mapped = fragments.map(f);
     // Now defragment back to a single boxed value
-    return defragmentBox(mapped, options);
+    return defragmentBox(mapped, array);
 }
-export function filterOverValues(box: Box, predicate: BoxPredicate, options: Partial<BoxFlags> = {}): Box {
+export function filterOverValues(box: Box, predicate: BoxPredicate, array: boolean = false): Box {
     let fragments = fragmentBox(box);
     // Eval each boxed value
     let mapped = fragments.filter(predicate);
     // Defragment values back into a single boxed collection of values
-    return defragmentBox(mapped, options);
+    return defragmentBox(mapped, array);
 }

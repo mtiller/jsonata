@@ -1,16 +1,16 @@
-import { Box, boxValue, BoxFlags, JSValue, ubox } from "./box";
+import { Box, boxValue, JSValue, ubox } from "./box";
 
 export class JEnv {
     protected bindings: { [key: string]: Box } = {};
     constructor(public enclosing?: JEnv) {}
-    bind(name: string, value: JSValue, options: Partial<BoxFlags> = {}) {
-        this.bindings[name] = boxValue(value, options);
+    bind(name: string, value: JSValue) {
+        this.bindings[name] = boxValue(value);
     }
     bindBox(name: string, box: Box) {
         this.bindings[name] = box;
     }
-    merge(bindings: { [key: string]: JSValue }, options: Partial<BoxFlags> = {}) {
-        Object.keys(bindings).forEach(key => (this.bindings[key] = boxValue(bindings[key], options)));
+    merge(bindings: { [key: string]: JSValue }) {
+        Object.keys(bindings).forEach(key => (this.bindings[key] = boxValue(bindings[key])));
     }
     lookup(name: string): Box {
         if (this.bindings.hasOwnProperty(name)) {

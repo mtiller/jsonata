@@ -66,6 +66,7 @@ function applyInner(proc: Box, args: Box[], context: Box): Box {
             let self = unbox(context);
             return details.implementation.apply(self, validatedArgs);
         }
+        case BoxType.Array:
         case BoxType.Value: {
             let f = unbox(proc);
             let self = unbox(context);
