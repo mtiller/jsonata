@@ -132,7 +132,7 @@ function evaluateName(expr: ast.NameNode, input: Box, environment: JEnv): Box {
 
 function evaluateWildcard(expr: ast.WildcardNode, input: Box, environment: JEnv): Box {
     if (input.values === undefined) return ubox;
-    let val = input.scalar ? input.values[0] : input.values;
+    let val = unbox(input);
     if (val === undefined || val === null) return ubox;
     // We don't need to check if val is an object because Object.keys() works
     // for all values, it just returns an empty list for anything but an object.

@@ -127,7 +127,7 @@ export function boxLambda(input: ProcedureDetails): Box {
     };
 }
 
-export function boxArray(input: JSValue[]): Box {
+export function boxArray(input: JSValue[]): ArrayBox {
     // TODO: Remove eventually
     if (isBox(input)) {
         throw new Error("Boxed value being boxed!?!");
