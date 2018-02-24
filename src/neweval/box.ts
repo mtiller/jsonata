@@ -1,5 +1,6 @@
 export type JSValue = number | string | boolean | object | Function;
 import { ProcedureDetails, FunctionDetails } from "./procs";
+import { unexpectedValue } from "../utils";
 
 export enum BoxType {
     Lambda = "lambda",
@@ -43,12 +44,26 @@ export type BoxPredicate = (item: Box, index: number, boxes: Box[]) => boolean;
 
 export function boxmap(box: Box, f: (v: JSValue) => JSValue): Box {
     if (box.values == undefined) return ubox;
-    if (box.type === BoxType.Value) {
-        let vals = box.values.map(v => f(v)).filter(x => x !== undefined);
-        if (vals.length == 1) return boxValue(vals[0]);
-        return boxValue(vals);
+    switch (box.type) {
+        case BoxType.Array: {
+            let vals = box.values.map(v => f(v)).filter(x => x !== undefined);
+            return boxArray(vals);
+        }
+        case BoxType.Value: {
+            let vals = box.values.map(v => f(v)).filter(x => x !== undefined);
+            if (vals.length == 1) return boxValue(vals[0]);
+            return boxValue(vals);
+        }
+        case BoxType.Lambda:
+        case BoxType.Function:
+            return ubox;
+        default:
+            return unexpectedValue<Box>(
+                box,
+                box,
+                v => "Evaluate failed to handle case where expression type was " + v.type,
+            );
     }
-    return ubox;
 }
 
 /**
@@ -58,10 +73,16 @@ export function boxmap(box: Box, f: (v: JSValue) => JSValue): Box {
  */
 export function fragmentBox(box: Box): Box[] {
     if (box.values === undefined) return [];
-    if (box.type === BoxType.Value) {
-        return box.values.map(v => boxValue(v));
+    switch (box.type) {
+        case BoxType.Array:
+        case BoxType.Value:
+            return box.values.map(v => boxValue(v));
+        case BoxType.Lambda:
+        case BoxType.Function:
+            return [box];
+        default:
+            return unexpectedValue<Box>(box, box, v => "Tried to fragment unknown box type: " + v.type);
     }
-    return [box];
 }
 
 /**
@@ -77,8 +98,12 @@ export function defragmentBox(box: Box[], array: boolean = false): Box {
         return [...prev, ...box.values];
     }, []);
     // Create a new box
-    if (values.length == 1) return boxValue(values[0], array ? { preserve: true } : {});
-    return boxValue(values, array ? { preserve: true } : {});
+    if (array) {
+        return boxArray(values);
+    } else {
+        if (values.length == 1) return boxValue(values[0]);
+        return boxValue(values);
+    }
 }
 
 function isBox(val: any): boolean {
@@ -101,13 +126,14 @@ export function boxLambda(input: ProcedureDetails): Box {
     };
 }
 
-export function boxArray(input: JSValue[]): ArrayBox {
+export function boxArray(input: JSValue[]): Box {
     // TODO: Remove eventually
     if (isBox(input)) {
         throw new Error("Boxed value being boxed!?!");
     }
+    let values = input;
     return {
-        values: input, // Remove any undefined values
+        values: values, // Remove any undefined values
         scalar: false,
         preserve: true,
         type: BoxType.Array,
