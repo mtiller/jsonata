@@ -137,6 +137,17 @@ function isBox(val: any): boolean {
     }
 }
 
+export function boxFunction(input: FunctionDetails): Box {
+    if (isBox(input)) {
+        throw new Error("Boxed value being boxed!?!");
+    }
+    if (input === undefined) return ubox;
+    return {
+        details: input,
+        type: BoxType.Function,
+    };
+}
+
 export function boxLambda(input: ProcedureDetails): Box {
     // TODO: Remove eventually
     if (isBox(input)) {

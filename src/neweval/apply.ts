@@ -28,6 +28,7 @@ export function apply(proc: Box, args: Box[], context: Box): Box {
                 // the function returned a tail-call thunk
                 // unpack it, evaluate its arguments, and apply the tail call
                 var next = doEval(node.procedure, details.input, details.environment);
+                // TODO: Convert to mapping operating
                 var evaluatedArgs = [];
                 for (var ii = 0; ii < node.arguments.length; ii++) {
                     evaluatedArgs.push(doEval(node.arguments[ii], details.input, details.environment));
@@ -53,25 +54,25 @@ export function apply(proc: Box, args: Box[], context: Box): Box {
  * @returns {*} Result of procedure
  */
 function applyInner(proc: Box, args: Box[], context: Box): Box {
-    var validatedArgs = args;
-
     switch (proc.type) {
         case BoxType.Lambda: {
             let details = proc.details;
-            validatedArgs = validateArguments(details.signature, args, context);
+            let validatedArgs = validateArguments(details.signature, args, context);
             return applyProcedure(details, validatedArgs);
         }
         case BoxType.Function: {
+            let validatedArgs = args.map(arg => unbox(arg));
             let details = proc.details;
             let self = unbox(context);
-            return details.implementation.apply(self, validatedArgs);
+            return boxValue(details.implementation.apply(self, validatedArgs));
         }
         case BoxType.Array:
         case BoxType.Value: {
+            let validatedArgs = args.map(arg => unbox(arg));
             let f = unbox(proc);
             let self = unbox(context);
             if (typeof f === "function") {
-                return f.apply(self, validatedArgs);
+                return boxValue(f.apply(self, validatedArgs));
             } else {
                 throw {
                     code: "T1006",
@@ -113,7 +114,7 @@ function validateArguments(signature: Signature, args: Box[], context: Box): Box
  * @param {Array} args - Arguments
  * @returns {*} Result of procedure
  */
-function applyProcedure(details: ProcedureDetails, args: Box[]) {
+function applyProcedure(details: ProcedureDetails, args: Box[]): Box {
     let env = new JEnv();
 
     details.arguments.forEach((param, index) => {
@@ -133,14 +134,15 @@ function applyProcedure(details: ProcedureDetails, args: Box[]) {
  * @param {Object} env - Environment
  * @returns {*} Result of applying native function
  */
-function applyNativeFunction(f: Function, env: JEnv) {
+function applyNativeFunction(f: Function, env: JEnv): Box {
     var sigArgs = getNativeFunctionArguments(f);
     // generate the array of arguments for invoking the function - look them up in the environment
-    var args = sigArgs.map(function(sigArg) {
-        return env.lookup(sigArg.trim());
-    });
+    let args = sigArgs.map(sigArg => unbox(env.lookup(sigArg.trim())));
+    // var args = sigArgs.map(function(sigArg) {
+    //     return env.lookup(sigArg.trim())
+    // });
 
-    return f.apply(null, args);
+    return boxValue(f.apply(null, args));
 }
 
 /**
@@ -148,7 +150,7 @@ function applyNativeFunction(f: Function, env: JEnv) {
  * @param {Function} func - Function
  * @returns {*|Array} Native function arguments
  */
-function getNativeFunctionArguments(func: Function) {
+function getNativeFunctionArguments(func: Function): string[] {
     var signature = func.toString();
     var sigParens = /\(([^)]*)\)/.exec(signature)[1]; // the contents of the parens
     var sigArgs = sigParens.split(",");

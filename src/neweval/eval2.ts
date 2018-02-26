@@ -222,6 +222,22 @@ export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: Bo
                     );
             }
         }
+        case "and":
+        case "or": {
+            if (lhs === undefined || rhs === undefined) return boxValue(false);
+            switch (value) {
+                case "and":
+                    return boxValue(!!lhs && !!rhs);
+                case "or":
+                    return boxValue(!!lhs || !!rhs);
+                default:
+                    return unexpectedValue<string>(
+                        value,
+                        value,
+                        v => "Evaluate failed to handle case where binary operation was " + v,
+                    );
+            }
+        }
         case "=":
         case "!=":
         case "<":
@@ -257,8 +273,6 @@ export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: Bo
             }
         }
         case "&":
-        case "and":
-        case "or":
         case "..":
         case "in": {
             throw new Error("Operator " + expr.value + " unimplemented");
