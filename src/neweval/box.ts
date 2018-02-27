@@ -283,3 +283,15 @@ export function filterOverValues(box: Box, predicate: BoxPredicate, array: boole
     // Defragment values back into a single boxed collection of values
     return defragmentBox(mapped, array);
 }
+
+export function boxContainsFunction(arg: Box) {
+    switch (arg.type) {
+        case BoxType.Function:
+        case BoxType.Lambda:
+            return true;
+        case BoxType.Value:
+            return typeof unbox(arg) === "function";
+        default:
+            return false;
+    }
+}

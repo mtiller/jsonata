@@ -12,6 +12,7 @@ import {
     forEachValue,
     mapOverValues,
     filterOverValues,
+    boxContainsFunction,
     defragmentBox,
     boxLambda,
     BoxType,
@@ -96,10 +97,12 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv): Box {
                 return expr.else ? doEval(expr.else, input, environment) : ubox;
             }
         }
+        case "apply": {
+            return evaluateApplyExpression(expr, input, environment);
+        }
         case "descendant":
         case "regex":
         case "partial":
-        case "apply":
         case "sort":
         case "transform": {
             throw new Error("AST node type '" + expr.type + "' is unimplemented");
@@ -592,4 +595,45 @@ export function evaluateGroup_v15(groupings: ast.ASTNode[][], input: Box, enviro
     }, {});
     // Take the resulting object and return it.
     return boxValue(ret);
+}
+
+function evaluateApplyExpression(expr: ast.ApplyNode, input: Box, environment: JEnv): Box {
+    // If rhs is a function invocation, invoke it with the lhs as the first argument
+    if (expr.rhs.type == "function") {
+        // Construct a function with the LHS expression inserted as the first
+        // argument and then return the result of evaluating it.
+        let f: ast.FunctionInvocationNode = {
+            type: "function",
+            value: expr.rhs.value,
+            position: expr.rhs.position,
+            procedure: expr.rhs.procedure,
+            arguments: [expr.lhs, ...expr.rhs.arguments],
+            nextFunction: expr.rhs.nextFunction,
+        };
+        return doEval(f, input, environment);
+    }
+
+    // If we get here, we expect the rhs to evaluate to a function (vs. being a
+    // function invocation).  So let's evaluate both the rhs and the lhs and
+    // see what we get.
+    let lhs = doEval(expr.lhs, input, environment);
+    let func = doEval(expr.rhs, input, environment);
+
+    // The value of func must be a function, if it isn't, we thrown an exception
+    if (!boxContainsFunction(func)) {
+        throw {
+            code: "T2006",
+            stack: new Error().stack,
+            position: expr.position,
+            value: func,
+        };
+    }
+
+    if (boxContainsFunction(lhs)) {
+        let inner = apply(lhs, [input], lhs);
+        return apply(func, [inner], func);
+    } else {
+        // TODO: In v1.5, the third argument here is environment?!?
+        return apply(func, [lhs], input);
+    }
 }

@@ -34,7 +34,10 @@ export function apply(proc: Box, args: Box[], context: Box): Box {
                     evaluatedArgs.push(doEval(node.arguments[ii], details.input, details.environment));
                 }
             } else {
-                throw new Error("body in ProcedureDetails was not a FunctionInvocationNode");
+                throw {
+                    code: "T1006",
+                    stack: new Error().stack,
+                };
             }
 
             result = applyInner(next, evaluatedArgs, context);
