@@ -81,7 +81,7 @@ export interface TernaryNode extends BaseNode {
     type: "condition";
     condition: ASTNode;
     then: ASTNode;
-    else: ASTNode;
+    else?: ASTNode;
     position: number;
 }
 

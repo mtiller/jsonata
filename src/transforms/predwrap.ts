@@ -74,9 +74,9 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
                 ...base(expr),
                 condition: elaboratePredicates(expr.condition),
                 then: elaboratePredicates(expr.then),
-                else: elaboratePredicates(expr.else),
+                else: expr.else ? elaboratePredicates(expr.else) : undefined,
                 position: expr.position,
-            };
+            } as ast.TernaryNode;
             break;
         }
         case "block": {

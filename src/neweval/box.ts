@@ -100,7 +100,7 @@ export function defragmentBox(boxes: Box[], array: boolean = false): Box {
     let values = boxes.reduce((prev, box) => {
         switch (box.type) {
             case BoxType.Void:
-                return [];
+                return prev;
             case BoxType.Array:
                 return [...prev, box.values];
             case BoxType.Lambda:

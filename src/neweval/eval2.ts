@@ -88,8 +88,16 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv): Box {
             let lhs = doEval(expr.lhs, input, environment);
             return evaluateGroup_overwrite(expr.groupings, lhs, environment);
         }
+        case "condition": {
+            let cond = doEval(expr.condition, input, environment);
+            let c = unbox(cond);
+            if (!!c) {
+                return doEval(expr.then, input, environment);
+            } else {
+                return expr.else ? doEval(expr.else, input, environment) : ubox;
+            }
+        }
         case "descendant":
-        case "condition":
         case "regex":
         case "partial":
         case "apply":
