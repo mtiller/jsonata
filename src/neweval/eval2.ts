@@ -8,6 +8,7 @@ import {
     ubox,
     boxmap,
     boxValue,
+    boxArray,
     unbox,
     forEachValue,
     mapOverValues,
@@ -262,24 +263,45 @@ export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: Bo
         case ">":
         case ">=": {
             if (lhs === undefined || rhs === undefined) return boxValue(false);
-            if (!isNumber(lhs) && !isString(lhs)) {
-                throw new Error("Invalid operand for LHS of " + value + " operator: " + JSON.stringify(lhs));
-            }
-            if (!isNumber(rhs) && !isString(rhs)) {
-                throw new Error("Invalid operand for RHS of " + value + " operator: " + JSON.stringify(rhs));
-            }
+            let ltype = typeof lhs;
+            let rtype = typeof rhs;
+
+            let validate = () => {
+                // if aa or bb are not string or numeric values, then throw an error
+                if (!(ltype === "string" || ltype === "number") || !(rtype === "string" || rtype === "number")) {
+                    throw {
+                        code: "T2010",
+                        stack: new Error().stack,
+                        value: !(ltype === "string" || ltype === "number") ? lhs : rhs,
+                    };
+                }
+
+                //if aa and bb are not of the same type
+                if (ltype !== rtype) {
+                    throw {
+                        code: "T2009",
+                        stack: new Error().stack,
+                        value: lhs,
+                        value2: rhs,
+                    };
+                }
+            };
             switch (value) {
                 case "=":
                     return boxValue(lhs === rhs);
                 case "!=":
                     return boxValue(lhs !== rhs);
                 case "<":
+                    validate();
                     return boxValue(lhs < rhs);
                 case "<=":
+                    validate();
                     return boxValue(lhs <= rhs);
                 case ">":
+                    validate();
                     return boxValue(lhs > rhs);
                 case ">=":
+                    validate();
                     return boxValue(lhs >= rhs);
                 default:
                     return unexpectedValue<string>(
@@ -301,9 +323,42 @@ export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: Bo
             let rhsv: string = rhs === undefined ? "" : "" + (rhs as any);
             return boxValue(lhsv + rhsv);
         }
-        case "..":
+        case "..": {
+            if (lhs === undefined || rhs === undefined) return ubox;
+            if (!isNumber(lhs))
+                throw new Error("Invalid operand for LHS of " + value + " operator: " + JSON.stringify(lhs));
+            if (!isNumber(rhs))
+                throw new Error("Invalid operand for RHS of " + value + " operator: " + JSON.stringify(rhs));
+            if (!Number.isInteger(lhs)) {
+                throw {
+                    code: "T2003",
+                    stack: new Error().stack,
+                    value: lhs,
+                };
+            }
+            if (!Number.isInteger(rhs)) {
+                throw {
+                    code: "T2004",
+                    stack: new Error().stack,
+                    value: rhs,
+                };
+            }
+            let lhsv = lhs as number;
+            let rhsv = rhs as number;
+
+            // if the lhs is greater than the rhs, return undefined
+            if (lhsv > rhsv) return ubox;
+
+            let result = new Array(rhs - lhs + 1);
+            for (var item = lhs, index = 0; item <= rhs; item++, index++) {
+                result[index] = item;
+            }
+            return boxArray(result);
+        }
         case "in": {
-            throw new Error("Operator " + expr.value + " unimplemented");
+            if (lhs === undefined || rhs === undefined) return ubox;
+            if (!Array.isArray(rhs)) return boxValue(rhs === lhs);
+            return boxValue(rhs.some(x => x === lhs));
         }
         default:
             /* istanbul ignore next */
