@@ -8,7 +8,6 @@ import {
     ubox,
     boxmap,
     boxValue,
-    boxArray,
     unbox,
     forEachValue,
     mapOverValues,
@@ -361,7 +360,7 @@ export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: Bo
             for (var item = lhs, index = 0; item <= rhs; item++, index++) {
                 result[index] = item;
             }
-            return boxArray(result);
+            return boxValue(result);
         }
         case "in": {
             if (lhs === undefined || rhs === undefined) return ubox;
