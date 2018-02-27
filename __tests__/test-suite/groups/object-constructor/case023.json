@@ -1,0 +1,10 @@
+{
+    "expr": "{ \"foo\": name, \"foo\": name }",
+    "data": [{ "name": "x" }, { "name": "y" }],
+    "bindings": {},
+    "skip": true,
+    "comment": "Waiting on issue #163 to be resolve",
+    "result": {
+        "foo": ["x", "x", "y", "y"]
+    }
+}

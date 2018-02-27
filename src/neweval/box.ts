@@ -224,6 +224,49 @@ export function unbox(result: Box): JSValue {
     }
 }
 
+export function unboxArray(result: Box): JSValue[] {
+    // TODO: Remove eventually
+    if (!isBox(result)) {
+        throw new Error("Trying to unbox non-box");
+    }
+    switch (result.type) {
+        case BoxType.Value: {
+            return result.values;
+        }
+        case BoxType.Array: {
+            return result.values;
+        }
+        case BoxType.Lambda: {
+            return [result.details];
+        }
+        case BoxType.Function: {
+            return [result.details];
+        }
+        case BoxType.Void: {
+            return [];
+        }
+        default:
+            return unexpectedValue<Box>(result, result, v => "Unboxed unexpected box type: " + v.type);
+    }
+}
+
+export function boxType(box: Box, t: string) {
+    let val = unbox(box);
+    return typeof val === t;
+}
+
+export function reduceBox<T>(box: Box, f: (prev: T, frag: Box) => T, init: T): T {
+    let fragments = fragmentBox(box);
+    return fragments.reduce(f, init);
+}
+
+export function forEachValue(box: Box, f: (input: Box) => void): void {
+    // Break all values out into individual boxes
+    let fragments = fragmentBox(box);
+    // Map over each box
+    fragments.forEach(f);
+}
+
 export function mapOverValues(box: Box, f: (input: Box) => Box, array: boolean = false): Box {
     // Break all values out into individual boxes
     let fragments = fragmentBox(box);
@@ -232,6 +275,7 @@ export function mapOverValues(box: Box, f: (input: Box) => Box, array: boolean =
     // Now defragment back to a single boxed value
     return defragmentBox(mapped, array);
 }
+
 export function filterOverValues(box: Box, predicate: BoxPredicate, array: boolean = false): Box {
     let fragments = fragmentBox(box);
     // Eval each boxed value

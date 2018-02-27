@@ -2,7 +2,7 @@
     "expr": "$[].content.origin.$lowercase(name)",
     "dataset": "dataset11",
     "bindings": {},
-    "result": [
-        "fakeintegrationname"
-    ]
+    "skip": true,
+    "comment": "Leverages [] operator...still trying to figure out what the semantics of that should be...",
+    "result": ["fakeintegrationname"]
 }
