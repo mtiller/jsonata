@@ -28,19 +28,15 @@ export function apply(proc: Box, args: Box[], context: Box): Box {
                 // the function returned a tail-call thunk
                 // unpack it, evaluate its arguments, and apply the tail call
                 var next = doEval(node.procedure, details.input, details.environment);
-                // TODO: Convert to mapping operating
-                var evaluatedArgs = [];
-                for (var ii = 0; ii < node.arguments.length; ii++) {
-                    evaluatedArgs.push(doEval(node.arguments[ii], details.input, details.environment));
-                }
+                let evaluatedArgs = node.arguments.map(x => doEval(x, details.input, details.environment));
+
+                result = applyInner(next, evaluatedArgs, context);
             } else {
                 throw {
                     code: "T1006",
                     stack: new Error().stack,
                 };
             }
-
-            result = applyInner(next, evaluatedArgs, context);
         } else {
             // Turns out it wasn't a thunk, so just return what we have.
             break;
@@ -64,10 +60,10 @@ function applyInner(proc: Box, args: Box[], context: Box): Box {
             return applyProcedure(details, validatedArgs);
         }
         case BoxType.Function: {
-            let validatedArgs = args.map(arg => unbox(arg));
             let details = proc.details;
+            let validatedArgs = validateArguments(details.signature, args, context);
             let self = unbox(context);
-            return boxValue(details.implementation.apply(self, validatedArgs));
+            return boxValue(details.implementation.apply(self, validatedArgs.map(unbox)));
         }
         case BoxType.Array:
         case BoxType.Value: {
@@ -109,7 +105,7 @@ function validateArguments(signature: Signature, args: Box[], context: Box): Box
     }
     // TODO: Need a version of signature.validate that takes boxes because
     // unboxing and reboxing may not work properly for arrays, functions and procedures.
-    var validatedArgs = signature.validate(args.map(v => unbox(v)), context);
+    var validatedArgs = signature.validate(args.map(v => unbox(v)), unbox(context));
     return validatedArgs.map(x => boxValue(x));
 }
 
@@ -120,6 +116,7 @@ function validateArguments(signature: Signature, args: Box[], context: Box): Box
  * @returns {*} Result of procedure
  */
 function applyProcedure(details: ProcedureDetails, args: Box[]): Box {
+    // TODO: Shouldn't we leverage an enclosing scope here?!?
     let env = new JEnv();
 
     details.arguments.forEach((param, index) => {

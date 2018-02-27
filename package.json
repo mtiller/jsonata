@@ -16,7 +16,7 @@
         "jest": "jest",
         "test": "npm run jest --coverage",
         "passing":
-            "jest -t 'variable|wildcards|blocks|array-constructor|boolean-expressions|object-constructor|closures|comparison-operators|conditionals|range-operator'",
+            "jest -t 'variable|wildcards|blocks|array-constructor|boolean-expressions|object-constructor|closures|comparison-operators|conditionals|range-operator|context'",
         "next": "jest -t 'context'",
         "jest:debug": "node --inspect node_modules/.bin/jest --runInBand",
         "posttest": "npm run check-coverage",

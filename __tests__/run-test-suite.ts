@@ -73,9 +73,14 @@ describe("JSONata Test Suite", () => {
                         // `code` field in the testcase)
                         if (testcase.code) {
                             // See if we go the code we expected
+                            expect({ msg: e.message, code: e.code }).toEqual({ msg: e.message, code: testcase.code });
                             expect(e.code).toEqual(testcase.code);
                             // If a token was specified, check for that too
                             if (testcase.hasOwnProperty("token")) {
+                                expect({ msg: e.message, code: e.code }).toEqual({
+                                    msg: e.message,
+                                    code: testcase.code,
+                                });
                                 expect(e.code).toEqual(testcase.token);
                             }
                         } else {
@@ -124,6 +129,10 @@ describe("JSONata Test Suite", () => {
                             try {
                                 expr.evaluate(dataset, testcase.bindings);
                             } catch (e) {
+                                expect({ msg: e.message, code: e.code }).toEqual({
+                                    msg: e.message,
+                                    code: testcase.code,
+                                });
                                 expect(e.code).toEqual(testcase.code);
                                 error = true;
                             }
@@ -134,6 +143,10 @@ describe("JSONata Test Suite", () => {
                                     let res2 = eval2(expr.ast(), dataset, env);
                                     expect(res2).toBeUndefined();
                                 } catch (e) {
+                                    expect({ msg: e.message, code: e.code }).toEqual({
+                                        msg: e.message,
+                                        code: testcase.code,
+                                    });
                                     expect(e.code).toEqual(testcase.code);
                                     error = true;
                                 }
