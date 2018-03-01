@@ -105,7 +105,9 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv): Box {
         case "transform": {
             return evaluateTransform(expr, input, environment);
         }
-        case "descendant":
+        case "descendant": {
+            return evaluateDescendant(expr, input, environment);
+        }
         case "regex":
         case "partial":
         case "sort": {
@@ -718,4 +720,26 @@ function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEn
         implementation: transformFunction,
         signature: signature,
     });
+}
+
+function evaluateDescendant(expr: ast.DescendantNode, input: Box, environment: JEnv): Box {
+    switch (input.type) {
+        case BoxType.Void:
+        case BoxType.Lambda:
+        case BoxType.Function:
+            return ubox;
+        case BoxType.Array:
+        case BoxType.Value:
+            let val = unbox(input);
+            return boxValue(descendants(val));
+    }
+}
+
+function descendants(val: any): Array<any> {
+    if (Array.isArray(val)) {
+        return val.reduce((prev, x) => [...prev, ...descendants(x)], []);
+    } else {
+        if (typeof val != "object") return [val];
+        return Object.keys(val).reduce((prev, x) => [...prev, ...descendants(val[x])], [val]);
+    }
 }
