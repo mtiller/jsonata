@@ -112,3 +112,11 @@ export interface LambdaDefinitionNode extends BaseNode {
     arguments: ASTNode[];
     thunk: boolean;
 }
+
+// TODO: Create separate node type for and, or and in because these
+// are operators but they get optimized away.  So the result is that
+// some operator nodes are core and others are raw under the current
+// scheme.
+export interface OperatorNode extends BaseNode {
+    type: "operator";
+}

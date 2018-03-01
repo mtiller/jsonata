@@ -139,6 +139,10 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
             };
             break;
         }
+        case "operator": {
+            expr = { ...base(expr) };
+            break;
+        }
 
         /* istanbul ignore next */
         case "grouped-object":
@@ -149,10 +153,8 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
         /* istanbul ignore next */
         case "error":
         /* istanbul ignore next */
-        case "operator":
-        /* istanbul ignore next */
         case "singleton": {
-            throw new Error("Raw AST node found in optimized tree");
+            throw new Error("Raw AST node of type " + expr.type + " found in optimized tree while wrapping predicates");
         }
 
         case "predicate":

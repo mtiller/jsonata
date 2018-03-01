@@ -18,6 +18,7 @@ import {
     boxFunction,
     BoxType,
     boxType,
+    fragmentBox,
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber, isString } from "util";
@@ -126,7 +127,7 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv): Box {
         /* istanbul ignore next */
         case "singleton": {
             /* istanbul ignore next */
-            throw new Error("Raw AST node found in optimized tree");
+            throw new Error("Raw AST node of type " + expr.type + " found in optimized tree");
         }
         /* istanbul ignore next */
         default:
@@ -153,7 +154,8 @@ function evaluatePath(expr: ast.PathNode, input: Box, environment: JEnv): Box {
     if (expr.steps.length == 0) throw new Error("Path without zero steps...this shouldn't happen");
 
     let [step0, ...rest] = expr.steps;
-    let res0 = doEval(step0, input, environment);
+    let flattened = defragmentBox(fragmentBox(input));
+    let res0 = doEval(step0, flattened, environment);
 
     return rest.reduce((prev, step) => {
         return mapOverValues(prev, c => doEval(step, c, environment));

@@ -1,5 +1,5 @@
-import { BaseNode } from './base';
-import { ASTNode } from './index';
+import { BaseNode } from "./base";
+import { ASTNode } from "./index";
 import { Token } from "../tokenizer";
 
 export interface ProxyBinaryNode extends BaseNode {
@@ -26,10 +26,6 @@ export interface ErrorNode extends BaseNode {
     error: ErrorFields;
     lhs: ASTNode;
     remaining: Token[];
-}
-
-export interface OperatorNode extends BaseNode {
-    type: "operator";
 }
 
 export interface SingletonArrayDecorator extends BaseNode {

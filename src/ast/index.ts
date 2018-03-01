@@ -1,11 +1,11 @@
-import * as raw from './raw';
-import * as core from './core';
-import * as opt from './opt';
+import * as raw from "./raw";
+import * as core from "./core";
+import * as opt from "./opt";
 
-export * from './raw';
-export * from './core';
-export * from './opt';
-export * from './base';
+export * from "./raw";
+export * from "./core";
+export * from "./opt";
+export * from "./base";
 
 /**
  * These are the AST nodes that come directly out of the parser before
@@ -15,9 +15,9 @@ export type ASTNode =
     | raw.ProxyBinaryNode
     | raw.EndNode
     | raw.ErrorNode
-    | raw.OperatorNode
     | raw.SingletonArrayDecorator
     | raw.GroupedObjectNode
+    | core.OperatorNode
     | core.WildcardNode
     | core.DescendantNode
     | core.GroupNode

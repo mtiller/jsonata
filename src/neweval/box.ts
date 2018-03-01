@@ -43,7 +43,6 @@ export const ubox: VoidBox = { type: BoxType.Void };
 export type BoxPredicate = (item: Box, index: number, boxes: Box[]) => boolean;
 
 export function boxmap(box: Box, f: (v: JSValue) => JSValue): Box {
-    // if (box.values == undefined) return ubox;
     switch (box.type) {
         case BoxType.Void: {
             return ubox;
