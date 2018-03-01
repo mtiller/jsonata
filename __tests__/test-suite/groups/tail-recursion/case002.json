@@ -3,6 +3,8 @@
     "dataset": null,
     "timelimit": 1000,
     "depth": 302,
+    "skip": true,
+    "comment": "No provision to limit depth for now",
     "bindings": {},
     "code": "U1001"
 }

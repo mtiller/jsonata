@@ -25,7 +25,13 @@ $ yarn jest -t <string>
 ...and `jest` will only run tests whose description includes `<string>`. If you want to
 **debug** such tests, you'll need to go into `.vscode` and edit the configuration named
 `"Debug Tests Matching..."`. Look for the string that follows the `-t` argument in
-order to specify the term you are interested in.
+order to specify the term you are interested in. The argument following the
+`-t` is a regulary expression which means you can do things like this to match
+multiple patterns:
+
+```
+$ yarn jest -t 'variables|wildcard'
+```
 
 ## Not stopping at some breakpoints
 
