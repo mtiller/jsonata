@@ -1,6 +1,8 @@
 {
     "expr": "( $clone := 5; $ ~> |Account.Order.Product|{\"blah\":\"foo\"}| )",
     "dataset": "dataset5",
+    "skip": true,
+    "comment": "This is testing aspects of the implementation, not the specification",
     "bindings": {},
     "code": "T2013"
 }

@@ -1,6 +1,6 @@
 import * as ast from "../ast";
 import { ProcedureDetails } from "./procs";
-import { unexpectedValue, isArrayOfNumbers, flatten } from "../utils";
+import { unexpectedValue, isArrayOfNumbers, flatten, isArrayOfStrings } from "../utils";
 import { JEnv } from "./environment";
 import {
     JSValue,
@@ -15,12 +15,14 @@ import {
     boxContainsFunction,
     defragmentBox,
     boxLambda,
+    boxFunction,
     BoxType,
     boxType,
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber, isString } from "util";
 import { apply } from "./apply";
+import { parseSignature } from "../signatures";
 
 export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSValue {
     let box = boxValue(input);
@@ -100,11 +102,13 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv): Box {
         case "apply": {
             return evaluateApplyExpression(expr, input, environment);
         }
+        case "transform": {
+            return evaluateTransform(expr, input, environment);
+        }
         case "descendant":
         case "regex":
         case "partial":
-        case "sort":
-        case "transform": {
+        case "sort": {
             throw new Error("AST node type '" + expr.type + "' is unimplemented");
         }
         /* istanbul ignore next */
@@ -435,7 +439,8 @@ function evaluateFunction(expr: ast.FunctionInvocationNode, input: Box, environm
 
     // apply the procedure
     try {
-        return apply(proc, evaluatedArgs, input);
+        let ret = apply(proc, evaluatedArgs, input);
+        return ret;
     } catch (err) {
         // add the position field to the error
         err.position = expr.position;
@@ -636,4 +641,81 @@ function evaluateApplyExpression(expr: ast.ApplyNode, input: Box, environment: J
         // TODO: In v1.5, the third argument here is environment?!?
         return apply(func, [lhs], input);
     }
+}
+
+function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEnv): Box {
+    let transformFunction = (args: Array<{}>): Array<{}> | {} => {
+        if (args === undefined) return undefined;
+        if (!Array.isArray(args)) args = [args];
+        // We know, from the signature, that args will contain an array of objects.
+        // So now we loop over each one.
+
+        let ret = args.map(obj => {
+            // Rebox a copy of the value.  We do this because we will mutate the object.
+            let clone = boxValue(JSON.parse(JSON.stringify(obj)));
+
+            // Find subobjects of obj that match our pattern in **the clone**
+            let matches = doEval(expr.pattern, clone, environment);
+
+            // Loop over each match.  Note that this part requires that the sub-object
+            // contained in the matchbox is a **reference** to the matching portion
+            // of the object in the clone variable.  This is because we **mutate this in place**.
+            forEachValue(matches, (matchbox: Box) => {
+                // Extract the matching object
+                let match = unbox(matchbox);
+
+                // Ensure the match is an object (this ch)
+                if (typeof match != "object") {
+                    // This check and associated exception don't appear in v1.5
+                    // and yet the exerciser detects the error.  I don't understand
+                    // exactly how that happens.
+                    throw new Error("Expected object but got " + typeof match);
+                }
+
+                // Evaluate the update "patch" we want to apply
+                let update = unbox(doEval(expr.update, matchbox, environment));
+                if (update) {
+                    if (typeof update != "object") {
+                        // throw type error
+                        throw {
+                            code: "T2011",
+                            stack: new Error().stack,
+                            position: expr.update.position,
+                            value: update,
+                        };
+                    }
+                    Object.keys(update).forEach(key => (match[key] = update[key]));
+                }
+                if (expr.delete) {
+                    let del = unbox(doEval(expr.delete, matchbox, environment)) as string[];
+                    if (del) {
+                        if (typeof del == "string") del = [del];
+                        if (!isArrayOfStrings(del)) {
+                            throw {
+                                code: "T2012",
+                                stack: new Error().stack,
+                                position: expr.delete.position,
+                                value: del,
+                            };
+                        }
+                        del.forEach(str => {
+                            delete match[str];
+                        });
+                    }
+                }
+            });
+            // Remember that this has been mutated in place so we are returning
+            // the mutated value.
+            let ret = unbox(clone);
+            return ret;
+        });
+        // TODO: This is to be consistent with how
+        if (ret.length == 1) return ret[0];
+        return ret;
+    };
+    let signature = parseSignature("<(oa):o>");
+    return boxFunction({
+        implementation: transformFunction,
+        signature: signature,
+    });
 }

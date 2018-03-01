@@ -16,8 +16,8 @@
         "jest": "jest",
         "test": "npm run jest --coverage",
         "passing":
-            "jest -t 'variable|wildcards|blocks|array-constructor|boolean-expressions|object-constructor|closures|comparison-operators|conditionals|range-operator|context'",
-        "next": "jest -t 'context'",
+            "jest -t 'variable|wildcards|blocks|array-constructor|boolean-expressions|object-constructor|closures|comparison-operators|conditionals|range-operator|context|transform'",
+        "next": "jest -t 'tail-recursion'",
         "jest:debug": "node --inspect node_modules/.bin/jest --runInBand",
         "posttest": "npm run check-coverage",
         "check-coverage": "istanbul check-coverage -statement 100 -branch 100 -function 100 -line 100",

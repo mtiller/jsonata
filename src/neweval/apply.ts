@@ -1,6 +1,6 @@
 import { doEval } from "./eval2";
 import { ProcedureDetails } from "./procs";
-import { unbox, boxValue, BoxType, Box, ubox } from "./box";
+import { unbox, boxValue, BoxType, Box } from "./box";
 import { JEnv } from "./environment";
 import { Signature } from "../signatures";
 import { unexpectedValue } from "../utils";
@@ -80,7 +80,10 @@ function applyInner(proc: Box, args: Box[], context: Box): Box {
             }
         }
         case BoxType.Void:
-            return ubox;
+            throw {
+                code: "T1006",
+                stack: new Error().stack,
+            };
         default: {
             return unexpectedValue<Box>(
                 proc,
@@ -116,8 +119,7 @@ function validateArguments(signature: Signature, args: Box[], context: Box): Box
  * @returns {*} Result of procedure
  */
 function applyProcedure(details: ProcedureDetails, args: Box[]): Box {
-    // TODO: Shouldn't we leverage an enclosing scope here?!?
-    let env = new JEnv();
+    let env = new JEnv(details.environment);
 
     details.arguments.forEach((param, index) => {
         env.bindBox(param.value, args[index]);
@@ -140,9 +142,6 @@ function applyNativeFunction(f: Function, env: JEnv): Box {
     var sigArgs = getNativeFunctionArguments(f);
     // generate the array of arguments for invoking the function - look them up in the environment
     let args = sigArgs.map(sigArg => unbox(env.lookup(sigArg.trim())));
-    // var args = sigArgs.map(function(sigArg) {
-    //     return env.lookup(sigArg.trim())
-    // });
 
     return boxValue(f.apply(null, args));
 }
