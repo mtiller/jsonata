@@ -18,6 +18,8 @@ import {
     boxFunction,
     BoxType,
     boxType,
+    boxArray,
+    unboxArray,
     fragmentBox,
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
@@ -157,9 +159,14 @@ function evaluatePath(expr: ast.PathNode, input: Box, environment: JEnv): Box {
     let flattened = defragmentBox(fragmentBox(input));
     let res0 = doEval(step0, flattened, environment);
 
-    return rest.reduce((prev, step) => {
+    let result = rest.reduce((prev, step) => {
         return mapOverValues(prev, c => doEval(step, c, environment));
     }, res0);
+
+    if (expr.keepSingletonArray) {
+        result = boxArray(unboxArray(result));
+    }
+    return result;
 }
 
 function evaluateName(expr: ast.NameNode, input: Box, environment: JEnv): Box {
