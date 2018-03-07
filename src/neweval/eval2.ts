@@ -186,10 +186,12 @@ function evaluatePath(expr: ast.PathNode, input: Box, environment: JEnv): Box {
     let res0 = doEval(first, flattened, environment);
 
     // Evaluate a Step instance (lhs + predicates) for a given input
-    let evalStep = (input: Box, step: Step) =>
+    // TODO: Couldn't we switch this to a single eval if we just wrap
+    // each step in all predicates?!?
+    let evalStep = (init: Box, step: Step) =>
         step.predicates.reduce(
             (prev, pred) => doEval(pred, prev, environment), // eval each predicate
-            doEval(step.lhs, input, environment), // This is the core expr for this step
+            doEval(step.lhs, init, environment), // This is the core expr for this step
         );
 
     // Now iterate over all the remaining steps mapping the intermediate values
