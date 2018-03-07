@@ -12,8 +12,7 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
         case "name":
         case "literal":
         case "regex":
-            expr = { ...orig };
-            delete expr["predicate"];
+            expr = { ...orig, predicate: [] };
             // These have no children, so do nothing (except wrap in predicates at the end).
             break;
         case "unary": {
@@ -116,9 +115,31 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
             break;
         }
         case "path": {
+            // We extract the first one because it doesn't get the "map"
+            // treatment and neither do its predicates (so we elborate it).
+            let [first, ...rest] = expr.steps;
+
+            // For all the steps following dots, we flatten all the steps (i.e.,
+            // step, pred*, step, pred*).
+            let steps = rest.reduce((prev, step) => {
+                let spreds: ast.ASTNode[] = Array.isArray(step.predicate) ? step.predicate : [];
+                let predless = { ...step, predicate: [] };
+                let preds = spreds.map(pred => ({
+                    type: "predicate",
+                    value: "[",
+                    position: pred.position,
+                    condition: elaboratePredicates(pred),
+                    lhs: {
+                        type: "variable",
+                        value: "",
+                        position: pred.position,
+                    },
+                }));
+                return [...prev, elaboratePredicates(predless), ...preds];
+            }, []);
             expr = {
                 ...base(expr),
-                steps: expr.steps.map(elaboratePredicates),
+                steps: [elaboratePredicates(first), ...steps],
                 keepSingletonArray: expr.keepSingletonArray,
             };
             break;

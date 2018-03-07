@@ -30,6 +30,7 @@ import { parseSignature } from "../signatures";
 export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSValue {
     let box = boxValue(input);
     let nexpr = elaboratePredicates(expr);
+    // console.log("nexpr = " + JSON.stringify(nexpr, null, 4));
     environment.bind("$", input);
     let result = doEval(nexpr, box, environment);
     return unbox(result);
@@ -151,17 +152,45 @@ function evaluateVariable(expr: ast.VariableNode, input: Box, environment: JEnv)
     return environment.lookup(varname);
 }
 
+// TODO: Eventually make this part of the PathNode
+interface Step {
+    lhs: ast.ASTNode;
+    predicates: ast.PredicateNode[];
+}
+
 function evaluatePath(expr: ast.PathNode, input: Box, environment: JEnv): Box {
-    //if (input.values == undefined) return ubox;
-    if (expr.steps.length == 0) throw new Error("Path without zero steps...this shouldn't happen");
+    // The first step is special because it doesn't get the "map" treatment.
+    let [first, ...rest] = expr.steps;
+    let steps: Step[] = [];
+    rest.forEach(step => {
+        if (step.type == "predicate") {
+            if (steps.length == 0) throw new Error("Found predicate in path before any steps...this should not happen");
+            steps[steps.length - 1].predicates.push(step);
+        } else {
+            steps.push({
+                lhs: step,
+                predicates: [],
+            });
+        }
+    });
 
-    let [step0, ...rest] = expr.steps;
     let flattened = defragmentBox(fragmentBox(input));
-    let res0 = doEval(step0, flattened, environment);
+    let res0 = doEval(first, flattened, environment);
 
-    let result = rest.reduce((prev, step) => {
-        return mapOverValues(prev, c => doEval(step, c, environment));
+    let result = steps.reduce((prev, step) => {
+        return mapOverValues(prev, c => {
+            let lhs = doEval(step.lhs, c, environment);
+            return step.predicates.reduce((prev, pred) => doEval(pred, prev, environment), lhs);
+        });
     }, res0);
+
+    // let [step0, ...rest] = expr.steps;
+    // let flattened = defragmentBox(fragmentBox(input));
+    // let res0 = doEval(step0, flattened, environment);
+
+    // let result = rest.reduce((prev, step) => {
+    //     return mapOverValues(prev, c => doEval(step, c, environment));
+    // }, res0);
 
     if (expr.keepSingletonArray) {
         result = boxArray(unboxArray(result));

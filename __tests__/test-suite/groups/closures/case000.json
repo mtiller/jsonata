@@ -1,5 +1,6 @@
 {
-    "expr": "Account.(  $AccName := function() { $.\"Account Name\" };  Order[OrderID = \"order104\"].Product{    \"Account\": $AccName(),    \"SKU-\" & $string(ProductID): $.\"Product Name\"  } )",
+    "expr":
+        "Account.(  $AccName := function() { $.\"Account Name\" };  Order[OrderID = \"order104\"].Product{    \"Account\": $AccName(),    \"SKU-\" & $string(ProductID): $.\"Product Name\"  } )",
     "dataset": "dataset5",
     "bindings": {},
     "result": {
