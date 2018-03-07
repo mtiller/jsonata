@@ -122,8 +122,15 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
             // For all the steps following dots, we flatten all the steps (i.e.,
             // step, pred*, step, pred*).
             let steps = rest.reduce((prev, step) => {
+                // Get the predicates associated with the current step
                 let spreds: ast.ASTNode[] = Array.isArray(step.predicate) ? step.predicate : [];
-                let predless = { ...step, predicate: [] };
+                // We will take care of any predicates associated with the step
+                // in the code below.  So strip away an predicates and elaborate
+                // any predicates that its children might have.
+                let nstep = elaboratePredicates({ ...step, predicate: [] });
+
+                // Now loop over all predicates and create a predicate node
+                // whose "input" is "$" and whose condition is elaborated as well.
                 let preds = spreds.map(pred => ({
                     type: "predicate",
                     value: "[",
@@ -135,8 +142,15 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
                         position: pred.position,
                     },
                 }));
-                return [...prev, elaboratePredicates(predless), ...preds];
+
+                // Now return the previous steps, followed by this step, followed
+                // by any predicates associated with this node.
+                return [...prev, nstep, ...preds];
             }, []);
+
+            // Since we never elaborated any predicates associated with the very
+            // first step (remember, it isn't mapped), we need to do that here when
+            // rebuilding this node.
             expr = {
                 ...base(expr),
                 steps: [elaboratePredicates(first), ...steps],
