@@ -23,9 +23,10 @@ import {
     fragmentBox,
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
-import { isNumber, isString } from "util";
+import { isNumber } from "util";
 import { apply } from "./apply";
 import { parseSignature } from "../signatures";
+import { functionString } from "../functions";
 
 export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSValue {
     let box = boxValue(input);
@@ -371,16 +372,9 @@ export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: Bo
             }
         }
         case "&": {
-            if (lhs === undefined || rhs === undefined) return boxValue(false);
-            if (!isNumber(lhs) && !isString(lhs)) {
-                throw new Error("Invalid operand for LHS of " + value + " operator: " + JSON.stringify(lhs));
-            }
-            if (!isNumber(rhs) && !isString(rhs)) {
-                throw new Error("Invalid operand for RHS of " + value + " operator: " + JSON.stringify(rhs));
-            }
-            let lhsv: string = lhs === undefined ? "" : "" + (lhs as any);
-            let rhsv: string = rhs === undefined ? "" : "" + (rhs as any);
-            return boxValue(lhsv + rhsv);
+            let lstr = lhs == undefined ? "" : functionString(lhs);
+            let rstr = lhs == undefined ? "" : functionString(rhs);
+            return boxValue(lstr + rstr);
         }
         case "..": {
             if (lhs === undefined || rhs === undefined) return ubox;
