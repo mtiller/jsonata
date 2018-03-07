@@ -115,47 +115,7 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
             break;
         }
         case "path": {
-            // We extract the first one because it doesn't get the "map"
-            // treatment and neither do its predicates (so we elborate it).
-            let [first, ...rest] = expr.steps;
-
-            // For all the steps following dots, we flatten all the steps (i.e.,
-            // step, pred*, step, pred*).
-            let steps = rest.reduce((prev, step) => {
-                // Get the predicates associated with the current step
-                let spreds: ast.ASTNode[] = Array.isArray(step.predicate) ? step.predicate : [];
-                // We will take care of any predicates associated with the step
-                // in the code below.  So strip away an predicates and elaborate
-                // any predicates that its children might have.
-                let nstep = elaboratePredicates({ ...step, predicate: [] });
-
-                // Now loop over all predicates and create a predicate node
-                // whose "input" is "$" and whose condition is elaborated as well.
-                let preds = spreds.map(pred => ({
-                    type: "predicate",
-                    value: "[",
-                    position: pred.position,
-                    condition: elaboratePredicates(pred),
-                    lhs: {
-                        type: "variable",
-                        value: "",
-                        position: pred.position,
-                    },
-                }));
-
-                // Now return the previous steps, followed by this step, followed
-                // by any predicates associated with this node.
-                return [...prev, nstep, ...preds];
-            }, []);
-
-            // Since we never elaborated any predicates associated with the very
-            // first step (remember, it isn't mapped), we need to do that here when
-            // rebuilding this node.
-            expr = {
-                ...base(expr),
-                steps: [elaboratePredicates(first), ...steps],
-                keepSingletonArray: expr.keepSingletonArray,
-            };
+            expr = processPathNested(expr);
             break;
         }
         case "bind": {
@@ -212,6 +172,63 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
         }),
         expr,
     );
+}
+
+export function processPath(expr: ast.PathNode): ast.PathNode {
+    // We extract the first one because it doesn't get the "map"
+    // treatment and neither do its predicates (so we elborate it).
+    let [first, ...rest] = expr.steps;
+
+    // For all the steps following dots, we flatten all the steps (i.e.,
+    // step, pred*, step, pred*).
+    let steps = rest.reduce((prev, step) => {
+        // Get the predicates associated with the current step
+        let spreds: ast.ASTNode[] = Array.isArray(step.predicate) ? step.predicate : [];
+        // We will take care of any predicates associated with the step
+        // in the code below.  So strip away an predicates and elaborate
+        // any predicates that its children might have.
+        let nstep = elaboratePredicates({ ...step, predicate: [] });
+
+        // Now loop over all predicates and create a predicate node
+        // whose "input" is "$" and whose condition is elaborated as well.
+        let preds = spreds.map(pred => ({
+            type: "predicate",
+            value: "[",
+            position: pred.position,
+            condition: elaboratePredicates(pred),
+            lhs: {
+                type: "variable",
+                value: "",
+                position: pred.position,
+            },
+        }));
+
+        // Now return the previous steps, followed by this step, followed
+        // by any predicates associated with this node.
+        return [...prev, nstep, ...preds];
+    }, []);
+
+    // Since we never elaborated any predicates associated with the very
+    // first step (remember, it isn't mapped), we need to do that here when
+    // rebuilding this node.
+    return {
+        ...base(expr),
+        steps: [elaboratePredicates(first), ...steps],
+        keepSingletonArray: expr.keepSingletonArray,
+    };
+}
+
+export function processPathNested(expr: ast.PathNode): ast.PathNode {
+    let steps = expr.steps.map(step => elaboratePredicates(step));
+
+    // Since we never elaborated any predicates associated with the very
+    // first step (remember, it isn't mapped), we need to do that here when
+    // rebuilding this node.
+    return {
+        ...base(expr),
+        steps: steps,
+        keepSingletonArray: expr.keepSingletonArray,
+    };
 }
 
 function base<T extends string, V>(a: {

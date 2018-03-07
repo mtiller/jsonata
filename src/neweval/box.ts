@@ -121,6 +121,10 @@ export function defragmentBox(boxes: Box[], array: boolean = false): Box {
     }
 }
 
+export function flattenBox(box: Box): Box {
+    return defragmentBox(fragmentBox(box));
+}
+
 function isBox(val: any): boolean {
     if (val === undefined || val === null) return false;
     if (typeof val !== "object") return false;
