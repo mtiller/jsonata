@@ -162,39 +162,38 @@ function evaluatePath(expr: ast.PathNode, input: Box, environment: JEnv): Box {
     // separate it out from the "rest" of the steps.
     let [first, ...rest] = expr.steps;
 
-    // Now loop over all following nodes (ones that do get mapped) and process them
+    // Now loop over all remaining nodes (ones that do get mapped) and process them
     // into an array of Step objects.
     // TODO: Generate this structure directly in the parser.
-    let steps: Step[] = [];
-    rest.forEach(step => {
-        // If this is a predicate, just add it to the collection of predicates
-        // associated with the most recent step.
-        if (step.type == "predicate") {
-            if (steps.length == 0) throw new Error("Found predicate in path before any steps...this should not happen");
-            steps[steps.length - 1].predicates.push(step);
+    let steps: Step[] = rest.reduce((prev, step) => {
+        if (step.type != "predicate") {
+            return [
+                ...prev,
+                {
+                    lhs: step,
+                    predicates: [],
+                },
+            ];
         } else {
-            // If this isn't a predicate, append another Step instance to our
-            // array of Steps.
-            steps.push({
-                lhs: step,
-                predicates: [],
-            });
+            prev[prev.length - 1].predicates.push(step);
+            return prev;
         }
-    });
+    }, []);
 
     // Evaluate the very first step, since it is special
     let flattened = defragmentBox(fragmentBox(input));
     let res0 = doEval(first, flattened, environment);
 
-    // Now iterate over all the remaining steps and map the expressions
-    // associated with that step (including any predicates) over each value in
-    // the input.
-    let result = steps.reduce((prev, step) => {
-        return mapOverValues(prev, c => {
-            let lhs = doEval(step.lhs, c, environment);
-            return step.predicates.reduce((prev, pred) => doEval(pred, prev, environment), lhs);
-        });
-    }, res0);
+    // Evaluate a Step instance (lhs + predicates) for a given input
+    let evalStep = (input: Box, step: Step) =>
+        step.predicates.reduce(
+            (prev, pred) => doEval(pred, prev, environment), // eval each predicate
+            doEval(step.lhs, input, environment), // This is the core expr for this step
+        );
+
+    // Now iterate over all the remaining steps mapping the intermediate values
+    // at the start of each step over each Step instance (see evalStep).
+    let result = steps.reduce((prev, step) => mapOverValues(prev, c => evalStep(c, step)), res0);
 
     // If this expression has been marked with the keepSingletonArray flag, then
     // rebox the value as an array to preserve its "array"-ness.
