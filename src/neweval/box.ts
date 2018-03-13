@@ -76,7 +76,7 @@ export function boxmap(box: Box, f: (v: JSValue) => JSValue): Box {
 export function fragmentBox(box: Box): Box[] {
     switch (box.type) {
         case BoxType.Void:
-            return [];
+            return [ubox];
         case BoxType.Array:
         case BoxType.Value:
             return box.values.map(v => boxValue(v));
