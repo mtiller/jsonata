@@ -14,14 +14,14 @@ import {
     filterOverValues,
     boxContainsFunction,
     defragmentBox,
-    flattenBox,
+    //flattenBox,
     boxLambda,
     boxFunction,
     BoxType,
     boxType,
     boxArray,
     unboxArray,
-    fragmentBox,
+    //fragmentBox,
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber } from "util";
@@ -153,18 +153,27 @@ function evaluateVariable(expr: ast.VariableNode, input: Box, environment: JEnv)
     return environment.lookup(varname);
 }
 
+function isVariable(expr: ast.ASTNode): boolean {
+    if (expr.type == "predicate") return isVariable(expr.lhs);
+    return expr.type == "variable";
+}
 function evaluatePath(expr: ast.PathNode, input: Box, environment: JEnv): Box {
+    // TODO: This is not right, the fact that the first step is a variable
+    // shouldn't cause us to transform the input!?! (this is how v1.5 does it)
+    if (expr.steps.length > 0 && isVariable(expr.steps[0])) {
+        input = boxValue([unbox(input)]);
+    }
     // The first step is special because it doesn't get the "map" treatment.  We
     // separate it out from the "rest" of the steps.
-    let [first, ...rest] = expr.steps;
+    //let [first, ...rest] = expr.steps;
 
     // Evaluate the very first step, since it is special
-    let flattened = defragmentBox(fragmentBox(input));
-    let res0 = flattenBox(doEval(first, flattened, environment));
+    //let flattened = defragmentBox(fragmentBox(input));
+    //let res0 = flattenBox(doEval(first, flattened, environment));
 
     // Now iterate over all the remaining steps mapping the intermediate values
     // at the start of each step over each Step instance (see evalStep).
-    let result = rest.reduce((prev, step) => mapOverValues(prev, c => doEval(step, c, environment)), res0);
+    let result = expr.steps.reduce((prev, step) => mapOverValues(prev, c => doEval(step, c, environment)), input);
 
     // If this expression has been marked with the keepSingletonArray flag, then
     // rebox the value as an array to preserve its "array"-ness.
