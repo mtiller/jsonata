@@ -750,10 +750,15 @@ function* evaluateGroupExpression(
     if (!Array.isArray(input)) {
         input = createSequence(input);
     }
+    // Loop over input values
     for (var itemIndex = 0; itemIndex < input.length; itemIndex++) {
+        // Extract the value for each
         var item = input[itemIndex];
+        // Now loop over groupings
         for (var pairIndex = 0; pairIndex < grouping.lhs.length; pairIndex++) {
+            // Get the pair that includes the key expression and the value expression
             var pair = grouping.lhs[pairIndex];
+            // Evaluate the key
             var key = yield* evaluate(pair[0], item, environment);
             // key has to be a string
             if (typeof key !== "string") {
@@ -764,20 +769,33 @@ function* evaluateGroupExpression(
                     value: key,
                 };
             }
-            var entry = { data: item, expr: pair[1] };
+
+            // Do we already have an entry already for this key?
             if (groups.hasOwnProperty(key)) {
+                let entry = groups[key];
+
+                if (pairIndex != entry.pairIndex) {
+                    throw {
+                        code: "D1009",
+                        stack: new Error().stack,
+                        position: pair[0].position,
+                        value: key,
+                    };
+                }
                 // a value already exists in this slot
                 // append it as an array
-                groups[key].data = functionAppend(groups[key].data, item);
+                entry.data = functionAppend(groups[key].data, item);
             } else {
-                groups[key] = entry;
+                // If note, create an entry associated with this key.  The entry
+                // includes the input value and the expression
+                groups[key] = { data: item, expr: pair[1], pairIndex: pairIndex };
             }
         }
     }
 
     // iterate over the groups to evaluate the 'value' expression
     for (key in groups) {
-        entry = groups[key];
+        let entry = groups[key];
         var value = yield* evaluate(entry.expr, entry.data, environment);
         if (typeof value !== "undefined") {
             result[key] = value;

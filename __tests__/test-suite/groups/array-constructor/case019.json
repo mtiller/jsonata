@@ -1,7 +1,8 @@
 {
     "expr": "[1, 2, 3].$",
+    "expr2": ".[1,2,3].$",
+    "comment": "This is one of the cases that is impacted by #170",
     "data": [],
     "bindings": {},
-    "only": true,
     "result": [1, 2, 3]
 }

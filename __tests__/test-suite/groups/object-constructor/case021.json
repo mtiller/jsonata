@@ -1,5 +1,6 @@
 {
-    "expr": "{  \"Order\": Account.Order.{      \"ID\": OrderID,      \"Product\": Product.{          \"Name\": `Product Name`,          \"SKU\": ProductID,          \"Details\": {            \"Weight\": Description.Weight,            \"Dimensions\": Description.(Width & \" x \" & Height & \" x \" & Depth)          }        },      \"Total Price\": $sum(Product.(Price * Quantity))    }}",
+    "expr":
+        "{  \"Order\": Account.Order.{      \"ID\": OrderID,      \"Product\": Product.{          \"Name\": `Product Name`,          \"SKU\": ProductID,          \"Details\": {            \"Weight\": Description.Weight,            \"Dimensions\": Description.(Width & \" x \" & Height & \" x \" & Depth)          }        },      \"Total Price\": $sum(Product.(Price * Quantity))    }}",
     "dataset": "dataset5",
     "bindings": {},
     "result": {

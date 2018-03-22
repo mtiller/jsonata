@@ -14,14 +14,12 @@ import {
     filterOverValues,
     boxContainsFunction,
     defragmentBox,
-    //flattenBox,
     boxLambda,
     boxFunction,
     BoxType,
     boxType,
     boxArray,
     unboxArray,
-    //fragmentBox,
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber } from "util";
@@ -29,15 +27,31 @@ import { apply } from "./apply";
 import { parseSignature } from "../signatures";
 import { functionString } from "../functions";
 
-export function eval2(expr: ast.ASTNode, input: JSValue, environment: JEnv): JSValue {
+export interface EvaluationOptions {
+    legacyMode: boolean;
+}
+
+function normalizeOptions(opts: Partial<EvaluationOptions>): EvaluationOptions {
+    return {
+        legacyMode: opts && !!opts.legacyMode,
+    };
+}
+
+export function eval2(
+    expr: ast.ASTNode,
+    input: JSValue,
+    environment: JEnv,
+    opts: Partial<EvaluationOptions> = {},
+): JSValue {
+    let options = normalizeOptions(opts);
     let box = boxValue(input);
     let nexpr = elaboratePredicates(expr);
     environment.bind("$", input);
-    let result = doEval(nexpr, box, environment);
+    let result = doEval(nexpr, box, environment, options);
     return unbox(result);
 }
 
-export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv): Box {
+export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
     switch (expr.type) {
         /* These are all leaf node types (have no children) */
         case "literal": {
@@ -54,35 +68,35 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv): Box {
         }
         /* These are all operator nodes of some kind (they have children) */
         case "array": {
-            return evaluateArray(expr, input, environment);
+            return evaluateArray(expr, input, environment, options);
         }
         case "predicate": {
-            return evaluatePredicate(expr, input, environment);
+            return evaluatePredicate(expr, input, environment, options);
         }
         case "bind": {
-            return evaluateBinding(expr, input, environment);
+            return evaluateBinding(expr, input, environment, options);
         }
         case "block": {
-            return evaluateBlock(expr, input, environment);
+            return evaluateBlock(expr, input, environment, options);
         }
         case "path": {
-            return evaluatePath(expr, input, environment);
+            return evaluatePathCompat(expr, input, environment, options);
         }
         case "binary": {
-            return evaluateBinaryOperation(expr, input, environment);
+            return evaluateBinaryOperation(expr, input, environment, options);
         }
         case "lambda": {
             return evaluateLambda(expr, input, environment);
         }
         case "function": {
-            return evaluateFunction(expr, input, environment);
+            return evaluateFunction(expr, input, environment, options);
         }
         case "unary": {
             switch (expr.value) {
                 case "-":
-                    return evaluateUnaryMinus(expr, input, environment);
+                    return evaluateUnaryMinus(expr, input, environment, options);
                 case "{":
-                    return evaluateGroup_overwrite(expr.lhs, input, environment);
+                    return evaluateGroup(expr.lhs, input, environment, options);
                 default:
                     return unexpectedValue<ast.UnaryMinusNode | ast.UnaryObjectNode>(
                         expr,
@@ -92,23 +106,23 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv): Box {
             }
         }
         case "group": {
-            let lhs = doEval(expr.lhs, input, environment);
-            return evaluateGroup_overwrite(expr.groupings, lhs, environment);
+            let lhs = doEval(expr.lhs, input, environment, options);
+            return evaluateGroup_overwrite(expr.groupings, lhs, environment, options);
         }
         case "condition": {
-            let cond = doEval(expr.condition, input, environment);
+            let cond = doEval(expr.condition, input, environment, options);
             let c = unbox(cond);
             if (!!c) {
-                return doEval(expr.then, input, environment);
+                return doEval(expr.then, input, environment, options);
             } else {
-                return expr.else ? doEval(expr.else, input, environment) : ubox;
+                return expr.else ? doEval(expr.else, input, environment, options) : ubox;
             }
         }
         case "apply": {
-            return evaluateApplyExpression(expr, input, environment);
+            return evaluateApplyExpression(expr, input, environment, options);
         }
         case "transform": {
-            return evaluateTransform(expr, input, environment);
+            return evaluateTransform(expr, input, environment, options);
         }
         case "descendant": {
             return evaluateDescendant(expr, input, environment);
@@ -153,35 +167,104 @@ function evaluateVariable(expr: ast.VariableNode, input: Box, environment: JEnv)
     return environment.lookup(varname);
 }
 
-function isVariable(expr: ast.ASTNode): boolean {
-    if (expr.type == "predicate") return isVariable(expr.lhs);
-    return expr.type == "variable";
+// function isVariable(expr: ast.ASTNode): boolean {
+//     if (expr.type == "predicate") return isVariable(expr.lhs);
+//     return expr.type == "variable";
+// }
+
+interface Path {
+    head: Box;
+    path: ast.ASTNode[];
 }
-function evaluatePath(expr: ast.PathNode, input: Box, environment: JEnv): Box {
-    // TODO: This is not right, the fact that the first step is a variable
-    // shouldn't cause us to transform the input!?! (this is how v1.5 does it)
-    if (expr.steps.length > 0 && isVariable(expr.steps[0])) {
-        input = boxValue([unbox(input)]);
+
+function nonpredicateNode(node: ast.ASTNode): ast.ASTNode {
+    if (node.type === "predicate") {
+        return nonpredicateNode(node.lhs);
     }
-    // The first step is special because it doesn't get the "map" treatment.  We
-    // separate it out from the "rest" of the steps.
-    //let [first, ...rest] = expr.steps;
+    return node;
+}
 
-    // Evaluate the very first step, since it is special
-    //let flattened = defragmentBox(fragmentBox(input));
-    //let res0 = flattenBox(doEval(first, flattened, environment));
+function extractSteps(expr: ast.PathNode, input: Box, environment: JEnv, options: EvaluationOptions): Path {
+    let first = expr.steps[0];
+    let rest = expr.steps.slice(1);
+    if (options.legacyMode) {
+        let nonpred = nonpredicateNode(first);
+        // If first node is an array (constructor), then we should treat the array
+        // as the effective input
+        if (nonpred.type === "array" && nonpred.consarray) {
+            return {
+                head: doEval(first, input, environment, options),
+                path: rest,
+            };
+        }
+        // If the first is a variable, then we need to start our path with a
+        // scalar input vector...
+        if (nonpred.type === "variable") {
+            return {
+                head: boxArray([unbox(input)]),
+                path: expr.steps,
+            };
+        }
+        switch (input.type) {
+            case BoxType.Void:
+                return { head: boxArray([unbox(input)]), path: expr.steps };
+            case BoxType.Array:
+                return { head: input, path: expr.steps };
+            case BoxType.Value: {
+                if (input.values.length == 0) return { head: boxArray([unbox(input)]), path: expr.steps };
+                return { head: input, path: expr.steps };
+            }
+            // ???
+            default:
+                return { head: input, path: expr.steps };
+        }
+    }
 
-    // Now iterate over all the remaining steps mapping the intermediate values
-    // at the start of each step over each Step instance (see evalStep).
-    let result = expr.steps.reduce((prev, step) => mapOverValues(prev, c => doEval(step, c, environment)), input);
+    throw new Error("Cannot evaluate non-legacy paths (yet)");
+}
 
-    // If this expression has been marked with the keepSingletonArray flag, then
-    // rebox the value as an array to preserve its "array"-ness.
+function evaluatePathCompat(expr: ast.PathNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
+    let path = extractSteps(expr, input, environment, options);
+
+    let result = path.path.reduce(
+        (prev, step) => mapOverValues(prev, c => doEval(step, c, environment, options)),
+        path.head,
+    );
+
     if (expr.keepSingletonArray) {
         result = boxArray(unboxArray(result));
     }
     return result;
 }
+
+// function evaluatePath(expr: ast.PathNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
+//     // TODO: This is not right, the fact that the first step is a variable
+//     // shouldn't cause us to transform the input!?! (this is how v1.5 does it)
+//     if (expr.steps.length > 0 && isVariable(expr.steps[0])) {
+//         input = boxValue([unbox(input)]);
+//     }
+//     // The first step is special because it doesn't get the "map" treatment.  We
+//     // separate it out from the "rest" of the steps.
+//     //let [first, ...rest] = expr.steps;
+
+//     // Evaluate the very first step, since it is special
+//     //let flattened = defragmentBox(fragmentBox(input));
+//     //let res0 = flattenBox(doEval(first, flattened, environment));
+
+//     // Now iterate over all the remaining steps mapping the intermediate values
+//     // at the start of each step over each Step instance (see evalStep).
+//     let result = expr.steps.reduce(
+//         (prev, step) => mapOverValues(prev, c => doEval(step, c, environment, options)),
+//         input,
+//     );
+
+//     // If this expression has been marked with the keepSingletonArray flag, then
+//     // rebox the value as an array to preserve its "array"-ness.
+//     if (expr.keepSingletonArray) {
+//         result = boxArray(unboxArray(result));
+//     }
+//     return result;
+// }
 
 function evaluateName(expr: ast.NameNode, input: Box, environment: JEnv): Box {
     if (input.type === BoxType.Void) return ubox;
@@ -197,11 +280,11 @@ function evaluateWildcard(expr: ast.WildcardNode, input: Box, environment: JEnv)
     return boxValue(flatten(Object.keys(val).map((k, i) => val[k])));
 }
 
-function evaluatePredicate(expr: ast.PredicateNode, input: Box, environment: JEnv): Box {
+function evaluatePredicate(expr: ast.PredicateNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
     /* First, fragement all values in the left and side into their own box */
-    let lhs = doEval(expr.lhs, input, environment);
+    let lhs = doEval(expr.lhs, input, environment, options);
     /* Construct a predicate function that we can filter this list based on */
-    let predicate = filterPredicate(expr.condition, environment);
+    let predicate = filterPredicate(expr.condition, environment, options);
     /* Use the predicate closure to filter the values in LHS */
     return filterOverValues(lhs, predicate);
 }
@@ -211,11 +294,11 @@ function evaluatePredicate(expr: ast.PredicateNode, input: Box, environment: JEn
  * @param predicate The AST node for the predicate expression
  * @param environment The environment in which the evaluation is done.
  */
-function filterPredicate(predicate: ast.ASTNode, environment: JEnv) {
+function filterPredicate(predicate: ast.ASTNode, environment: JEnv, options: EvaluationOptions) {
     return (item: Box, ind: number, lhs: Box[]) => {
         // Perform the evaluation of the predicate in the context of the value
         // it applies to
-        let pv = doEval(predicate, item, environment);
+        let pv = doEval(predicate, item, environment, options);
         // Get the array of JS values associated with the predicate evaluation
         let res: JSValue[] = pv.type === BoxType.Value ? pv.values : [];
         // Compute the reverse index (negative number) for the item we evaluated
@@ -233,22 +316,27 @@ function filterPredicate(predicate: ast.ASTNode, environment: JEnv) {
     };
 }
 
-function evaluateBinding(expr: ast.BindNode, input: Box, environment: JEnv): Box {
+function evaluateBinding(expr: ast.BindNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
     let lhs = expr.lhs;
     let x = lhs;
-    let val = doEval(expr.rhs, input, environment);
+    let val = doEval(expr.rhs, input, environment, options);
     environment.bindBox(x.value, val);
     return val;
 }
 
-export function evaluateBlock(expr: ast.BlockNode, input: Box, enclosing: JEnv): Box {
+export function evaluateBlock(expr: ast.BlockNode, input: Box, enclosing: JEnv, options: EvaluationOptions): Box {
     let environment = new JEnv(enclosing);
-    return expr.expressions.reduce((prev, e) => doEval(e, input, environment), ubox);
+    return expr.expressions.reduce((prev, e) => doEval(e, input, environment, options), ubox);
 }
 
-export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: Box, environment: JEnv): Box {
-    let lhs = unbox(doEval(expr.lhs, input, environment));
-    let rhs = unbox(doEval(expr.rhs, input, environment));
+export function evaluateBinaryOperation(
+    expr: ast.BinaryOperationNode,
+    input: Box,
+    environment: JEnv,
+    options: EvaluationOptions,
+): Box {
+    let lhs = unbox(doEval(expr.lhs, input, environment, options));
+    let rhs = unbox(doEval(expr.rhs, input, environment, options));
     let value = expr.value;
     switch (value) {
         case "+":
@@ -402,10 +490,10 @@ export function evaluateBinaryOperation(expr: ast.BinaryOperationNode, input: Bo
     }
 }
 
-function evaluateArray(expr: ast.ArrayConstructorNode, input: Box, environment: JEnv): Box {
+function evaluateArray(expr: ast.ArrayConstructorNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
     // Evaluate every expression and reconstitute them by flattening (where
     // allowed) but mark this result of all this as an array (preserve=true).
-    let vals = expr.expressions.map(c => doEval(c, input, environment));
+    let vals = expr.expressions.map(c => doEval(c, input, environment, options));
     return defragmentBox(vals, true);
 }
 
@@ -432,12 +520,17 @@ function evaluateLambda(expr: ast.LambdaDefinitionNode, input: Box, environment:
  * @param {Object} [applyto] - LHS of ~> operator
  * @returns {*} Evaluated input data
  */
-function evaluateFunction(expr: ast.FunctionInvocationNode, input: Box, environment: JEnv): Box {
+function evaluateFunction(
+    expr: ast.FunctionInvocationNode,
+    input: Box,
+    environment: JEnv,
+    options: EvaluationOptions,
+): Box {
     // create the procedure
     // can't assume that expr.procedure is a lambda type directly
     // could be an expression that evaluates to a function (e.g. variable reference, parens expr etc.
     // evaluate it generically first, then check that it is a function.  Throw error if not.
-    let proc = doEval(expr.procedure, input, environment);
+    let proc = doEval(expr.procedure, input, environment, options);
 
     if (
         typeof proc === "undefined" &&
@@ -453,11 +546,11 @@ function evaluateFunction(expr: ast.FunctionInvocationNode, input: Box, environm
         };
     }
 
-    let evaluatedArgs = expr.arguments.map(arg => doEval(arg, input, environment));
+    let evaluatedArgs = expr.arguments.map(arg => doEval(arg, input, environment, options));
 
     // apply the procedure
     try {
-        let ret = apply(proc, evaluatedArgs, input);
+        let ret = apply(proc, evaluatedArgs, input, options);
         return ret;
     } catch (err) {
         // add the position field to the error
@@ -468,8 +561,8 @@ function evaluateFunction(expr: ast.FunctionInvocationNode, input: Box, environm
     }
 }
 
-function evaluateUnaryMinus(expr: ast.UnaryMinusNode, input: Box, environment: JEnv): Box {
-    let lhs = doEval(expr.expression, input, environment);
+function evaluateUnaryMinus(expr: ast.UnaryMinusNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
+    let lhs = doEval(expr.expression, input, environment, options);
     if (lhs.type == BoxType.Void) return ubox;
     if (boxType(lhs, "number")) {
         let v = unbox(lhs) as number;
@@ -487,7 +580,12 @@ function evaluateUnaryMinus(expr: ast.UnaryMinusNode, input: Box, environment: J
 
 // This is an alternative that stores the value expression to be applied to each
 // input value.  The problem with this is that it fails for object-constructor/case022.json.
-export function evaluateGroup_overwrite(groupings: ast.ASTNode[][], input: Box, environment: JEnv): Box {
+export function evaluateGroup_overwrite(
+    groupings: ast.ASTNode[][],
+    input: Box,
+    environment: JEnv,
+    options: EvaluationOptions,
+): Box {
     let result: { [key: string]: Array<{ expr: ast.ASTNode; input: Box }> } = {};
     // We loop first over all inputs and for each input
     forEachValue(input, x => {
@@ -499,7 +597,7 @@ export function evaluateGroup_overwrite(groupings: ast.ASTNode[][], input: Box, 
             let valueExpr = grouping[1];
 
             // Now, evaluate the key expression.
-            let keyBox = doEval(keyExpr, x, environment);
+            let keyBox = doEval(keyExpr, x, environment, options);
 
             // If the key isn't a boxed scalar string, then this is an error
             // TODO: Perhaps just a single string value is enough...scalar too strict?
@@ -521,7 +619,7 @@ export function evaluateGroup_overwrite(groupings: ast.ASTNode[][], input: Box, 
     // At this point, our result is a mapping from keys to Box[].  We need to first
     // defragment each Box[] into a Box and then unbox it.
     let ret = Object.keys(result).reduce((prev, key) => {
-        let values = result[key].map(res => doEval(res.expr, res.input, environment));
+        let values = result[key].map(res => doEval(res.expr, res.input, environment, options));
         prev[key] = unbox(defragmentBox(values));
         return prev;
     }, {});
@@ -531,7 +629,12 @@ export function evaluateGroup_overwrite(groupings: ast.ASTNode[][], input: Box, 
 
 // This is an alternative that stores the value expression to be applied to each
 // input value.  The problem with this is that it fails for object-constructor/case022.json.
-export function evaluateGroup_fix(groupings: ast.ASTNode[][], input: Box, environment: JEnv): Box {
+export function evaluateGroup_fix(
+    groupings: ast.ASTNode[][],
+    input: Box,
+    environment: JEnv,
+    options: EvaluationOptions,
+): Box {
     let result: { [key: string]: Array<{ expr: ast.ASTNode; input: Box }> } = {};
     // We loop first over all inputs and for each input
     forEachValue(input, x => {
@@ -543,7 +646,7 @@ export function evaluateGroup_fix(groupings: ast.ASTNode[][], input: Box, enviro
             let valueExpr = grouping[1];
 
             // Now, evaluate the key expression.
-            let keyBox = doEval(keyExpr, x, environment);
+            let keyBox = doEval(keyExpr, x, environment, options);
 
             // If the key isn't a boxed scalar string, then this is an error
             // TODO: Perhaps just a single string value is enough...scalar too strict?
@@ -566,7 +669,7 @@ export function evaluateGroup_fix(groupings: ast.ASTNode[][], input: Box, enviro
     // At this point, our result is a mapping from keys to Box[].  We need to first
     // defragment each Box[] into a Box and then unbox it.
     let ret = Object.keys(result).reduce((prev, key) => {
-        let values = result[key].map(res => doEval(res.expr, res.input, environment));
+        let values = result[key].map(res => doEval(res.expr, res.input, environment, options));
         prev[key] = unbox(defragmentBox(values));
         return prev;
     }, {});
@@ -574,21 +677,35 @@ export function evaluateGroup_fix(groupings: ast.ASTNode[][], input: Box, enviro
     return boxValue(ret);
 }
 
+interface KeyData {
+    items: JSValue[];
+    expr: ast.ASTNode;
+    groupIndex: number;
+}
 // This is wrong, it uses a single value expressions in the case of repeated
 // keys (although it handles object-constructor/case022.json).
-export function evaluateGroup_v15(groupings: ast.ASTNode[][], input: Box, environment: JEnv): Box {
-    let result: { [key: string]: Box[] } = {};
-    // We loop first over all inputs and for each input
-    forEachValue(input, x => {
+export function evaluateGroup(
+    groupings: ast.ASTNode[][],
+    input: Box,
+    environment: JEnv,
+    options: EvaluationOptions,
+): Box {
+    let result: { [key: string]: KeyData } = {};
+
+    // We loop first over all inputs and for each input we evaluate the expression
+    // for the keys in the object constructor.  Then, we make a record of all input
+    // values associated with each key and the value expression we will use to
+    // evaluate them.
+    forEachValue(input, item => {
         // Next, we loop over the pairs of key and value
-        groupings.forEach(grouping => {
+        groupings.forEach((grouping, groupIndex) => {
             // TODO: Convert this array to an object so we can refer to this by
             // rather than by index.
             let keyExpr = grouping[0];
             let valueExpr = grouping[1];
 
             // Now, evaluate the key expression.
-            let keyBox = doEval(keyExpr, x, environment);
+            let keyBox = doEval(keyExpr, item, environment, options);
 
             // If the key isn't a boxed scalar string, then this is an error
             // TODO: Perhaps just a single string value is enough...scalar too strict?
@@ -602,25 +719,44 @@ export function evaluateGroup_v15(groupings: ast.ASTNode[][], input: Box, enviro
             }
             // Extract the actual string value
             let key = unbox(keyBox) as string;
-            // Figure out all current values for this key (or an empty array if we
-            // don't have any
-            let cur = result[key] || [];
-            // Now add what we got here.
-            let valueBox = doEval(valueExpr, x, environment);
-            result[key] = [...cur, valueBox];
+
+            if (result.hasOwnProperty(key)) {
+                let entry = result[key];
+
+                if (entry.groupIndex != groupIndex) {
+                    // this key has been generated by another expression in this group
+                    // per issue #163 (https://github.com/jsonata-js/jsonata/issues/163),
+                    // this is a semantic error.
+                    throw {
+                        code: "D1009",
+                        stack: new Error().stack,
+                        position: keyExpr.position,
+                        value: key,
+                    };
+                }
+                entry.items.push(unbox(item));
+            } else {
+                result[key] = {
+                    items: [unbox(item)],
+                    expr: valueExpr,
+                    groupIndex: groupIndex,
+                };
+            }
         });
     });
-    // At this point, our result is a mapping from keys to Box[].  We need to first
-    // defragment each Box[] into a Box and then unbox it.
+
     let ret = Object.keys(result).reduce((prev, key) => {
-        prev[key] = unbox(defragmentBox(result[key]));
+        let entry = result[key];
+        let input = boxValue(entry.items);
+        prev[key] = unbox(doEval(entry.expr, input, environment, options));
         return prev;
     }, {});
+
     // Take the resulting object and return it.
     return boxValue(ret);
 }
 
-function evaluateApplyExpression(expr: ast.ApplyNode, input: Box, environment: JEnv): Box {
+function evaluateApplyExpression(expr: ast.ApplyNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
     // If rhs is a function invocation, invoke it with the lhs as the first argument
     if (expr.rhs.type == "function") {
         // Construct a function with the LHS expression inserted as the first
@@ -633,14 +769,14 @@ function evaluateApplyExpression(expr: ast.ApplyNode, input: Box, environment: J
             arguments: [expr.lhs, ...expr.rhs.arguments],
             nextFunction: expr.rhs.nextFunction,
         };
-        return doEval(f, input, environment);
+        return doEval(f, input, environment, options);
     }
 
     // If we get here, we expect the rhs to evaluate to a function (vs. being a
     // function invocation).  So let's evaluate both the rhs and the lhs and
     // see what we get.
-    let lhs = doEval(expr.lhs, input, environment);
-    let func = doEval(expr.rhs, input, environment);
+    let lhs = doEval(expr.lhs, input, environment, options);
+    let func = doEval(expr.rhs, input, environment, options);
 
     // The value of func must be a function, if it isn't, we thrown an exception
     if (!boxContainsFunction(func)) {
@@ -653,15 +789,15 @@ function evaluateApplyExpression(expr: ast.ApplyNode, input: Box, environment: J
     }
 
     if (boxContainsFunction(lhs)) {
-        let inner = apply(lhs, [input], lhs);
-        return apply(func, [inner], func);
+        let inner = apply(lhs, [input], lhs, options);
+        return apply(func, [inner], func, options);
     } else {
         // TODO: In v1.5, the third argument here is environment?!?
-        return apply(func, [lhs], input);
+        return apply(func, [lhs], input, options);
     }
 }
 
-function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEnv): Box {
+function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
     let transformFunction = (args: Array<{}>): Array<{}> | {} => {
         if (args === undefined) return undefined;
         if (!Array.isArray(args)) args = [args];
@@ -673,7 +809,7 @@ function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEn
             let clone = boxValue(JSON.parse(JSON.stringify(obj)));
 
             // Find subobjects of obj that match our pattern in **the clone**
-            let matches = doEval(expr.pattern, clone, environment);
+            let matches = doEval(expr.pattern, clone, environment, options);
 
             // Loop over each match.  Note that this part requires that the sub-object
             // contained in the matchbox is a **reference** to the matching portion
@@ -691,7 +827,7 @@ function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEn
                 }
 
                 // Evaluate the update "patch" we want to apply
-                let update = unbox(doEval(expr.update, matchbox, environment));
+                let update = unbox(doEval(expr.update, matchbox, environment, options));
                 if (update) {
                     if (typeof update != "object") {
                         // throw type error
@@ -705,7 +841,7 @@ function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEn
                     Object.keys(update).forEach(key => (match[key] = update[key]));
                 }
                 if (expr.delete) {
-                    let del = unbox(doEval(expr.delete, matchbox, environment)) as string[];
+                    let del = unbox(doEval(expr.delete, matchbox, environment, options)) as string[];
                     if (del) {
                         if (typeof del == "string") del = [del];
                         if (!isArrayOfStrings(del)) {
