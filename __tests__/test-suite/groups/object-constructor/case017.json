@@ -4,9 +4,5 @@
     "bindings": {},
     "skip": true,
     "comment": "Waiting on issue #163 to be resolve",
-    "result": {
-        "Bowler Hat": [34.45, 34.45, 34.45, 34.45],
-        "Trilby hat": [21.67, 21.67],
-        "Cloak": [107.99, 107.99]
-    }
+    "code": "D1009"
 }
