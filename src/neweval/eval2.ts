@@ -2,6 +2,7 @@ import * as ast from "../ast";
 import { ProcedureDetails } from "./procs";
 import { unexpectedValue, isArrayOfNumbers, flatten, isArrayOfStrings } from "../utils";
 import { JEnv } from "./environment";
+import * as errors from "../errors";
 import {
     JSValue,
     Box,
@@ -351,7 +352,10 @@ export function evaluateBinaryOperation(
         case "%": {
             if (lhs === undefined || rhs === undefined) return ubox;
             if (!isNumber(lhs) || !isNumber(rhs)) {
-                throw new Error("Invalid operands for " + value);
+                throw errors.error({
+                    code: "T2001",
+                    token: value,
+                });
             }
             switch (value) {
                 case "+":
