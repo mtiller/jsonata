@@ -1,8 +1,8 @@
 Arguments: 
-  /usr/local/bin/node /usr/local/bin/yarn passing
+  /usr/local/bin/node /usr/local/bin/yarn next
 
 PATH: 
-  /usr/local/bin:/Users/mtiller/.yarn/bin:/usr/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/usr/local/share/dotnet:/opt/X11/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/Users/mtiller/Source/GoPath/bin:/Users/mtiller/.cargo/bin
+  /usr/local/bin:/Users/mtiller/.yarn/bin:/usr/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/usr/local/share/dotnet:/opt/X11/bin:/Library/Frameworks/Mono.framework/Versions/Current/Commands:/Users/mtiller/.yarn/bin:/Users/mtiller/Source/GoPath/bin:/Users/mtiller/.cargo/bin:/Users/mtiller/Source/GoPath/bin:/Users/mtiller/.cargo/bin
 
 Yarn version: 
   1.5.1
@@ -32,8 +32,8 @@ npm manifest:
           "jest": "jest",
           "test": "npm run jest --coverage",
           "passing":
-              "jest -t 'variable|wildcards|blocks|array-constructor|boolean-expressions|object-constructor|closures|comparison-operators|conditionals|range-operator|context|transform|tail-recursion|encoding|descendant|examples|fields'",
-          "next": "jest -t 'flattening'",
+              "jest -t 'array-constructor|blocks|boolean-expressions|closures|comparison-operators|conditionals|context|descendant|encoding|examples|fields|flattening|object-constructor|range-operator|tail-recursion|transform|variable|wildcards'",
+          "next": "jest -t 'errors'",
           "jest:debug": "node --inspect node_modules/.bin/jest --runInBand",
           "posttest": "npm run check-coverage",
           "check-coverage": "istanbul check-coverage -statement 100 -branch 100 -function 100 -line 100",
@@ -5207,7 +5207,7 @@ Trace:
   Error: Command failed.
   Exit code: 1
   Command: sh
-  Arguments: -c jest -t 'variable|wildcards|blocks|array-constructor|boolean-expressions|object-constructor|closures|comparison-operators|conditionals|range-operator|context|transform|tail-recursion|encoding|descendant|examples|fields'
+  Arguments: -c jest -t 'errors'
   Directory: /Users/mtiller/Source/OpenSource/jsonata
   Output:
   
