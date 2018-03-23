@@ -227,7 +227,12 @@ function evaluatePathCompat(expr: ast.PathNode, input: Box, environment: JEnv, o
     let path = extractSteps(expr, input, environment, options);
 
     let result = path.path.reduce(
-        (prev, step) => mapOverValues(prev, c => doEval(step, c, environment, options)),
+        (prev, step, index) =>
+            mapOverValues(
+                prev,
+                c => doEval(step, c, environment, options),
+                step.type !== "array" && index == path.path.length - 1,
+            ),
         path.head,
     );
 
