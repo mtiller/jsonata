@@ -1,22 +1,14 @@
 {
     "expr": "$[0].nest0",
+    "comment": "This only gives this answer because of a special case in path evaluation",
     "data": [
         {
-            "nest0": [
-                1,
-                2
-            ]
+            "nest0": [1, 2]
         },
         {
-            "nest0": [
-                3,
-                4
-            ]
+            "nest0": [3, 4]
         }
     ],
     "bindings": {},
-    "result": [
-        1,
-        2
-    ]
+    "result": [1, 2]
 }

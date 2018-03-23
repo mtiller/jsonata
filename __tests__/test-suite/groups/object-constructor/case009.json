@@ -4,16 +4,10 @@
     "bindings": {},
     "result": [
         {
-            "order103": [
-                "Bowler Hat",
-                "Trilby hat"
-            ]
+            "order103": ["Bowler Hat", "Trilby hat"]
         },
         {
-            "order104": [
-                "Bowler Hat",
-                "Cloak"
-            ]
+            "order104": ["Bowler Hat", "Cloak"]
         }
     ]
 }

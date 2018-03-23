@@ -1,10 +1,11 @@
 {
-    "expr": "{ \"foo\": name, \"foo\": name }",
-    "data": [{ "name": "x" }, { "name": "y" }],
+    "expr": "{ type: $average(value), kind: $sum(value) } ",
+    "data": [
+        { "type": "a", "kind": "a", "value": 0 },
+        { "type": "a", "kind": "b", "value": 1 },
+        { "type": "b", "kind": "a", "value": 2 },
+        { "type": "b", "kind": "b", "value": 3 }
+    ],
     "bindings": {},
-    "skip": true,
-    "comment": "Waiting on issue #163 to be resolve",
-    "result": {
-        "foo": ["x", "x", "y", "y"]
-    }
+    "code": "D1009"
 }

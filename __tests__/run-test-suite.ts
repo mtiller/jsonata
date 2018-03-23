@@ -107,7 +107,7 @@ describe("JSONata Test Suite", () => {
                             expect(result).toBeUndefined();
 
                             if (test2) {
-                                let res2 = eval2(expr.ast(), dataset, env);
+                                let res2 = eval2(expr.ast(), dataset, env, { legacyMode: true });
                                 expect(res2).toBeUndefined();
                             }
                         } else if ("result" in testcase) {
@@ -117,7 +117,7 @@ describe("JSONata Test Suite", () => {
                             expect(result).toEqual(testcase.result);
 
                             if (test2) {
-                                let res2 = eval2(expr.ast(), dataset, env);
+                                let res2 = eval2(expr.ast(), dataset, env, { legacyMode: true });
                                 //let res2 = eval2(expr.ast(), dataset, env);
                                 expect(res2).toEqual(testcase.result);
                             }
@@ -140,7 +140,7 @@ describe("JSONata Test Suite", () => {
                             if (test2) {
                                 error = false;
                                 try {
-                                    let res2 = eval2(expr.ast(), dataset, env);
+                                    let res2 = eval2(expr.ast(), dataset, env, { legacyMode: true });
                                     expect(res2).toBeUndefined();
                                 } catch (e) {
                                     expect({ msg: e.message, code: e.code }).toEqual({

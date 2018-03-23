@@ -52,6 +52,17 @@ export const escapes = {
 /**
  * Error codes
  *
+ * Sxxxx    - Static errors (compile time)
+ * Txxxx    - Type errors
+ * Dxxxx    - Dynamic errors (evaluate time)
+ *  01xx    - tokenizer
+ *  02xx    - parser
+ *  03xx    - regex parser
+ *  04xx    - function signature parser/evaluator
+ *  10xx    - evaluator
+ *  20xx    - operators
+ *  3xxx    - functions (blocks of 10 for each function)
+ *
  */
 export const errorCodes = {
     S0101: "String literal must be terminated by a matching quote",
@@ -86,6 +97,7 @@ export const errorCodes = {
     T1006: "Attempted to invoke a non-function",
     T1007: "Attempted to partially apply a non-function. Did you mean ${{{token}}}?",
     T1008: "Attempted to partially apply a non-function",
+    D1009: "Multiple key definitions evaluate to same key: {{value}}",
     T2001: "The left side of the {{token}} operator must evaluate to a number",
     T2002: "The right side of the {{token}} operator must evaluate to a number",
     T2003: "The left side of the range operator (..) must evaluate to an integer",

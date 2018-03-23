@@ -270,13 +270,29 @@ export function forEachValue(box: Box, f: (input: Box) => void): void {
     fragments.forEach(f);
 }
 
-export function mapOverValues(box: Box, f: (input: Box) => Box, array: boolean = false): Box {
+export function mapOverValues(box: Box, f: (input: Box) => Box, lastStep: boolean): Box {
     // Break all values out into individual boxes
     let fragments = fragmentBox(box);
     // Map over each box
     let mapped = fragments.map(f);
+
+    // If there was only one box in the mapped set and it contains an array with
+    // a single element, then we preserve it as an array by making it a BoxType.Array.
+    // Why? Because that is how v1.5+ does it.
+    if (lastStep) {
+        // console.log("mapped = ", JSON.stringify(mapped));
+    }
+    if (lastStep && mapped.length == 1) {
+        let first = mapped[0];
+        // if (first.type == BoxType.Array && first.values.length == 1) return boxArray([first.values[0]]);
+        if (first.type == BoxType.Value && first.values.length == 1 && !first.scalar) {
+            //console.log("Boxing " + JSON.stringify(first.values[0]));
+            //return boxArray([first.values[0]]);
+            return first;
+        }
+    }
     // Now defragment back to a single boxed value
-    return defragmentBox(mapped, array);
+    return defragmentBox(mapped, false);
 }
 
 export function filterOverValues(box: Box, predicate: BoxPredicate, array: boolean = false): Box {
