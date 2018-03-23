@@ -5,6 +5,7 @@ jsonata-es5.js
 jsonata-es5.min.js
 node_modules/
 npm-debug.log
+yarn-error.log
 .idea/
 es2015/
 es5/
