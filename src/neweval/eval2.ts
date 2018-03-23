@@ -697,11 +697,17 @@ export function evaluateGroup(
 ): Box {
     let result: { [key: string]: KeyData } = {};
 
+    // TODO: More odd semantics from v1.5+
+    if (input.type == BoxType.Void) {
+        input = boxValue(null);
+    }
+
     // We loop first over all inputs and for each input we evaluate the expression
     // for the keys in the object constructor.  Then, we make a record of all input
     // values associated with each key and the value expression we will use to
     // evaluate them.
     forEachValue(input, item => {
+        let val = unbox(item);
         // Next, we loop over the pairs of key and value
         groupings.forEach((grouping, groupIndex) => {
             // TODO: Convert this array to an object so we can refer to this by
@@ -739,10 +745,10 @@ export function evaluateGroup(
                         value: key,
                     };
                 }
-                entry.items.push(unbox(item));
+                entry.items.push(val);
             } else {
                 result[key] = {
-                    items: [unbox(item)],
+                    items: [val],
                     expr: valueExpr,
                     groupIndex: groupIndex,
                 };
@@ -753,7 +759,8 @@ export function evaluateGroup(
     let ret = Object.keys(result).reduce((prev, key) => {
         let entry = result[key];
         let input = boxValue(entry.items);
-        prev[key] = unbox(doEval(entry.expr, input, environment, options));
+        let val = doEval(entry.expr, input, environment, options);
+        prev[key] = unbox(val);
         return prev;
     }, {});
 
