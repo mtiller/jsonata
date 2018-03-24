@@ -21,7 +21,7 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
                 case "-":
                     expr = {
                         ...base(expr1),
-                        expression: elaboratePredicates(expr1),
+                        expression: elaboratePredicates(expr1.expression),
                     } as ast.UnaryMinusNode;
                     break;
                 case "{":

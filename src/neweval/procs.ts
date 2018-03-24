@@ -8,7 +8,7 @@ export interface ProcedureDetails {
     environment: JEnv;
     arguments: ast.ASTNode[];
     signature: Signature;
-    body: ast.ASTNode;
+    body: ast.ASTNode | Function;
     thunk: boolean;
 }
 

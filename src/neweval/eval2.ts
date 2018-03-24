@@ -24,7 +24,7 @@ import {
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber } from "util";
-import { apply } from "./apply";
+import { apply, partialApplyProcedure, partialApplyNativeFunction } from "./apply";
 import { parseSignature } from "../signatures";
 import { functionString } from "../functions";
 
@@ -128,8 +128,10 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
         case "descendant": {
             return evaluateDescendant(expr, input, environment);
         }
+        case "partial": {
+            return evaluatePartialApplication(expr, input, environment, options);
+        }
         case "regex":
-        case "partial":
         case "sort": {
             throw new Error("AST node type '" + expr.type + "' is unimplemented");
         }
@@ -243,34 +245,95 @@ function evaluatePathCompat(expr: ast.PathNode, input: Box, environment: JEnv, o
     return result;
 }
 
-// function evaluatePath(expr: ast.PathNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
-//     // TODO: This is not right, the fact that the first step is a variable
-//     // shouldn't cause us to transform the input!?! (this is how v1.5 does it)
-//     if (expr.steps.length > 0 && isVariable(expr.steps[0])) {
-//         input = boxValue([unbox(input)]);
-//     }
-//     // The first step is special because it doesn't get the "map" treatment.  We
-//     // separate it out from the "rest" of the steps.
-//     //let [first, ...rest] = expr.steps;
+function partition<T>(x: T[], pred: (x: T) => boolean) {
+    return x.reduce(
+        (prev, v) => {
+            if (pred(v)) return { matched: [...prev.matched, v], unmatched: prev.unmatched };
+            else return { matched: prev.matched, unmatched: [...prev.unmatched, v] };
+        },
+        { matched: [] as T[], unmatched: [] as T[] },
+    );
+}
 
-//     // Evaluate the very first step, since it is special
-//     //let flattened = defragmentBox(fragmentBox(input));
-//     //let res0 = flattenBox(doEval(first, flattened, environment));
+function evaluatePartialApplication(
+    expr: ast.FunctionInvocationNode,
+    input: any,
+    environment: JEnv,
+    options: EvaluationOptions,
+): Box {
+    let part = partition(expr.arguments, arg => arg.type === "operator" && arg.value === "?");
+    let unevaluatedArgs = part.matched;
+    let evaluatedArgs = part.unmatched;
+    // // evaluate the arguments
+    // var evaluatedArgs = [];
+    // for (var ii = 0; ii < expr.arguments.length; ii++) {
+    //     var arg = expr.arguments[ii];
+    //     if (arg.type === "operator" && arg.value === "?") {
+    //         evaluatedArgs.push(arg);
+    //     } else {
+    //         evaluatedArgs.push(yield * evaluate(arg, input, environment));
+    //     }
+    // }
+    // lookup the procedure
+    let proc = doEval(expr.procedure, input, environment, options);
+    //var proc = yield * evaluate(expr.procedure, input, environment);
+    if (
+        typeof proc === "undefined" &&
+        expr.procedure.type === "path" &&
+        environment.lookup(expr.procedure.steps[0].value)
+    ) {
+        // help the user out here if they simply forgot the leading $
+        throw {
+            code: "T1007",
+            stack: new Error().stack,
+            position: expr.position,
+            token: expr.procedure.steps[0].value,
+        };
+    }
 
-//     // Now iterate over all the remaining steps mapping the intermediate values
-//     // at the start of each step over each Step instance (see evalStep).
-//     let result = expr.steps.reduce(
-//         (prev, step) => mapOverValues(prev, c => doEval(step, c, environment, options)),
-//         input,
-//     );
-
-//     // If this expression has been marked with the keepSingletonArray flag, then
-//     // rebox the value as an array to preserve its "array"-ness.
-//     if (expr.keepSingletonArray) {
-//         result = boxArray(unboxArray(result));
-//     }
-//     return result;
-// }
+    switch (proc.type) {
+        case BoxType.Lambda:
+            return partialApplyProcedure(proc.details, unevaluatedArgs, evaluatedArgs, input, environment, options);
+        case BoxType.Function:
+            return partialApplyNativeFunction(
+                proc.details.implementation,
+                unevaluatedArgs,
+                evaluatedArgs,
+                input,
+                environment,
+                options,
+            );
+        case BoxType.Value:
+            if (proc.scalar) {
+                let val = proc.values[0];
+                if (typeof val === "function") {
+                    return partialApplyNativeFunction(val, unevaluatedArgs, evaluatedArgs, input, environment, options);
+                }
+            }
+            throw errors.error({
+                code: "T1008",
+            });
+        default:
+            throw errors.error({
+                code: "T1008",
+            });
+    }
+    // if (isLambda(proc)) {
+    //     result = partialApplyProcedure(proc, evaluatedArgs);
+    // } else if (proc && proc._jsonata_function === true) {
+    //     result = partialApplyNativeFunction(proc.implementation, evaluatedArgs);
+    // } else if (typeof proc === "function") {
+    //     result = partialApplyNativeFunction(proc, evaluatedArgs);
+    // } else {
+    //     throw {
+    //         code: "T1008",
+    //         stack: new Error().stack,
+    //         position: expr.position,
+    //         token: expr.procedure.type === "path" ? expr.procedure.steps[0].value : expr.procedure.value,
+    //     };
+    // }
+    // return result;
+}
 
 function evaluateName(expr: ast.NameNode, input: Box, environment: JEnv): Box {
     if (input.type === BoxType.Void) return ubox;
@@ -351,9 +414,15 @@ export function evaluateBinaryOperation(
         case "/":
         case "%": {
             if (lhs === undefined || rhs === undefined) return ubox;
-            if (!isNumber(lhs) || !isNumber(rhs)) {
+            if (!isNumber(lhs)) {
                 throw errors.error({
                     code: "T2001",
+                    token: value,
+                });
+            }
+            if (!isNumber(rhs)) {
+                throw errors.error({
+                    code: "T2002",
                     token: value,
                 });
             }
@@ -541,10 +610,16 @@ function evaluateFunction(
     // evaluate it generically first, then check that it is a function.  Throw error if not.
     let proc = doEval(expr.procedure, input, environment, options);
 
+    let uproc = unbox(proc);
+
+    // If a) we couldn't evaluate the procedure expressiona and b) the procedure
+    // was specified by a path and c) the first step in the path does exist, then
+    // perhaps the user meant for the procedure to be a variable dereference and
+    // simply forgot the leading $
     if (
-        typeof proc === "undefined" &&
+        typeof uproc === "undefined" &&
         expr.procedure.type === "path" &&
-        environment.lookup(expr.procedure.steps[0].value)
+        environment.lookup(expr.procedure.steps[0].value).type != BoxType.Void
     ) {
         // help the user out here if they simply forgot the leading $
         throw {
@@ -577,13 +652,12 @@ function evaluateUnaryMinus(expr: ast.UnaryMinusNode, input: Box, environment: J
         let v = unbox(lhs) as number;
         return boxValue(-v);
     } else {
-        throw {
+        throw errors.error({
             code: "D1002",
-            stack: new Error().stack,
             position: expr.position,
             token: expr.value,
             value: unbox(lhs),
-        };
+        });
     }
 }
 

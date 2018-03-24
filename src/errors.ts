@@ -10,6 +10,10 @@ export interface ValueError {
     value: any;
 }
 
+export interface PositionError {
+    position: number;
+}
+
 export interface SecondValueError {
     value2: any;
 }
@@ -55,7 +59,7 @@ export type T0411 = TokenError<"T0411"> & IndexError;
 export type T0412 = TokenError<"T0412"> & IndexError & TypeError;
 
 export type D1001 = PlainError<"D1001"> & ValueError;
-export type D1002 = PlainError<"D1002"> & ValueError;
+export type D1002 = TokenError<"D1002"> & ValueError & PositionError;
 
 export type T1003 = PlainError<"T1003"> & ValueError;
 export type D1004 = PlainError<"D1004">;

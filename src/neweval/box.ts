@@ -279,15 +279,11 @@ export function mapOverValues(box: Box, f: (input: Box) => Box, lastStep: boolea
     // If there was only one box in the mapped set and it contains an array with
     // a single element, then we preserve it as an array by making it a BoxType.Array.
     // Why? Because that is how v1.5+ does it.
-    if (lastStep) {
-        // console.log("mapped = ", JSON.stringify(mapped));
-    }
+    // TODO: Use this only in legacy mode?!?
     if (lastStep && mapped.length == 1) {
         let first = mapped[0];
         // if (first.type == BoxType.Array && first.values.length == 1) return boxArray([first.values[0]]);
         if (first.type == BoxType.Value && first.values.length == 1 && !first.scalar) {
-            //console.log("Boxing " + JSON.stringify(first.values[0]));
-            //return boxArray([first.values[0]]);
             return first;
         }
     }

@@ -252,3 +252,16 @@ Number.isInteger =
 export function unexpectedValue<T>(value: T, exp: never, msg: (v: T) => string): never {
     throw new Error(msg(value));
 }
+
+// Probably better to use ES6 maps instead of this.
+export function fromValues<T>(x: Array<[string, T]>): { [key: string]: T } {
+    return x.reduce(
+        (prev, entry) => {
+            let key = entry[0];
+            let val = entry[1];
+            prev[key] = val;
+            return prev;
+        },
+        {} as { [key: string]: T },
+    );
+}

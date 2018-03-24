@@ -1,9 +1,10 @@
 import { doEval, EvaluationOptions } from "./eval2";
 import { ProcedureDetails } from "./procs";
-import { unbox, boxValue, BoxType, Box } from "./box";
+import { unbox, boxValue, BoxType, Box, boxLambda } from "./box";
 import { JEnv } from "./environment";
 import { Signature } from "../signatures";
 import { unexpectedValue } from "../utils";
+import * as ast from "../ast";
 
 /**
  * Apply procedure or function
@@ -22,7 +23,7 @@ export function apply(proc: Box, args: Box[], context: Box, options: EvaluationO
         let details = result.details;
         if (details.thunk) {
             let body = details.body;
-            if (body.type === "function" || body.type === "partial") {
+            if (typeof body !== "function" && (body.type === "function" || body.type === "partial")) {
                 let node = body;
                 // trampoline loop - this gets invoked as a result of tail-call optimization
                 // the function returned a tail-call thunk
@@ -110,6 +111,68 @@ function validateArguments(signature: Signature, args: Box[], context: Box): Box
     // unboxing and reboxing may not work properly for arrays, functions and procedures.
     var validatedArgs = signature.validate(args.map(v => unbox(v)), unbox(context));
     return validatedArgs.map(x => boxValue(x));
+}
+
+/**
+ * Partially apply procedure
+ * @param {Object} proc - Procedure
+ * @param {Array} args - Arguments
+ * @returns {{lambda: boolean, input: *, environment: {bind, lookup}, arguments: Array, body: *}} Result of partially applied procedure
+ */
+export function partialApplyProcedure(
+    details: ProcedureDetails,
+    unevaluatedArgs: ast.ASTNode[],
+    evaluatedArgs: ast.ASTNode[],
+    input: Box,
+    environment: JEnv,
+    options: EvaluationOptions,
+) {
+    // create a closure, bind the supplied parameters and return a function that takes the remaining (?) parameters
+    let env = new JEnv(details.environment);
+    //var env = createFrame(proc.environment);
+
+    // Add arguments that should be evaluated to the environment
+    evaluatedArgs.forEach(earg => env.bind(earg.value, doEval(earg, input, environment, options)));
+    return boxLambda({
+        input: details.input,
+        environment: env,
+        arguments: unevaluatedArgs,
+        body: details.body,
+        signature: undefined,
+        thunk: false,
+    });
+}
+
+/**
+ * Partially apply native function
+ * @param {Function} f: Function - Native function
+ * @param {Array} args - Arguments
+ * @returns {{lambda: boolean, input: *, environment: {bind, lookup}, arguments: Array, body: *}} Result of partially applying native function
+ */
+export function partialApplyNativeFunction(
+    f: Function,
+    unevaluatedArgs: ast.ASTNode[],
+    evaluatedArgs: ast.ASTNode[],
+    input: Box,
+    environment: JEnv,
+    options: EvaluationOptions,
+): Box {
+    // create a lambda function that wraps and invokes the native function
+    // get the list of declared arguments from the native function
+    // this has to be picked out from the toString() value
+
+    const sigArgs = getNativeFunctionArguments(f);
+
+    let proc: ProcedureDetails = {
+        body: (f as any) as ast.ASTNode,
+        input: input,
+        arguments: sigArgs.map((arg): ast.VariableNode => ({ type: "variable", value: arg, position: 0 })),
+        signature: undefined,
+        environment: environment,
+        thunk: false,
+    };
+
+    return partialApplyProcedure(proc, unevaluatedArgs, evaluatedArgs, input, environment, options);
 }
 
 /**
