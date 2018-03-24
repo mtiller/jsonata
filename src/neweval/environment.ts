@@ -56,10 +56,10 @@ export class JEnv {
         // We use special, purely synchronous version of these functions
         // TODO: No tests for this?!?
         this.bindFunction("map", defineFunction(sync.functionMap, "<af>"));
-        //this.bindFunction("replace", defineFunction(funcs.functionReplace, "<s-(sf)(sf)n?:s>")); // TODO <s-(sf<s:o>)(sf<o:s>)n?:s>
-        //this.bindFunction("filter", defineFunction(funcs.functionFilter, "<af>"));
-        //this.bindFunction("reduce", defineFunction(funcs.functionFoldLeft, "<afj?:j>")); // TODO <f<jj:j>a<j>j?:j>
-        //this.bindFunction("each", defineFunction(funcs.functionEach, "<o-f:a>"));
+        this.bindFunction("replace", defineFunction(sync.functionReplace, "<s-(sf)(sf)n?:s>")); // TODO <s-(sf<s:o>)(sf<o:s>)n?:s>
+        this.bindFunction("filter", defineFunction(sync.functionFilter, "<af>"));
+        this.bindFunction("reduce", defineFunction(sync.functionFoldLeft, "<afj?:j>")); // TODO <f<jj:j>a<j>j?:j>
+        this.bindFunction("each", defineFunction(sync.functionEach, "<o-f:a>"));
     }
     bindFunction(name: string, f: FunctionDefinition) {
         this.bindings[name] = boxFunction({
