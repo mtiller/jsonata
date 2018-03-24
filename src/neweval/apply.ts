@@ -1,4 +1,5 @@
-import { doEval, EvaluationOptions } from "./eval2";
+import { doEval } from "./eval2";
+import { EvaluationOptions } from "./options";
 import { ProcedureDetails } from "./procs";
 import { unbox, boxValue, BoxType, Box, boxLambda } from "./box";
 import { JEnv } from "./environment";

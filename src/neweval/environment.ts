@@ -1,6 +1,7 @@
 import { Box, boxValue, JSValue, ubox, boxFunction } from "./box";
 import * as funcs from "../functions";
 import { defineFunction, FunctionDefinition } from "../signatures";
+import * as sync from "./functions";
 
 export class JEnv {
     protected bindings: { [key: string]: Box } = {};
@@ -21,7 +22,6 @@ export class JEnv {
         this.bindFunction("pad", defineFunction(funcs.functionPad, "<s-ns?:s>"));
         this.bindFunction("match", defineFunction(funcs.functionMatch, "<s-f<s:o>n?:a<o>>"));
         this.bindFunction("contains", defineFunction(funcs.functionContains, "<s-(sf):b>")); // TODO <s-(sf<s:o>):b>
-        //this.bindFunction("replace", defineFunction(funcs.functionReplace, "<s-(sf)(sf)n?:s>")); // TODO <s-(sf<s:o>)(sf<o:s>)n?:s>
         this.bindFunction("split", defineFunction(funcs.functionSplit, "<s-(sf)n?:a<s>>")); // TODO <s-(sf<s:o>)n?:a<s>>
         this.bindFunction("join", defineFunction(funcs.functionJoin, "<a<s>s?:s>"));
         this.bindFunction("formatNumber", defineFunction(funcs.functionFormatNumber, "<n-so?:s>"));
@@ -36,10 +36,7 @@ export class JEnv {
         this.bindFunction("random", defineFunction(funcs.functionRandom, "<:n>"));
         this.bindFunction("boolean", defineFunction(funcs.functionBoolean, "<x-:b>"));
         this.bindFunction("not", defineFunction(funcs.functionNot, "<x-:b>"));
-        //this.bindFunction("map", defineFunction(funcs.functionMap, "<af>"));
         this.bindFunction("zip", defineFunction(funcs.functionZip, "<a+>"));
-        //this.bindFunction("filter", defineFunction(funcs.functionFilter, "<af>"));
-        //this.bindFunction("reduce", defineFunction(funcs.functionFoldLeft, "<afj?:j>")); // TODO <f<jj:j>a<j>j?:j>
         this.bindFunction("sift", defineFunction(funcs.functionSift, "<o-f?:o>"));
         this.bindFunction("keys", defineFunction(funcs.functionKeys, "<x-:a<s>>"));
         this.bindFunction("lookup", defineFunction(funcs.functionLookup, "<x-s:x>"));
@@ -48,7 +45,6 @@ export class JEnv {
         this.bindFunction("spread", defineFunction(funcs.functionSpread, "<x-:a<o>>"));
         this.bindFunction("merge", defineFunction(funcs.functionMerge, "<a<o>:o>"));
         this.bindFunction("reverse", defineFunction(funcs.functionReverse, "<a:a>"));
-        //this.bindFunction("each", defineFunction(funcs.functionEach, "<o-f:a>"));
         this.bindFunction("sort", defineFunction(funcs.functionSort, "<af?:a>"));
         this.bindFunction("shuffle", defineFunction(funcs.functionShuffle, "<a:a>"));
         this.bindFunction("base64encode", defineFunction(funcs.functionBase64encode, "<s-:s>"));
@@ -56,6 +52,14 @@ export class JEnv {
         this.bindFunction("toMillis", defineFunction(funcs.functionToMillis, "<s-:n>"));
         this.bindFunction("fromMillis", defineFunction(funcs.functionFromMillis, "<n-:s>"));
         this.bindFunction("clone", defineFunction(funcs.functionClone, "<(oa)-:o>"));
+
+        // We use special, purely synchronous version of these functions
+        // TODO: No tests for this?!?
+        this.bindFunction("map", defineFunction(sync.functionMap, "<af>"));
+        //this.bindFunction("replace", defineFunction(funcs.functionReplace, "<s-(sf)(sf)n?:s>")); // TODO <s-(sf<s:o>)(sf<o:s>)n?:s>
+        //this.bindFunction("filter", defineFunction(funcs.functionFilter, "<af>"));
+        //this.bindFunction("reduce", defineFunction(funcs.functionFoldLeft, "<afj?:j>")); // TODO <f<jj:j>a<j>j?:j>
+        //this.bindFunction("each", defineFunction(funcs.functionEach, "<o-f:a>"));
     }
     bindFunction(name: string, f: FunctionDefinition) {
         this.bindings[name] = boxFunction({

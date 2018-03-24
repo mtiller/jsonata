@@ -27,16 +27,7 @@ import { isNumber } from "util";
 import { apply, partialApplyProcedure, partialApplyNativeFunction } from "./apply";
 import { parseSignature } from "../signatures";
 import { functionString } from "../functions";
-
-export interface EvaluationOptions {
-    legacyMode: boolean;
-}
-
-function normalizeOptions(opts: Partial<EvaluationOptions>): EvaluationOptions {
-    return {
-        legacyMode: opts && !!opts.legacyMode,
-    };
-}
+import { EvaluationOptions, normalizeOptions } from "./options";
 
 export function eval2(
     expr: ast.ASTNode,
