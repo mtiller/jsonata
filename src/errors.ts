@@ -1,3 +1,5 @@
+import { lookupMessage } from "./utils";
+
 export interface PlainError<T extends string> {
     code: T;
 }
@@ -76,7 +78,7 @@ export type T2004 = PlainError<"T2004">;
 export type D2005 = PlainError<"D2005">;
 export type T2006 = PlainError<"T2006">;
 export type T2007 = PlainError<"T2007"> & ValueError & SecondValueError;
-export type T2008 = PlainError<"T2008">;
+export type T2008 = PlainError<"T2008"> & ValueError;
 export type T2009 = PlainError<"T2009"> & ValueError & SecondValueError;
 export type T2010 = TokenError<"T2010">;
 export type T2011 = PlainError<"T2011"> & ValueError;
@@ -192,6 +194,10 @@ export type ErrorData =
     | D3110;
 
 export function error(data: ErrorData): {} {
-    return { ...data, stack: new Error().stack };
-    // TODO: Try { ...new Error(), ...data }; ?
+    let msg = lookupMessage(data);
+    let err = new Error(msg);
+    for (let p in data) {
+        err[p] = data[p];
+    }
+    return err;
 }

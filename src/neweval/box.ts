@@ -299,6 +299,12 @@ export function filterOverValues(box: Box, predicate: BoxPredicate, array: boole
     return defragmentBox(mapped, array);
 }
 
+export function sortBox(box: Box, comparator: (a: Box, b: Box) => number): Box {
+    let fragments = fragmentBox(box);
+    fragments.sort(comparator);
+    return defragmentBox(fragments);
+}
+
 export function boxContainsFunction(arg: Box) {
     switch (arg.type) {
         case BoxType.Function:

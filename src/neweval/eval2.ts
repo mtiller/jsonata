@@ -21,6 +21,7 @@ import {
     boxType,
     boxArray,
     unboxArray,
+    sortBox,
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber } from "util";
@@ -122,8 +123,10 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
         case "partial": {
             return evaluatePartialApplication(expr, input, environment, options);
         }
-        case "regex":
         case "sort": {
+            return evaluateSort(expr, input, environment, options);
+        }
+        case "regex": {
             throw new Error("AST node type '" + expr.type + "' is unimplemented");
         }
         /* istanbul ignore next */
@@ -975,4 +978,52 @@ function descendants(val: any): Array<any> {
         if (typeof val != "object") return [val];
         return Object.keys(val).reduce((prev, x) => [...prev, ...descendants(val[x])], [val]);
     }
+}
+
+function comparator(rhs: ast.SortTerm[], environment: JEnv, options: EvaluationOptions) {
+    return (a: Box, b: Box): number => {
+        for (let i = 0; i < rhs.length; i++) {
+            let term = rhs[i];
+            let aval = unbox(doEval(term.expression, a, environment, options));
+            let bval = unbox(doEval(term.expression, b, environment, options));
+
+            let atype = typeof aval;
+            let btype = typeof bval;
+
+            if (atype === "undefined") {
+                if (btype === "undefined") continue;
+                return 1;
+            }
+            if (btype === "undefined") return -1;
+
+            // if aa or bb are not string or numeric values, then throw an error
+            if (!(atype === "string" || atype === "number") || !(btype === "string" || btype === "number")) {
+                throw errors.error({
+                    code: "T2008",
+                    value: !(atype === "string" || atype === "number") ? aval : bval,
+                });
+            }
+
+            let scale = term.descending ? -1 : 1;
+            //if aa and bb are not of the same type
+            if (atype !== btype) {
+                throw errors.error({
+                    code: "T2007",
+                    value: aval,
+                    value2: bval,
+                });
+            }
+            // both the same - move on to next term
+            if (aval === bval) continue;
+            return aval < bval ? -scale : scale;
+        }
+        // If no RHS terms, everything is equal
+        return 0;
+    };
+}
+
+function evaluateSort(expr: ast.SortNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
+    let lhs = doEval(expr.lhs, input, environment, options);
+    let comp = comparator(expr.rhs, environment, options);
+    return sortBox(lhs, comp);
 }

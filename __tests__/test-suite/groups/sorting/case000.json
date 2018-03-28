@@ -2,10 +2,5 @@
     "expr": "Account.Order.Product.Price^($)",
     "dataset": "dataset5",
     "bindings": {},
-    "result": [
-        21.67,
-        34.45,
-        34.45,
-        107.99
-    ]
+    "result": [21.67, 34.45, 34.45, 107.99]
 }
