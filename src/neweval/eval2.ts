@@ -548,7 +548,7 @@ export function evaluateBinaryOperation(
             return boxValue(result);
         }
         case "in": {
-            if (lhs === undefined || rhs === undefined) return ubox;
+            if (lhs === undefined || rhs === undefined) return boxValue(false);
             if (!Array.isArray(rhs)) return boxValue(rhs === lhs);
             return boxValue(rhs.some(x => x === lhs));
         }
