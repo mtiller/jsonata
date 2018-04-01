@@ -363,7 +363,19 @@ function filterPredicate(predicate: ast.ASTNode, environment: JEnv, options: Eva
         // it applies to
         let pv = doEval(predicate, item, environment, options);
         // Get the array of JS values associated with the predicate evaluation
-        let res: JSValue[] = pv.type === BoxType.Value ? pv.values : [];
+        let res: JSValue[] = [];
+        switch (pv.type) {
+            case BoxType.Value: {
+                res = pv.values;
+                break;
+            }
+            case BoxType.Array: {
+                res = pv.values;
+                break;
+            }
+            default:
+                break;
+        }
         // Compute the reverse index (negative number) for the item we evaluated
         let rev = ind - lhs.length;
         // Check if the predicate evaluated to an array of numbers?
