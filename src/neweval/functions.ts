@@ -3,6 +3,7 @@
 import { createSequence } from "../utils";
 import { apply } from "../evaluate";
 import { functionBoolean } from "../functions";
+import * as errors from "../errors";
 
 /**
  * Match a string with a regex returning an array of object containing details of each match
@@ -276,4 +277,104 @@ export function functionEach(obj, func) {
     }
 
     return result;
+}
+
+/**
+ * Split a string into an array of substrings
+ * @param {String} str - string
+ * @param {String} separator - the token or regex that splits the string
+ * @param {Integer} [limit] - max number of substrings
+ * @returns {Array} The array of string
+ */
+export function functionSplit(str: string, separator: any, limit?: number): string[] {
+    // undefined inputs always return undefined
+    if (typeof str === "undefined") {
+        return undefined;
+    }
+
+    // limit, if specified, must be a non-negative number
+    if (limit < 0) {
+        throw errors.error({
+            code: "D3020",
+        });
+    }
+
+    // limit = typeof limit === "undefined" ? Infinity : limit;
+
+    if (separator instanceof RegExp) {
+        return str.split(separator, limit);
+    } else if (typeof separator === "string") {
+        return str.split(separator, limit);
+    } else {
+        throw new Error("Expected argument to be a string or regexp");
+    }
+}
+
+/**
+ * Tests if the str contains the token
+ * @param {String} str - string to test
+ * @param {String} token - substring or regex to find
+ * @returns {Boolean} - true if str contains token
+ */
+export function functionContains(str: string, token: string | RegExp) {
+    // undefined inputs always return undefined
+    if (typeof str === "undefined") {
+        return undefined;
+    }
+
+    if (typeof token === "string") {
+        return str.indexOf(token) >= 0;
+    }
+    if (token instanceof RegExp) {
+        return str.match(token);
+    } else {
+        throw new Error("Expected argument to be string or regexp");
+    }
+}
+
+/**
+ * Match a string with a regex returning an array of object containing details of each match
+ * @param {String} str - string
+ * @param {String} regex - the regex applied to the string
+ * @param {Integer} [limit] - max number of matches to return
+ * @returns {Array} The array of match objects
+ */
+export function functionMatch(str: string, regex: RegExp, limit?: number) {
+    // undefined inputs always return undefined
+    if (typeof str === "undefined") {
+        return undefined;
+    }
+
+    // limit, if specified, must be a non-negative number
+    if (limit < 0) {
+        throw errors.error({
+            code: "D3040",
+        });
+    }
+
+    limit = limit === undefined ? Infinity : limit;
+
+    let ret: any[] = [];
+    if (typeof limit === "undefined" || limit > 0) {
+        let count = 0;
+        let match = regex.exec(str);
+        while (match !== null && count < limit) {
+            ret.push(match);
+            count++;
+        }
+    }
+    return ret;
+    // var matches = regex.exec(str);
+    // if (matches == null) return [];
+    // let ret: Match[] = [];
+    // while (typeof matches !== "undefined" && (typeof limit === "undefined" || count < limit)) {
+    //     ret.push({
+    //         match: matches.match,
+    //         index: matches.start,
+    //         groups: matches.groups,
+    //     });
+    //     matches = matches.next();
+    //     count++;
+    // }
+    // return ret;
 }

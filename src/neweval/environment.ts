@@ -20,9 +20,6 @@ export class JEnv {
         this.bindFunction("length", defineFunction(funcs.functionLength, "<s-:n>"));
         this.bindFunction("trim", defineFunction(funcs.functionTrim, "<s-:s>"));
         this.bindFunction("pad", defineFunction(funcs.functionPad, "<s-ns?:s>"));
-        this.bindFunction("match", defineFunction(funcs.functionMatch, "<s-f<s:o>n?:a<o>>"));
-        this.bindFunction("contains", defineFunction(funcs.functionContains, "<s-(sf):b>")); // TODO <s-(sf<s:o>):b>
-        this.bindFunction("split", defineFunction(funcs.functionSplit, "<s-(sf)n?:a<s>>")); // TODO <s-(sf<s:o>)n?:a<s>>
         this.bindFunction("join", defineFunction(funcs.functionJoin, "<a<s>s?:s>"));
         this.bindFunction("formatNumber", defineFunction(funcs.functionFormatNumber, "<n-so?:s>"));
         this.bindFunction("formatBase", defineFunction(funcs.functionFormatBase, "<n-n?:s>"));
@@ -52,6 +49,15 @@ export class JEnv {
         this.bindFunction("toMillis", defineFunction(funcs.functionToMillis, "<s-:n>"));
         this.bindFunction("fromMillis", defineFunction(funcs.functionFromMillis, "<n-:s>"));
         this.bindFunction("clone", defineFunction(funcs.functionClone, "<(oa)-:o>"));
+
+        // We use special versions of these functions because we want them to take
+        // regular expression literals.
+        // this.bindFunction("split", defineFunction(sync.functionSplit, "<s-(sr)n?:a<s>>")); // TODO <s-(sf<s:o>)n?:a<s>>
+        // this.bindFunction("contains", defineFunction(sync.functionContains, "<s-(sr):b>")); // TODO <s-(sf<s:o>):b>
+        // this.bindFunction("match", defineFunction(sync.functionMatch, "<s-rn?:a<o>>"));
+        this.bindFunction("split", defineFunction(funcs.functionSplit, "<s-(sf)n?:a<s>>")); // TODO <s-(sf<s:o>)n?:a<s>>
+        this.bindFunction("contains", defineFunction(funcs.functionContains, "<s-(sf):b>")); // TODO <s-(sf<s:o>):b>
+        this.bindFunction("match", defineFunction(funcs.functionMatch, "<s-fn?:a<o>>"));
 
         // We use special, purely synchronous version of these functions
         // TODO: No tests for this?!?

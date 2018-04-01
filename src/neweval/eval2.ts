@@ -127,7 +127,7 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return evaluateSort(expr, input, environment, options);
         }
         case "regex": {
-            throw new Error("AST node type '" + expr.type + "' is unimplemented");
+            return evaluateRegex(expr, input, environment);
         }
         /* istanbul ignore next */
         case "grouped-object":
@@ -1026,4 +1026,49 @@ function evaluateSort(expr: ast.SortNode, input: Box, environment: JEnv, options
     let lhs = doEval(expr.lhs, input, environment, options);
     let comp = comparator(expr.rhs, environment, options);
     return sortBox(lhs, comp);
+}
+
+function evaluateRegex(expr: ast.RegexNode, input: Box, environment: JEnv): Box {
+    expr.value.lastIndex = 0;
+    const closure = str => {
+        var re = expr.value;
+        var result;
+        var match = re.exec(str);
+        if (match !== null) {
+            result = {
+                match: match[0],
+                start: match.index,
+                end: match.index + match[0].length,
+                groups: [],
+            };
+            if (match.length > 1) {
+                for (var i = 1; i < match.length; i++) {
+                    result.groups.push(match[i]);
+                }
+            }
+            result.next = () => {
+                if (re.lastIndex >= str.length) {
+                    return undefined;
+                } else {
+                    var next = closure(str);
+                    if (next && next.match === "" && re.lastIndex === expr.value.lastIndex) {
+                        // matches zero length string; this will never progress
+                        throw {
+                            code: "D1004",
+                            stack: new Error().stack,
+                            position: expr.position,
+                            value: expr.value.source,
+                        };
+                    }
+                    return next;
+                }
+            };
+        }
+
+        return result;
+    };
+    return boxFunction({
+        implementation: closure,
+        signature: undefined,
+    });
 }

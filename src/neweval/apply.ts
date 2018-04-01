@@ -110,7 +110,8 @@ function validateArguments(signature: Signature, args: Box[], context: Box): Box
     }
     // TODO: Need a version of signature.validate that takes boxes because
     // unboxing and reboxing may not work properly for arrays, functions and procedures.
-    var validatedArgs = signature.validate(args.map(v => unbox(v)), unbox(context));
+    let uargs = args.map(v => unbox(v));
+    var validatedArgs = signature.validate(uargs, unbox(context));
     return validatedArgs.map(x => boxValue(x));
 }
 

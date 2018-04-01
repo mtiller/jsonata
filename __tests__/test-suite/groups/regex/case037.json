@@ -1,0 +1,11 @@
+{
+    "expr": "/(foo)/(\"foobar\").{\"match\": match, \"start\": start, \"end\": end, \"groups\": groups}",
+    "dataset": null,
+    "bindings": {},
+    "result": {
+        "match": "foo",
+        "start": 0,
+        "end": 3,
+        "groups": ["foo"]
+    }
+}

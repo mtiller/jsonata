@@ -217,7 +217,7 @@ export function unbox(result: Box): JSValue {
             return result.details;
         }
         case BoxType.Function: {
-            return result.details;
+            return result.details.implementation;
         }
         case BoxType.Void: {
             return undefined;

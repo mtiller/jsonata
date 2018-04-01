@@ -1,4 +1,4 @@
-import { isFunction } from './utils';
+import { isFunction } from "./utils";
 
 export interface Signature {
     definition: string;
@@ -83,14 +83,14 @@ export function parseSignature(signature: string): Signature {
             case "f": // function
                 next({
                     regex: "f",
-                    type: symbol, 
-                    array: false,   
+                    type: symbol,
+                    array: false,
                 });
                 break;
             case "j": // any JSON type
                 next({
                     regex: "[asnblom]",
-                    type: symbol, 
+                    type: symbol,
                     array: false,
                 });
                 break;
@@ -114,7 +114,7 @@ export function parseSignature(signature: string): Signature {
                 // search forward for matching ')'
                 var endParen = findClosingBracket(signature, position, "(", ")");
                 var choice = signature.substring(position + 1, endParen);
-                if (choice.indexOf("<") !==-1) {
+                if (choice.indexOf("<") !== -1) {
                     // TODO harder
                     throw {
                         code: "S0402",
@@ -126,7 +126,7 @@ export function parseSignature(signature: string): Signature {
                 position = endParen;
                 next({
                     regex: "[" + choice + "m]",
-                    type: "(" + choice + ")",  
+                    type: "(" + choice + ")",
                     array: false,
                 });
                 break;
@@ -178,6 +178,8 @@ export function parseSignature(signature: string): Signature {
                         symbol = "l";
                     } else if (Array.isArray(value)) {
                         symbol = "a";
+                    } else if (value instanceof RegExp) {
+                        symbol = "r";
                     } else {
                         symbol = "o";
                     }
