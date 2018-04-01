@@ -6,7 +6,12 @@ import { errorCodes } from "./constants";
  * @returns {boolean} - true if it is a function (lambda or built-in)
  */
 export function isFunction(arg) {
-    return (arg && (arg._jsonata_function === true || arg._jsonata_lambda === true)) || typeof arg === "function";
+    return (
+        (arg && (arg._jsonata_function === true || arg._jsonata_lambda === true)) ||
+        typeof arg === "function" ||
+        // This line checks for the v2 representation of lambdas
+        (arg && (arg.input && arg.environment && arg.body))
+    );
 }
 
 /**
