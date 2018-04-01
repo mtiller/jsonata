@@ -4,19 +4,24 @@ import { createSequence } from "../utils";
 import { apply } from "./apply";
 import { functionBoolean } from "../functions";
 import * as errors from "../errors";
-import { FunctionDetails } from "./procs";
-import { boxValue, fragmentBox, boxFunction, unbox } from "./box";
+import { FunctionDetails, ProcedureDetails } from "./procs";
+import { boxValue, fragmentBox, boxFunction, unbox, boxLambda } from "./box";
 import { EvaluationOptions } from "./options";
 
-function applySurrogate(func: Function, args: Array<any>, context: any, options: EvaluationOptions) {
-    let f: FunctionDetails = {
-        implementation: func,
-        signature: undefined,
-    };
+function applySurrogate(func: Function | ProcedureDetails, args: Array<any>, context: any, options: EvaluationOptions) {
     let boxedArgs = fragmentBox(boxValue(args));
     let boxedContext = boxValue(context);
-    let result = apply(boxFunction(f), boxedArgs, boxedContext, options);
-    return unbox(result);
+    if (typeof func === "function") {
+        let f: FunctionDetails = {
+            implementation: func,
+            signature: undefined,
+        };
+        let result = apply(boxFunction(f), boxedArgs, boxedContext, options);
+        return unbox(result);
+    } else {
+        let result = apply(boxLambda(func), boxedArgs, boxedContext, options);
+        return unbox(result);
+    }
 }
 
 /**
