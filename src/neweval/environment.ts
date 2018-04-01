@@ -2,10 +2,11 @@ import { Box, boxValue, JSValue, ubox, boxFunction } from "./box";
 import * as funcs from "../functions";
 import { defineFunction, FunctionDefinition } from "../signatures";
 import * as sync from "./functions";
+import { EvaluationOptions } from "./options";
 
 export class JEnv {
     protected bindings: { [key: string]: Box } = {};
-    constructor(public enclosing?: JEnv) {
+    constructor(protected options: EvaluationOptions, public enclosing?: JEnv) {
         this.bindFunction("sum", defineFunction(funcs.functionSum, "<a<n>:n>"));
         this.bindFunction("count", defineFunction(funcs.functionCount, "<a:n>"));
         this.bindFunction("max", defineFunction(funcs.functionMax, "<a<n>:n>"));
@@ -61,11 +62,11 @@ export class JEnv {
 
         // We use special, purely synchronous version of these functions
         // TODO: No tests for this?!?
-        this.bindFunction("map", defineFunction(sync.functionMap, "<af>"));
-        this.bindFunction("replace", defineFunction(sync.functionReplace, "<s-(sf)(sf)n?:s>")); // TODO <s-(sf<s:o>)(sf<o:s>)n?:s>
-        this.bindFunction("filter", defineFunction(sync.functionFilter, "<af>"));
-        this.bindFunction("reduce", defineFunction(sync.functionFoldLeft, "<afj?:j>")); // TODO <f<jj:j>a<j>j?:j>
-        this.bindFunction("each", defineFunction(sync.functionEach, "<o-f:a>"));
+        this.bindFunction("map", defineFunction(sync.functionMap(options), "<af>"));
+        this.bindFunction("replace", defineFunction(sync.functionReplace(options), "<s-(sf)(sf)n?:s>")); // TODO <s-(sf<s:o>)(sf<o:s>)n?:s>
+        this.bindFunction("filter", defineFunction(sync.functionFilter(options), "<af>"));
+        this.bindFunction("reduce", defineFunction(sync.functionFoldLeft(options), "<afj?:j>")); // TODO <f<jj:j>a<j>j?:j>
+        this.bindFunction("each", defineFunction(sync.functionEach(options), "<o-f:a>"));
     }
     bindFunction(name: string, f: FunctionDefinition) {
         this.bindings[name] = boxFunction({
@@ -93,6 +94,6 @@ export class JEnv {
         return ubox;
     }
     nested() {
-        return new JEnv(this);
+        return new JEnv(this.options, this);
     }
 }

@@ -130,7 +130,7 @@ export function partialApplyProcedure(
     options: EvaluationOptions,
 ) {
     // create a closure, bind the supplied parameters and return a function that takes the remaining (?) parameters
-    let env = new JEnv(details.environment);
+    let env = new JEnv(options, details.environment);
     //var env = createFrame(proc.environment);
 
     // Add arguments that should be evaluated to the environment
@@ -138,6 +138,7 @@ export function partialApplyProcedure(
     return boxLambda({
         input: details.input,
         environment: env,
+        options: options,
         arguments: unevaluatedArgs,
         body: details.body,
         signature: undefined,
@@ -171,6 +172,7 @@ export function partialApplyNativeFunction(
         arguments: sigArgs.map((arg): ast.VariableNode => ({ type: "variable", value: arg, position: 0 })),
         signature: undefined,
         environment: environment,
+        options: options,
         thunk: false,
     };
 
@@ -184,7 +186,7 @@ export function partialApplyNativeFunction(
  * @returns {*} Result of procedure
  */
 function applyProcedure(details: ProcedureDetails, args: Box[], options: EvaluationOptions): Box {
-    let env = new JEnv(details.environment);
+    let env = new JEnv(options, details.environment);
 
     details.arguments.forEach((param, index) => {
         env.bindBox(param.value, args[index]);

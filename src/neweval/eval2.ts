@@ -79,7 +79,7 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return evaluateBinaryOperation(expr, input, environment, options);
         }
         case "lambda": {
-            return evaluateLambda(expr, input, environment);
+            return evaluateLambda(expr, input, environment, options);
         }
         case "function": {
             return evaluateFunction(expr, input, environment, options);
@@ -388,7 +388,7 @@ function evaluateBinding(expr: ast.BindNode, input: Box, environment: JEnv, opti
 }
 
 export function evaluateBlock(expr: ast.BlockNode, input: Box, enclosing: JEnv, options: EvaluationOptions): Box {
-    let environment = new JEnv(enclosing);
+    let environment = new JEnv(options, enclosing);
     return expr.expressions.reduce((prev, e) => doEval(e, input, environment, options), ubox);
 }
 
@@ -569,10 +569,16 @@ function evaluateArray(expr: ast.ArrayConstructorNode, input: Box, environment: 
     return defragmentBox(vals, true);
 }
 
-function evaluateLambda(expr: ast.LambdaDefinitionNode, input: Box, environment: JEnv): Box {
+function evaluateLambda(
+    expr: ast.LambdaDefinitionNode,
+    input: Box,
+    environment: JEnv,
+    options: EvaluationOptions,
+): Box {
     let procedure: ProcedureDetails = {
         input: input,
         environment: environment,
+        options: options,
         arguments: expr.arguments,
         signature: expr.signature,
         body: expr.body,

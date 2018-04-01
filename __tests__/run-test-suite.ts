@@ -8,7 +8,7 @@
 
 var fs = require("fs");
 var path = require("path");
-import { jsonata, JEnv, eval2, timeboxExpression } from "../src";
+import { jsonata, JEnv, eval2, timeboxExpression, EvaluationOptions } from "../src";
 
 let tsDir = path.join(__dirname, process.env["JSONATA_TESTSUITE"] || "test-suite");
 let groupDir = path.join(tsDir, process.env["JSONATA_GROUPS"] || "groups");
@@ -38,6 +38,8 @@ datasetnames.forEach(name => {
 
 const test2 = process.env.hasOwnProperty("JSONATA_SKIP_EVAL2") ? false : true;
 
+const evalOptions: EvaluationOptions = { legacyMode: true };
+
 // This is the start of the set of tests associated with the test cases
 // found in the test-suite directory.
 describe("JSONata Test Suite", () => {
@@ -51,7 +53,7 @@ describe("JSONata Test Suite", () => {
             for (let i = 0; i < cases.length; i++) {
                 // Extract the current test case of interest
                 let testcase = cases[i];
-                let env = new JEnv();
+                let env = new JEnv(evalOptions);
                 env.merge(testcase.bindings || {});
                 let run = testcase.skip ? test.skip : testcase.only ? test.only : test;
 
@@ -107,7 +109,7 @@ describe("JSONata Test Suite", () => {
                             expect(result).toBeUndefined();
 
                             if (test2) {
-                                let res2 = eval2(expr.ast(), dataset, env, { legacyMode: true });
+                                let res2 = eval2(expr.ast(), dataset, env, evalOptions);
                                 expect(res2).toBeUndefined();
                             }
                         } else if ("result" in testcase) {
@@ -117,7 +119,7 @@ describe("JSONata Test Suite", () => {
                             expect(result).toEqual(testcase.result);
 
                             if (test2) {
-                                let res2 = eval2(expr.ast(), dataset, env, { legacyMode: true });
+                                let res2 = eval2(expr.ast(), dataset, env, evalOptions);
                                 //let res2 = eval2(expr.ast(), dataset, env);
                                 expect(res2).toEqual(testcase.result);
                             }
