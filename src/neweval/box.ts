@@ -183,6 +183,8 @@ export function boxValue(input: JSValue, options: Partial<BoxFlags> = {}): Box {
     if (input === undefined) return ubox;
     if (Array.isArray(input)) {
         let values = input.filter(x => x !== undefined);
+        // TODO: This should probably be here...but it breaks a few tests
+        // if (values.length == 0) return ubox;
         return {
             values: values, // Remove any undefined values
             scalar: false,

@@ -1,6 +1,6 @@
 import * as ast from "../ast";
 import { ProcedureDetails } from "./procs";
-import { unexpectedValue, isArrayOfNumbers, flatten, isArrayOfStrings } from "../utils";
+import { unexpectedValue, isArrayOfNumbers, flatten, isArrayOfStrings, isNumeric } from "../utils";
 import { JEnv } from "./environment";
 import * as errors from "../errors";
 import {
@@ -410,8 +410,8 @@ export function evaluateBinaryOperation(
     environment: JEnv,
     options: EvaluationOptions,
 ): Box {
-    let lhs = unbox(doEval(expr.lhs, input, environment, options));
-    let rhs = unbox(doEval(expr.rhs, input, environment, options));
+    let lhs = unbox(doEval(expr.lhs, input, environment, options)) as any;
+    let rhs = unbox(doEval(expr.rhs, input, environment, options)) as any;
     let value = expr.value;
     switch (value) {
         case "+":
@@ -420,13 +420,13 @@ export function evaluateBinaryOperation(
         case "/":
         case "%": {
             if (lhs === undefined || rhs === undefined) return ubox;
-            if (!isNumber(lhs)) {
+            if (!isNumeric(lhs)) {
                 throw errors.error({
                     code: "T2001",
                     token: value,
                 });
             }
-            if (!isNumber(rhs)) {
+            if (!isNumeric(rhs)) {
                 throw errors.error({
                     code: "T2002",
                     token: value,
@@ -660,8 +660,11 @@ function evaluateFunction(
 function evaluateUnaryMinus(expr: ast.UnaryMinusNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
     let lhs = doEval(expr.expression, input, environment, options);
     if (lhs.type == BoxType.Void) return ubox;
-    if (boxType(lhs, "number")) {
-        let v = unbox(lhs) as number;
+    let v = unbox(lhs);
+    // This happens if v was boxed as an empty array
+    // (see note in boxValue function about this)
+    if (v === undefined) return ubox;
+    if (isNumeric(v)) {
         return boxValue(-v);
     } else {
         throw errors.error({
