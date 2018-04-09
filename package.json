@@ -16,7 +16,7 @@
         "jest": "jest",
         "test": "npm run jest --coverage",
         "passing":
-            "jest -t 'array-|blocks|boolean-|closures|comparison-|conditionals|context|descendant-|encoding|errors|examples|fields|flattening|higher-|inclusion-|lambdas|literals|missing-|multiple-|null|numeric-|object-|parentheses|partial-|predicates|quoted-|range-|regex|simple-|sorting|string-|tail-|transform|variable|wildcards'",
+            "jest -t 'array-|blocks|boolean-|closures|comparison-|conditionals|context|descendant-|encoding|errors|examples|fields|flattening|higher-|hof-|inclusion-|lambdas|literals|missing-|multiple-|null|numeric-|object-|parentheses|partial-|predicates|quoted-|range-|regex|simple-|sorting|string-|tail-|transform|variable|wildcards'",
         "next": "jest -t 'hof-'",
         "jest:debug": "node --inspect node_modules/.bin/jest --runInBand",
         "posttest": "npm run check-coverage",
