@@ -1384,6 +1384,12 @@ function* evaluatePartialApplication(expr: ast.FunctionInvocationNode, input: an
 
 /**
  * Partially apply procedure
+ *
+ * The goal of this function is to take the supplied arguments and either a)
+ * bind them to variables in the environment or mark them as still unprovided.
+ * With this sorted out, we create a lambda representation that bundles the
+ * bound stuff in the environment and provides an array for the arguments (an
+ * array with very little information of substances, if I'm not mistaken).
  * @param {Object} proc - Procedure
  * @param {Array} args - Arguments
  * @returns {{lambda: boolean, input: *, environment: {bind, lookup}, arguments: Array, body: *}} Result of partially applied procedure

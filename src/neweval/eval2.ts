@@ -138,11 +138,14 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
         /* istanbul ignore next */
         case "error":
         /* istanbul ignore next */
-        case "operator":
-        /* istanbul ignore next */
         case "singleton": {
             /* istanbul ignore next */
             throw new Error("Raw AST node of type " + expr.type + " found in optimized tree");
+        }
+        /* istanbul ignore next */
+        case "operator": {
+            /* istanbul ignore next */
+            throw new Error("Attempted to evaluate symbolic AST 'operator' node");
         }
         /* istanbul ignore next */
         default:
@@ -239,25 +242,15 @@ function evaluatePathCompat(expr: ast.PathNode, input: Box, environment: JEnv, o
     return result;
 }
 
-function partition<T>(x: T[], pred: (x: T) => boolean) {
-    return x.reduce(
-        (prev, v) => {
-            if (pred(v)) return { matched: [...prev.matched, v], unmatched: prev.unmatched };
-            else return { matched: prev.matched, unmatched: [...prev.unmatched, v] };
-        },
-        { matched: [] as T[], unmatched: [] as T[] },
-    );
-}
-
 function evaluatePartialApplication(
     expr: ast.FunctionInvocationNode,
     input: any,
     environment: JEnv,
     options: EvaluationOptions,
 ): Box {
-    let part = partition(expr.arguments, arg => arg.type === "operator" && arg.value === "?");
-    let unevaluatedArgs = part.matched;
-    let evaluatedArgs = part.unmatched;
+    // let part = partition(expr.arguments, arg => arg.type === "operator" && arg.value === "?");
+    // let unevaluatedArgs = part.matched;
+    // let evaluatedArgs = part.unmatched;
     // // evaluate the arguments
     // var evaluatedArgs = [];
     // for (var ii = 0; ii < expr.arguments.length; ii++) {
@@ -270,11 +263,13 @@ function evaluatePartialApplication(
     // }
     // lookup the procedure
     let proc = doEval(expr.procedure, input, environment, options);
+    let uproc = unbox(proc);
+
     //var proc = yield * evaluate(expr.procedure, input, environment);
     if (
-        typeof proc === "undefined" &&
+        typeof uproc === "undefined" &&
         expr.procedure.type === "path" &&
-        environment.lookup(expr.procedure.steps[0].value)
+        environment.lookup(expr.procedure.steps[0].value).type != BoxType.Void
     ) {
         // help the user out here if they simply forgot the leading $
         throw {
@@ -287,21 +282,14 @@ function evaluatePartialApplication(
 
     switch (proc.type) {
         case BoxType.Lambda:
-            return partialApplyProcedure(proc.details, unevaluatedArgs, evaluatedArgs, input, environment, options);
+            return partialApplyProcedure(proc.details, expr.arguments, input, environment, options);
         case BoxType.Function:
-            return partialApplyNativeFunction(
-                proc.details.implementation,
-                unevaluatedArgs,
-                evaluatedArgs,
-                input,
-                environment,
-                options,
-            );
+            return partialApplyNativeFunction(proc.details.implementation, expr.arguments, input, environment, options);
         case BoxType.Value:
             if (proc.scalar) {
                 let val = proc.values[0];
                 if (typeof val === "function") {
-                    return partialApplyNativeFunction(val, unevaluatedArgs, evaluatedArgs, input, environment, options);
+                    return partialApplyNativeFunction(val, expr.arguments, input, environment, options);
                 }
             }
             throw errors.error({

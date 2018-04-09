@@ -117,14 +117,18 @@ function validateArguments(signature: Signature, args: Box[], context: Box): Box
 
 /**
  * Partially apply procedure
+ *
+ * The goal of this function is to bind all known variables to the environment
+ * and provide information (in the lambda box returned) about how many arguments
+ * remain unevaluated.
+ *
  * @param {Object} proc - Procedure
  * @param {Array} args - Arguments
  * @returns {{lambda: boolean, input: *, environment: {bind, lookup}, arguments: Array, body: *}} Result of partially applied procedure
  */
 export function partialApplyProcedure(
     details: ProcedureDetails,
-    unevaluatedArgs: ast.ASTNode[],
-    evaluatedArgs: ast.ASTNode[],
+    args: Array<ast.ASTNode>,
     input: Box,
     environment: JEnv,
     options: EvaluationOptions,
@@ -132,14 +136,23 @@ export function partialApplyProcedure(
     // create a closure, bind the supplied parameters and return a function that takes the remaining (?) parameters
     let env = new JEnv(options, details.environment);
     //var env = createFrame(proc.environment);
+    let unevaluated: Array<ast.ASTNode> = [];
 
-    // Add arguments that should be evaluated to the environment
-    evaluatedArgs.forEach(earg => env.bind(earg.value, doEval(earg, input, environment, options)));
+    details.arguments.forEach((param, index) => {
+        let arg = args[index];
+        if (arg && arg.type === "operator" && arg.value === "?") {
+            unevaluated.push(param);
+        } else {
+            let val = doEval(arg, input, environment, options);
+            env.bindBox(param.value, val);
+        }
+    });
+
     return boxLambda({
         input: details.input,
         environment: env,
         options: options,
-        arguments: unevaluatedArgs,
+        arguments: unevaluated,
         body: details.body,
         signature: undefined,
         thunk: false,
@@ -154,8 +167,7 @@ export function partialApplyProcedure(
  */
 export function partialApplyNativeFunction(
     f: Function,
-    unevaluatedArgs: ast.ASTNode[],
-    evaluatedArgs: ast.ASTNode[],
+    args: ast.ASTNode[],
     input: Box,
     environment: JEnv,
     options: EvaluationOptions,
@@ -176,7 +188,7 @@ export function partialApplyNativeFunction(
         thunk: false,
     };
 
-    return partialApplyProcedure(proc, unevaluatedArgs, evaluatedArgs, input, environment, options);
+    return partialApplyProcedure(proc, args, input, environment, options);
 }
 
 /**

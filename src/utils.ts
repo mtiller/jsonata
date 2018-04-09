@@ -270,3 +270,13 @@ export function fromValues<T>(x: Array<[string, T]>): { [key: string]: T } {
         {} as { [key: string]: T },
     );
 }
+
+export function partition<T>(x: T[], pred: (x: T) => boolean) {
+    return x.reduce(
+        (prev, v) => {
+            if (pred(v)) return { matched: [...prev.matched, v], unmatched: prev.unmatched };
+            else return { matched: prev.matched, unmatched: [...prev.unmatched, v] };
+        },
+        { matched: [] as T[], unmatched: [] as T[] },
+    );
+}
