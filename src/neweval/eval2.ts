@@ -512,7 +512,7 @@ export function evaluateBinaryOperation(
         }
         case "&": {
             let lstr = lhs == undefined ? "" : functionString(lhs);
-            let rstr = lhs == undefined ? "" : functionString(rhs);
+            let rstr = rhs == undefined ? "" : functionString(rhs);
             return boxValue(lstr + rstr);
         }
         case "..": {
