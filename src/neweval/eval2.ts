@@ -228,11 +228,16 @@ function evaluatePathCompat(expr: ast.PathNode, input: Box, environment: JEnv, o
 
     let result = path.path.reduce(
         (prev, step, index) =>
-            mapOverValues(
-                prev,
-                c => doEval(step, c, environment, options),
-                step.type !== "array" && index == path.path.length - 1,
-            ),
+            // If the "head" is a ubox, then we still do a "map over".  But if
+            // any subsequent step yields a ubox, we are done because there is
+            // nothing to map over (see object-constructor case0007 for an example).
+            index > 0 && prev === ubox
+                ? ubox
+                : mapOverValues(
+                      prev,
+                      c => doEval(step, c, environment, options),
+                      step.type !== "array" && index == path.path.length - 1,
+                  ),
         path.head,
     );
 

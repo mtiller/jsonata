@@ -96,7 +96,14 @@ export function fragmentBox(box: Box): Box[] {
  * @param boxes
  */
 export function defragmentBox(boxes: Box[], array: boolean = false): Box {
-    let values = boxes.reduce((prev, box) => {
+    // Of we are just defragging a bunch of Void boxes, then the result is void unless
+    // we are specifically creating an array value in which case the result
+    // should be an empty array.
+    if (boxes.every(x => x.type == BoxType.Void)) return array ? boxArray([]) : ubox;
+
+    // Because of the previous line, we know that at least one of the boxes we are
+    // folding over contains values.
+    let values = boxes.reduce((prev: Array<any> | undefined, box) => {
         switch (box.type) {
             case BoxType.Void:
                 return prev;
@@ -184,7 +191,7 @@ export function boxValue(input: JSValue, options: Partial<BoxFlags> = {}): Box {
     if (Array.isArray(input)) {
         let values = input.filter(x => x !== undefined);
         // TODO: This should probably be here...but it breaks a few tests
-        // if (values.length == 0) return ubox;
+        if (values.length == 0) return ubox;
         return {
             values: values, // Remove any undefined values
             scalar: false,
@@ -208,7 +215,12 @@ export function unbox(result: Box): JSValue {
     }
     switch (result.type) {
         case BoxType.Value: {
+            // Not sure how this could happen either.
+            // TODO: Remove
             if (result.values == undefined) return undefined;
+            // This should not happen because boxing an empty array should
+            // result in a ubox.
+            // TODO: Throw exception
             if (result.values.length === 0) return undefined;
             return result.scalar ? result.values[0] : result.values;
         }
@@ -266,6 +278,8 @@ export function reduceBox<T>(box: Box, f: (prev: T, frag: Box) => T, init: T): T
 }
 
 export function forEachValue(box: Box, f: (input: Box) => void): void {
+    // If there are no values to loop over, then just return
+    if (box === ubox) return;
     // Break all values out into individual boxes
     let fragments = fragmentBox(box);
     // Map over each box
