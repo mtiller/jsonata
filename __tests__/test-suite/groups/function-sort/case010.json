@@ -1,11 +1,7 @@
 {
-    "expr": "\n                (Account.Order.Product\n                  ~> $sort(λ($a,$b){$a.Quantity < $b.Quantity})\n                  ~> $sort(λ($a,$b){$a.Price > $b.Price})\n                ).SKU\n            ",
+    "expr":
+        "\n                (Account.Order.Product\n                  ~> $sort(λ($a,$b){$a.Quantity < $b.Quantity})\n                  ~> $sort(λ($a,$b){$a.Price > $b.Price})\n                ).SKU\n            ",
     "dataset": "dataset5",
     "bindings": {},
-    "result": [
-        "0406634348",
-        "040657863",
-        "0406654608",
-        "0406654603"
-    ]
+    "result": ["0406634348", "040657863", "0406654608", "0406654603"]
 }

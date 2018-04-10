@@ -38,7 +38,6 @@ export class JEnv {
             this.bindFunction("boolean", defineFunction(funcs.functionBoolean, "<x-:b>"));
             this.bindFunction("not", defineFunction(funcs.functionNot, "<x-:b>"));
             this.bindFunction("zip", defineFunction(funcs.functionZip, "<a+>"));
-            this.bindFunction("sift", defineFunction(funcs.functionSift, "<o-f?:o>"));
             this.bindFunction("keys", defineFunction(funcs.functionKeys, "<x-:a<s>>"));
             this.bindFunction("lookup", defineFunction(funcs.functionLookup, "<x-s:x>"));
             this.bindFunction("append", defineFunction(funcs.functionAppend, "<xx:a>"));
@@ -46,7 +45,6 @@ export class JEnv {
             this.bindFunction("spread", defineFunction(funcs.functionSpread, "<x-:a<o>>"));
             this.bindFunction("merge", defineFunction(funcs.functionMerge, "<a<o>:o>"));
             this.bindFunction("reverse", defineFunction(funcs.functionReverse, "<a:a>"));
-            this.bindFunction("sort", defineFunction(funcs.functionSort, "<af?:a>"));
             this.bindFunction("shuffle", defineFunction(funcs.functionShuffle, "<a:a>"));
             this.bindFunction("base64encode", defineFunction(funcs.functionBase64encode, "<s-:s>"));
             this.bindFunction("base64decode", defineFunction(funcs.functionBase64decode, "<s-:s>"));
@@ -70,6 +68,11 @@ export class JEnv {
             this.bindFunction("filter", defineFunction(sync.functionFilter(options), "<af>"));
             this.bindFunction("reduce", defineFunction(sync.functionFoldLeft(options), "<afj?:j>")); // TODO <f<jj:j>a<j>j?:j>
             this.bindFunction("each", defineFunction(sync.functionEach(options), "<o-f:a>"));
+
+            // We use special versions of these functions because they
+            // recursively evaluate their arguments.
+            this.bindFunction("sort", defineFunction(sync.functionSort(options), "<af?:a>"));
+            this.bindFunction("sift", defineFunction(sync.functionSift(options), "<o-f?:o>"));
         }
     }
     bindFunction(name: string, f: FunctionDefinition) {

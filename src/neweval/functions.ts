@@ -1,6 +1,6 @@
 // import { apply } from "./apply";
 // import { EvaluationOptions } from "./options";
-import { createSequence } from "../utils";
+import { createSequence, isArrayOfNumbers, isArrayOfStrings } from "../utils";
 import { apply } from "./apply";
 import { functionBoolean } from "../functions";
 import * as errors from "../errors";
@@ -407,4 +407,118 @@ export function functionMatch(str: string, regex: RegExp, limit?: number) {
     //     count++;
     // }
     // return ret;
+}
+
+/**
+ * Implements the merge sort (stable) with optional comparator function
+ *
+ * @param {Array} arr - the array to sort
+ * @param {*} comparator - comparator function
+ * @returns {Array} - sorted array
+ */
+export function functionSort(options: EvaluationOptions) {
+    return (arr, comparator) => {
+        // undefined inputs always return undefined
+        if (typeof arr === "undefined") {
+            return undefined;
+        }
+
+        if (arr.length <= 1) {
+            return arr;
+        }
+
+        var comp;
+        if (typeof comparator === "undefined") {
+            // inject a default comparator - only works for numeric or string arrays
+            if (!isArrayOfNumbers(arr) && !isArrayOfStrings(arr)) {
+                throw {
+                    stack: new Error().stack,
+                    code: "D3070",
+                    index: 1,
+                };
+            }
+
+            comp = function(a, b) {
+                return a > b;
+            };
+        } else if (typeof comparator === "function") {
+            // for internal usage of functionSort (i.e. order-by syntax)
+            comp = comparator;
+        } else {
+            comp = function(a, b) {
+                return applySurrogate(comparator, [a, b], null, options);
+            };
+        }
+
+        var merge = function(l, r) {
+            var merge_iter = function(result, left, right) {
+                if (left.length === 0) {
+                    Array.prototype.push.apply(result, right);
+                } else if (right.length === 0) {
+                    Array.prototype.push.apply(result, left);
+                } else if (comp(left[0], right[0])) {
+                    // invoke the comparator function
+                    // if it returns true - swap left and right
+                    result.push(right[0]);
+                    merge_iter(result, left, right.slice(1));
+                } else {
+                    // otherwise keep the same order
+                    result.push(left[0]);
+                    merge_iter(result, left.slice(1), right);
+                }
+            };
+            var merged = [];
+            merge_iter(merged, l, r);
+            return merged;
+        };
+
+        var sort = function(array) {
+            if (array.length <= 1) {
+                return array;
+            } else {
+                var middle = Math.floor(array.length / 2);
+                var left = array.slice(0, middle);
+                var right = array.slice(middle);
+                left = sort(left);
+                right = sort(right);
+                return merge(left, right);
+            }
+        };
+
+        var result = sort(arr);
+
+        return result;
+    };
+}
+
+/**
+ * Applies a predicate function to each key/value pair in an object, and returns an object containing
+ * only the key/value pairs that passed the predicate
+ *
+ * @param {object} arg - the object to be sifted
+ * @param {object} func - the predicate function (lambda or native)
+ * @returns {object} - sifted object
+ */
+export function functionSift(options: EvaluationOptions) {
+    return (arg, func) => {
+        var result = {};
+
+        var predicate = function(value, key, object) {
+            return applySurrogate(func, [value, key, object], null, options);
+        };
+
+        for (var item in arg) {
+            var entry = arg[item];
+            if (functionBoolean(predicate(entry, item, arg))) {
+                result[item] = entry;
+            }
+        }
+
+        // empty objects should be changed to undefined
+        if (Object.keys(result).length === 0) {
+            result = undefined;
+        }
+
+        return result;
+    };
 }
