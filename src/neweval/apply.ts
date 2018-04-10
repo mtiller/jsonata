@@ -66,7 +66,7 @@ function applyInner(proc: Box, args: Box[], context: Box, options: EvaluationOpt
             let validatedArgs = validateArguments(details.signature, args, context);
             let self = unbox(context);
             let val = details.implementation.apply(self, validatedArgs.map(unbox));
-            if (Array.isArray(val)) return boxArray(val);
+            if (Array.isArray(val) && val.length == 0) return boxArray(val);
             return boxValue(val);
         }
         case BoxType.Array:
