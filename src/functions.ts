@@ -1537,6 +1537,10 @@ export function functionExists(arg) {
  * @returns {*} - the array
  */
 export function functionSpread(arg) {
+    // TODO: Either make this a pure JavaScript function that doesn't depend on 
+    // functions/types from JSONata or provide Box values and return Box values.
+    // Ultimately, I think when users bind functions, they should pick which
+    // approach to apply to each function.
     var result = createSequence();
 
     if (Array.isArray(arg)) {

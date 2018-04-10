@@ -188,6 +188,27 @@ export function boxValue(input: JSValue, options: Partial<BoxFlags> = {}): Box {
         throw new Error("Boxed value being boxed!?!");
     }
     if (input === undefined) return ubox;
+    if (input && ["input", "environment", "body"].every(prop => input.hasOwnProperty(prop))) {
+        return {
+            type: BoxType.Lambda,
+            details: input as ProcedureDetails,
+        };
+    }
+    if (input && input.hasOwnProperty("implementation") && input.hasOwnProperty("signature")) {
+        return {
+            type: BoxType.Function,
+            details: input as FunctionDetails,
+        };
+    }
+    if (input && typeof input === "function") {
+        return {
+            type: BoxType.Function,
+            details: {
+                implementation: input as Function,
+                signature: null,
+            },
+        };
+    }
     if (Array.isArray(input)) {
         let values = input.filter(x => x !== undefined);
         // TODO: This should probably be here...but it breaks a few tests

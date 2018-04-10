@@ -1,7 +1,7 @@
 import { doEval } from "./eval2";
 import { EvaluationOptions } from "./options";
 import { ProcedureDetails } from "./procs";
-import { unbox, boxValue, BoxType, Box, boxLambda, ubox } from "./box";
+import { unbox, boxValue, BoxType, Box, boxLambda, ubox, boxArray } from "./box";
 import { JEnv } from "./environment";
 import { Signature } from "../signatures";
 import { unexpectedValue } from "../utils";
@@ -65,7 +65,9 @@ function applyInner(proc: Box, args: Box[], context: Box, options: EvaluationOpt
             let details = proc.details;
             let validatedArgs = validateArguments(details.signature, args, context);
             let self = unbox(context);
-            return boxValue(details.implementation.apply(self, validatedArgs.map(unbox)));
+            let val = details.implementation.apply(self, validatedArgs.map(unbox));
+            if (Array.isArray(val)) return boxArray(val);
+            return boxValue(val);
         }
         case BoxType.Array:
         case BoxType.Value: {

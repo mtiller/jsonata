@@ -1,17 +1,18 @@
 import { errorCodes } from "./constants";
 
 /**
+ * Determine whether arg is a function or a lambda
  *
  * @param {Object} arg - expression to test
  * @returns {boolean} - true if it is a function (lambda or built-in)
  */
 export function isFunction(arg) {
-    return (
-        (arg && (arg._jsonata_function === true || arg._jsonata_lambda === true)) ||
-        typeof arg === "function" ||
-        // This line checks for the v2 representation of lambdas
-        (arg && (arg.input && arg.environment && arg.body))
-    );
+    if (arg && typeof arg === "function") return true;
+    if (arg && (arg._jsonata_function === true || arg._jsonata_lambda === true)) return true;
+    if (arg && arg.hasOwnProperty("implementation") && arg.hasOwnProperty("signature")) return true;
+    if (arg && arg.hasOwnProperty("input") && arg.hasOwnProperty("environment") && arg.hasOwnProperty("body"))
+        return true;
+    return false;
 }
 
 /**
@@ -20,7 +21,10 @@ export function isFunction(arg) {
  * @returns {boolean} - true if it is a lambda function
  */
 export function isLambda(arg) {
-    return arg && arg._jsonata_lambda === true;
+    if (arg && arg._jsonata_lambda === true) return true;
+    if (arg && arg.hasOwnProperty("input") && arg.hasOwnProperty("environment") && arg.hasOwnProperty("body"))
+        return true;
+    return false;
 }
 
 /**
