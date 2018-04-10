@@ -114,7 +114,11 @@ function validateArguments(signature: Signature, args: Box[], context: Box): Box
     // unboxing and reboxing may not work properly for arrays, functions and procedures.
     let uargs = args.map(v => unbox(v));
     var validatedArgs = signature.validate(uargs, unbox(context));
-    return validatedArgs.map(x => boxValue(x));
+    // When boxing and unboxing for functions, we preserve [] as an array
+    // vs. returning undefined.
+    // TODO: Create a special "box" function for marshaling and unmarshaling
+    // for functions (this logic appears elsewhere so isn't DRY).
+    return validatedArgs.map(x => (Array.isArray(x) && x.length == 0 ? boxArray(x) : boxValue(x)));
 }
 
 /**
