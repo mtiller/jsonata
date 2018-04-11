@@ -63,8 +63,8 @@ function applyInner(proc: Box, args: Box[], context: Box, options: EvaluationOpt
         }
         case BoxType.Function: {
             let details = proc.details;
-            let validatedArgs = validateArguments(details.signature, args, context);
             let self = unbox(context);
+            let validatedArgs = validateArguments(details.signature, args, context);
             let val = details.implementation.apply(self, validatedArgs.map(unbox));
             if (Array.isArray(val) && val.length == 0) return boxArray(val);
             return boxValue(val);
@@ -113,11 +113,14 @@ function validateArguments(signature: Signature, args: Box[], context: Box): Box
     // TODO: Need a version of signature.validate that takes boxes because
     // unboxing and reboxing may not work properly for arrays, functions and procedures.
     let uargs = args.map(v => unbox(v));
-    var validatedArgs = signature.validate(uargs, unbox(context));
+    let ucon = unbox(context);
+    var validatedArgs = signature.validate(uargs, ucon);
     // When boxing and unboxing for functions, we preserve [] as an array
     // vs. returning undefined.
     // TODO: Create a special "box" function for marshaling and unmarshaling
     // for functions (this logic appears elsewhere so isn't DRY).
+    // Such a function should marshal lambdas as FUNCTIONS (closures) so there
+    // is no need to handle them specially inside the function.
     return validatedArgs.map(x => (Array.isArray(x) && x.length == 0 ? boxArray(x) : boxValue(x)));
 }
 

@@ -330,10 +330,8 @@ function evaluateName(expr: ast.NameNode, input: Box, environment: JEnv): Box {
 function evaluateWildcard(expr: ast.WildcardNode, input: Box, environment: JEnv): Box {
     if (input.type === BoxType.Void) return ubox;
     let val = unbox(input);
-    if (val === undefined || val === null) return ubox;
-    // We don't need to check if val is an object because Object.keys() works
-    // for all values, it just returns an empty list for anything but an object.
-    return boxValue(flatten(Object.keys(val).map((k, i) => val[k])));
+    if (val !== null && typeof val === "object") return boxValue(flatten(Object.keys(val).map((k, i) => val[k])));
+    return ubox;
 }
 
 function evaluatePredicate(expr: ast.PredicateNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
@@ -990,6 +988,7 @@ function descendants(val: any): Array<any> {
         return val.reduce((prev, x) => [...prev, ...descendants(x)], []);
     } else {
         if (typeof val != "object") return [val];
+        if (val === null) return [null];
         return Object.keys(val).reduce((prev, x) => [...prev, ...descendants(val[x])], [val]);
     }
 }
