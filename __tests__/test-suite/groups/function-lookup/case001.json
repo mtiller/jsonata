@@ -2,10 +2,5 @@
     "expr": "$lookup(Account.Order.Product, \"Product Name\")",
     "dataset": "dataset5",
     "bindings": {},
-    "result": [
-        "Bowler Hat",
-        "Trilby hat",
-        "Bowler Hat",
-        "Cloak"
-    ]
+    "result": ["Bowler Hat", "Trilby hat", "Bowler Hat", "Cloak"]
 }

@@ -39,7 +39,6 @@ export class JEnv {
             this.bindFunction("not", defineFunction(funcs.functionNot, "<x-:b>"));
             this.bindFunction("zip", defineFunction(funcs.functionZip, "<a+>"));
             this.bindFunction("keys", defineFunction(funcs.functionKeys, "<x-:a<s>>"));
-            this.bindFunction("lookup", defineFunction(funcs.functionLookup, "<x-s:x>"));
             this.bindFunction("append", defineFunction(funcs.functionAppend, "<xx:a>"));
             this.bindFunction("exists", defineFunction(funcs.functionExists, "<x:b>"));
             this.bindFunction("spread", defineFunction(funcs.functionSpread, "<x-:a<o>>"));
@@ -73,6 +72,9 @@ export class JEnv {
             // recursively evaluate their arguments.
             this.bindFunction("sort", defineFunction(sync.functionSort(options), "<af?:a>"));
             this.bindFunction("sift", defineFunction(sync.functionSift(options), "<o-f?:o>"));
+
+            // Had to reimplement this since original version used evaluation
+            this.bindFunction("lookup", defineFunction(sync.functionLookup, "<x-s:x>"));
         }
     }
     bindFunction(name: string, f: FunctionDefinition) {

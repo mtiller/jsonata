@@ -522,3 +522,23 @@ export function functionSift(options: EvaluationOptions) {
         return result;
     };
 }
+
+/**
+ * Return value from an object for a given key
+ * @param {Object} object - Object
+ * @param {String} key - Key in object
+ * @returns {*} Value of key in object
+ */
+export function functionLookup(object, key) {
+    let extract = (obj: {}) => {
+        if (obj === undefined || obj === null) return undefined;
+        return obj[key];
+    };
+    if (Array.isArray(object)) {
+        let vals = object.map(extract);
+        let filtered = vals.filter(x => x !== undefined);
+        if (filtered.length == 0) return undefined;
+        return filtered;
+    }
+    return extract(object);
+}
