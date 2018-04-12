@@ -1,0 +1,6 @@
+{
+    "expr": "($square := $power(?, 2) ~> $power(?, 1); $square(5))",
+    "dataset": null,
+    "bindings": {},
+    "result": 25
+}

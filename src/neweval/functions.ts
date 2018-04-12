@@ -162,6 +162,13 @@ export function functionReplace(options: EvaluationOptions) {
     };
 }
 
+function numberOfArgs(f) {
+    if (f === null || f === undefined) throw new Error("Expected function, but got " + f);
+    if (typeof f === "function") return f.length;
+    if (f.hasOwnProperty("implementation")) return f.implementation.length;
+    return f.arguments.length;
+}
+
 /**
  * Create a map from an array of arguments
  * @param {Array} [arr] - array to map over
@@ -180,10 +187,11 @@ export function functionMap(options: EvaluationOptions) {
         for (var i = 0; i < arr.length; i++) {
             var func_args = [arr[i]]; // the first arg (value) is required
             // the other two are optional - only supply it if the function can take it
-            var length =
-                typeof func === "function"
-                    ? func.length
-                    : func._jsonata_function === true ? func.implementation.length : func.arguments.length;
+            let length = numberOfArgs(func);
+            // var length =
+            //     typeof func === "function"
+            //         ? func.length
+            //         : func._jsonata_function === true ? func.implementation.length : func.arguments.length;
             if (length >= 2) {
                 func_args.push(i);
             }
@@ -256,13 +264,14 @@ export function functionFoldLeft(options: EvaluationOptions) {
         }
 
         var result;
-
+        let length = numberOfArgs(func);
         if (
-            !(
-                func.length === 2 ||
-                (func._jsonata_function === true && func.implementation.length === 2) ||
-                func.arguments.length === 2
-            )
+            length !== 2
+            // !(
+            //     func.length === 2 ||
+            //     (func._jsonata_function === true && func.implementation.length === 2) ||
+            //     func.arguments.length === 2
+            // )
         ) {
             throw {
                 stack: new Error().stack,
