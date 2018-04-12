@@ -152,8 +152,12 @@ export function partialApplyProcedure(
         if (arg && arg.type === "operator" && arg.value === "?") {
             unevaluated.push(param);
         } else {
-            let val = doEval(arg, input, environment, options);
-            env.bindBox(param.value, val);
+            if (arg) {
+                let val = doEval(arg, input, environment, options);
+                env.bindBox(param.value, val);
+            } else {
+                env.bindBox(param.value, ubox);
+            }
         }
     });
 

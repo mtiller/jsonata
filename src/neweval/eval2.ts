@@ -889,8 +889,8 @@ function evaluateApplyExpression(expr: ast.ApplyNode, input: Box, environment: J
 
         let details: FunctionDetails = {
             implementation: x => {
-                let inner = apply(func, [boxValue(x)], input, options);
-                let ret = apply(lhs, [inner], input, options);
+                let inner = apply(lhs, [boxValue(x)], input, options);
+                let ret = apply(func, [inner], input, options);
                 // TODO: We need to handle arrays a funny way?
                 return unbox(ret);
             },

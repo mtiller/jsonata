@@ -1,0 +1,6 @@
+{
+    "expr": "($square := function($x){$x*$x}; [1..5] ~> ($sum ~> $square))",
+    "dataset": null,
+    "bindings": {},
+    "result": 225
+}
