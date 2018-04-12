@@ -1,5 +1,5 @@
 import * as ast from "../ast";
-import { ProcedureDetails } from "./procs";
+import { ProcedureDetails, FunctionDetails } from "./procs";
 import { unexpectedValue, isArrayOfNumbers, flatten, isArrayOfStrings, isNumeric } from "../utils";
 import { JEnv } from "./environment";
 import * as errors from "../errors";
@@ -26,7 +26,7 @@ import {
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber } from "util";
 import { apply, partialApplyProcedure, partialApplyNativeFunction } from "./apply";
-import { parseSignature } from "../signatures";
+import { parseSignature /* Signature */ } from "../signatures";
 import { functionString } from "../functions";
 import { EvaluationOptions, normalizeOptions } from "./options";
 
@@ -885,8 +885,18 @@ function evaluateApplyExpression(expr: ast.ApplyNode, input: Box, environment: J
     }
 
     if (boxContainsFunction(lhs)) {
-        let inner = apply(lhs, [input], lhs, options);
-        return apply(func, [inner], func, options);
+        // Needs to be equivalent to: function($f, $g) { function($x){ $g($f($x)) } }
+
+        let details: FunctionDetails = {
+            implementation: x => {
+                let inner = apply(func, [boxValue(x)], input, options);
+                let ret = apply(lhs, [inner], input, options);
+                // TODO: We need to handle arrays a funny way?
+                return unbox(ret);
+            },
+            signature: undefined,
+        };
+        return boxFunction(details);
     } else {
         // TODO: In v1.5, the third argument here is environment?!?
         return apply(func, [lhs], input, options);

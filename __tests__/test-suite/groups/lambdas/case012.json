@@ -1,0 +1,6 @@
+{
+    "expr": "function($f,$g){ function($x) { $g($f($x)) } }($uppercase, $trim)(\"  foo bar  \")",
+    "data": null,
+    "bindings": {},
+    "result": "FOO BAR"
+}
