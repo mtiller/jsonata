@@ -324,7 +324,7 @@ function evaluatePartialApplication(
 
 function evaluateName(expr: ast.NameNode, input: Box, environment: JEnv): Box {
     if (input.type === BoxType.Void) return ubox;
-    return boxmap(input, elem => (typeof elem === "object" ? elem[expr.value] : undefined));
+    return boxmap(input, elem => (elem !== null && typeof elem === "object" ? elem[expr.value] : undefined));
 }
 
 function evaluateWildcard(expr: ast.WildcardNode, input: Box, environment: JEnv): Box {
