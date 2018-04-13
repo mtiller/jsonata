@@ -2,7 +2,7 @@
     "expr": "Account.Order.Product{`Product Name`: Price, SKU: Price}",
     "dataset": "dataset5",
     "bindings": {},
-    "skip": true,
+    "skip": false,
     "comment": "Waiting on issue #163 to be resolve",
     "result": {
         "Bowler Hat": [34.45, 34.45],

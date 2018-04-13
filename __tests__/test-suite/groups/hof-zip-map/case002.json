@@ -1,7 +1,7 @@
 {
     "expr": "(  $data := {    \"one\": [1],    \"two\": [5]  };  $data[].$zip(one, two) ~> $map($sum)) ",
     "data": null,
-    "skip": true,
+    "skip": false,
     "comment": "Need to finalize semantics of [] operator, see #196",
     "bindings": {},
     "result": 6

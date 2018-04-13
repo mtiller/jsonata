@@ -2,7 +2,7 @@
     "expr": "Phone{type: number[]}",
     "dataset": "dataset1",
     "bindings": {},
-    "skip": true,
+    "skip": false,
     "comment": "Depends on resolution of #163",
     "result": {
         "home": ["0203 544 1234"],

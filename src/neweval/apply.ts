@@ -185,25 +185,33 @@ export function partialApplyNativeFunction(
     environment: JEnv,
     options: EvaluationOptions,
 ): Box {
-    // create a lambda function that wraps and invokes the native function
-    // get the list of declared arguments from the native function
-    // this has to be picked out from the toString() value
+    // This method is called when we a native function is partially evaluated.
+    // What this means is that **some** arguments of the native function have already
+    // been specified and bound but others are "unbound".
 
-    // const sigArgs = getNativeFunctionArguments(f);
+    // We can determine whether an argument is bound or not by looping over the arguments
+    // (they are found in the `args` variable).  Any argument that is of type 'operator'
+    // is "unbound", all others are bound.
 
-    // let proc: ProcedureDetails = {
-    //     body: (f as any) as ast.ASTNode,
-    //     input: input,
-    //     arguments: sigArgs.map((arg): ast.VariableNode => ({ type: "variable", value: arg, position: 0 })),
-    //     signature: undefined,
-    //     environment: environment,
-    //     options: options,
-    //     thunk: false,
-    // };
+    // To address this partial evaluation, we create a new function that accepts
+    // as arguments values for the unbound variables.  We then combine these values
+    // for the unbound variables with the current values for the bound variables.
 
+    // The variable 'pargs' here are the positional (unnamed) arguments that we
+    // will shortly match up with the unbound variables.  Internally, we construct
+    // the full set of arguments, 'fargs', that we will pass to the underlying
+    // native function, 'f', by iterating over the 'args' and either
     let rest = (...pargs: any[]) => {
         let pos = 0;
-        let fargs: any[] = [];
+        let fargs = args.map(arg => {
+            if (arg.type === "operator") {
+                return pargs[pos++];
+            } else {
+                let bval = doEval(arg, input, environment, options);
+                // TODO: Use special FFI unbox?
+                return unbox(bval);
+            }
+        });
         args.forEach(arg => {
             if (arg.type === "operator") {
                 fargs.push(pargs[pos]);
@@ -221,9 +229,6 @@ export function partialApplyNativeFunction(
         implementation: rest,
         signature: undefined,
     });
-    // TODO: Craft a closure that evaluates everything and just return that as a function
-    // that takes positional arguments?!?
-    // return partialApplyProcedure(proc, args, input, environment, options);
 }
 
 /**

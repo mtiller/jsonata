@@ -2,7 +2,7 @@
     "expr": "Phone{type: $join(number, \", \"), \"phone\":number}",
     "dataset": "dataset1",
     "bindings": {},
-    "skip": true,
+    "skip": false,
     "comment": "Waiting on issue #163 to be resolve",
     "result": {
         "home": "0203 544 1234",

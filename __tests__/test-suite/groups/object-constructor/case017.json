@@ -2,7 +2,7 @@
     "expr": "Account.Order.Product{$.\"Product Name\": Price, $.\"Product Name\": Price}",
     "dataset": "dataset5",
     "bindings": {},
-    "skip": true,
+    "skip": false,
     "comment": "Waiting on issue #163 to be resolve",
     "code": "D1009"
 }
