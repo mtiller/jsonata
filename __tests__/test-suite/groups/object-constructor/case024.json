@@ -4,7 +4,5 @@
     "bindings": {},
     "skip": false,
     "comment": "Waiting on issue #163 to be resolve",
-    "result": {
-        "foo": ["x", "x", "y", "y"]
-    }
+    "code": "D1009"
 }

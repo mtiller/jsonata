@@ -100,7 +100,7 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
         }
         case "group": {
             let lhs = doEval(expr.lhs, input, environment, options);
-            return evaluateGroup_overwrite(expr.groupings, lhs, environment, options);
+            return evaluateGroup(expr.groupings, lhs, environment, options);
         }
         case "condition": {
             let cond = doEval(expr.condition, input, environment, options);
@@ -653,104 +653,104 @@ function evaluateUnaryMinus(expr: ast.UnaryMinusNode, input: Box, environment: J
     }
 }
 
-// This is an alternative that stores the value expression to be applied to each
-// input value.  The problem with this is that it fails for object-constructor/case022.json.
-export function evaluateGroup_overwrite(
-    groupings: ast.ASTNode[][],
-    input: Box,
-    environment: JEnv,
-    options: EvaluationOptions,
-): Box {
-    let result: { [key: string]: Array<{ expr: ast.ASTNode; input: Box }> } = {};
-    // We loop first over all inputs and for each input
-    forEachValue(input, x => {
-        // Next, we loop over the pairs of key and value
-        groupings.forEach(grouping => {
-            // TODO: Convert this array to an object so we can refer to this by
-            // rather than by index.
-            let keyExpr = grouping[0];
-            let valueExpr = grouping[1];
+// // This is an alternative that stores the value expression to be applied to each
+// // input value.  The problem with this is that it fails for object-constructor/case022.json.
+// export function evaluateGroup_overwrite(
+//     groupings: ast.ASTNode[][],
+//     input: Box,
+//     environment: JEnv,
+//     options: EvaluationOptions,
+// ): Box {
+//     let result: { [key: string]: Array<{ expr: ast.ASTNode; input: Box }> } = {};
+//     // We loop first over all inputs and for each input
+//     forEachValue(input, x => {
+//         // Next, we loop over the pairs of key and value
+//         groupings.forEach(grouping => {
+//             // TODO: Convert this array to an object so we can refer to this by
+//             // rather than by index.
+//             let keyExpr = grouping[0];
+//             let valueExpr = grouping[1];
 
-            // Now, evaluate the key expression.
-            let keyBox = doEval(keyExpr, x, environment, options);
+//             // Now, evaluate the key expression.
+//             let keyBox = doEval(keyExpr, x, environment, options);
 
-            // If the key isn't a boxed scalar string, then this is an error
-            // TODO: Perhaps just a single string value is enough...scalar too strict?
-            if (!boxType(keyBox, "string")) {
-                throw {
-                    code: "T1003",
-                    stack: new Error().stack,
-                    position: grouping[0].position,
-                    value: keyBox,
-                };
-            }
-            // Extract the actual string value
-            let key = unbox(keyBox) as string;
-            // Figure out all current values for this key (or an empty array if we
-            // don't have any
-            result[key] = [{ expr: valueExpr, input: x }];
-        });
-    });
-    // At this point, our result is a mapping from keys to Box[].  We need to first
-    // defragment each Box[] into a Box and then unbox it.
-    let ret = Object.keys(result).reduce((prev, key) => {
-        let values = result[key].map(res => doEval(res.expr, res.input, environment, options));
-        prev[key] = unbox(defragmentBox(values));
-        return prev;
-    }, {});
-    // Take the resulting object and return it.
-    return boxValue(ret);
-}
+//             // If the key isn't a boxed scalar string, then this is an error
+//             // TODO: Perhaps just a single string value is enough...scalar too strict?
+//             if (!boxType(keyBox, "string")) {
+//                 throw {
+//                     code: "T1003",
+//                     stack: new Error().stack,
+//                     position: grouping[0].position,
+//                     value: keyBox,
+//                 };
+//             }
+//             // Extract the actual string value
+//             let key = unbox(keyBox) as string;
+//             // Figure out all current values for this key (or an empty array if we
+//             // don't have any
+//             result[key] = [{ expr: valueExpr, input: x }];
+//         });
+//     });
+//     // At this point, our result is a mapping from keys to Box[].  We need to first
+//     // defragment each Box[] into a Box and then unbox it.
+//     let ret = Object.keys(result).reduce((prev, key) => {
+//         let values = result[key].map(res => doEval(res.expr, res.input, environment, options));
+//         prev[key] = unbox(defragmentBox(values));
+//         return prev;
+//     }, {});
+//     // Take the resulting object and return it.
+//     return boxValue(ret);
+// }
 
-// This is an alternative that stores the value expression to be applied to each
-// input value.  The problem with this is that it fails for object-constructor/case022.json.
-export function evaluateGroup_fix(
-    groupings: ast.ASTNode[][],
-    input: Box,
-    environment: JEnv,
-    options: EvaluationOptions,
-): Box {
-    let result: { [key: string]: Array<{ expr: ast.ASTNode; input: Box }> } = {};
-    // We loop first over all inputs and for each input
-    forEachValue(input, x => {
-        // Next, we loop over the pairs of key and value
-        groupings.forEach(grouping => {
-            // TODO: Convert this array to an object so we can refer to this by
-            // rather than by index.
-            let keyExpr = grouping[0];
-            let valueExpr = grouping[1];
+// // This is an alternative that stores the value expression to be applied to each
+// // input value.  The problem with this is that it fails for object-constructor/case022.json.
+// export function evaluateGroup_fix(
+//     groupings: ast.ASTNode[][],
+//     input: Box,
+//     environment: JEnv,
+//     options: EvaluationOptions,
+// ): Box {
+//     let result: { [key: string]: Array<{ expr: ast.ASTNode; input: Box }> } = {};
+//     // We loop first over all inputs and for each input
+//     forEachValue(input, x => {
+//         // Next, we loop over the pairs of key and value
+//         groupings.forEach(grouping => {
+//             // TODO: Convert this array to an object so we can refer to this by
+//             // rather than by index.
+//             let keyExpr = grouping[0];
+//             let valueExpr = grouping[1];
 
-            // Now, evaluate the key expression.
-            let keyBox = doEval(keyExpr, x, environment, options);
+//             // Now, evaluate the key expression.
+//             let keyBox = doEval(keyExpr, x, environment, options);
 
-            // If the key isn't a boxed scalar string, then this is an error
-            // TODO: Perhaps just a single string value is enough...scalar too strict?
-            if (!boxType(keyBox, "string")) {
-                throw {
-                    code: "T1003",
-                    stack: new Error().stack,
-                    position: grouping[0].position,
-                    value: keyBox,
-                };
-            }
-            // Extract the actual string value
-            let key = unbox(keyBox) as string;
-            // Figure out all current values for this key (or an empty array if we
-            // don't have any
-            let cur = result[key] || [];
-            result[key] = [...cur, { expr: valueExpr, input: x }];
-        });
-    });
-    // At this point, our result is a mapping from keys to Box[].  We need to first
-    // defragment each Box[] into a Box and then unbox it.
-    let ret = Object.keys(result).reduce((prev, key) => {
-        let values = result[key].map(res => doEval(res.expr, res.input, environment, options));
-        prev[key] = unbox(defragmentBox(values));
-        return prev;
-    }, {});
-    // Take the resulting object and return it.
-    return boxValue(ret);
-}
+//             // If the key isn't a boxed scalar string, then this is an error
+//             // TODO: Perhaps just a single string value is enough...scalar too strict?
+//             if (!boxType(keyBox, "string")) {
+//                 throw {
+//                     code: "T1003",
+//                     stack: new Error().stack,
+//                     position: grouping[0].position,
+//                     value: keyBox,
+//                 };
+//             }
+//             // Extract the actual string value
+//             let key = unbox(keyBox) as string;
+//             // Figure out all current values for this key (or an empty array if we
+//             // don't have any
+//             let cur = result[key] || [];
+//             result[key] = [...cur, { expr: valueExpr, input: x }];
+//         });
+//     });
+//     // At this point, our result is a mapping from keys to Box[].  We need to first
+//     // defragment each Box[] into a Box and then unbox it.
+//     let ret = Object.keys(result).reduce((prev, key) => {
+//         let values = result[key].map(res => doEval(res.expr, res.input, environment, options));
+//         prev[key] = unbox(defragmentBox(values));
+//         return prev;
+//     }, {});
+//     // Take the resulting object and return it.
+//     return boxValue(ret);
+// }
 
 interface KeyData {
     items: JSValue[];
