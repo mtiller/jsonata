@@ -2,8 +2,6 @@
     "expr": "Phone{type: number[]}",
     "dataset": "dataset1",
     "bindings": {},
-    "skip": false,
-    "comment": "Depends on resolution of #163",
     "result": {
         "home": ["0203 544 1234"],
         "office": ["01962 001234", "01962 001235"],

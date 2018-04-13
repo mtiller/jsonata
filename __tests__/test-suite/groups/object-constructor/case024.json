@@ -2,7 +2,5 @@
     "expr": "{ \"foo\": name, \"foo\": name }",
     "data": [{ "name": "x" }, { "name": "y" }],
     "bindings": {},
-    "skip": false,
-    "comment": "Waiting on issue #163 to be resolve",
     "code": "D1009"
 }

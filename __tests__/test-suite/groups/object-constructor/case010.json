@@ -2,8 +2,6 @@
     "expr": "Account.Order.Product{$string(ProductID): Price}",
     "dataset": "dataset5",
     "bindings": {},
-    "skip": false,
-    "comment": "Waiting on issue #163 to be resolve",
     "result": {
         "345664": 107.99,
         "858236": 21.67,

@@ -116,6 +116,15 @@ describe("JSONata Test Suite", () => {
                             // Second is that a (defined) result was provided.  In this case,
                             // we do a deep equality check against the expected result.
                             let result = expr.evaluate(dataset, testcase.bindings);
+                            if (
+                                result !== null &&
+                                typeof result === "object" &&
+                                result.hasOwnProperty("keepSingleton")
+                            ) {
+                                // If the result was tagged with the keepSingleton
+                                // property, remove it so we can get an accurate comparison
+                                delete result["keepSingleton"];
+                            }
                             expect(result).toEqual(testcase.result);
 
                             if (test2) {

@@ -3,8 +3,6 @@
     "dataset": null,
     "timelimit": 2000,
     "depth": 302,
-    "skip": true,
-    "comment": "No provision to limit depth for now",
     "bindings": {},
     "result": 9.33262154439441e155
 }

@@ -205,6 +205,12 @@ export function functionMap(options: EvaluationOptions) {
             }
         }
 
+        // Ideally, this could be done by boxReturn.  But it turns out that the
+        // results returned by various functions are a bit inconsistent.  When
+        // other functions have a single result (e.g., $product), they return
+        // a scalar.  I'm not sure how v1.5.x, but I think it has something to
+        // do with the fact that it returned a "sequence" here.
+        if (Array.isArray(result) && result.length == 1) return result[0];
         return result;
     };
 }
