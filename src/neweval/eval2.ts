@@ -293,8 +293,9 @@ function evaluatePartialApplication(
         case BoxType.Value:
             if (proc.scalar) {
                 let val = proc.values[0];
+                // This shouldn't happen, boxValue shouldn't allow it.
                 if (typeof val === "function") {
-                    return partialApplyNativeFunction(val, expr.arguments, input, environment, options);
+                    throw new Error("Got a ValueBox with a function inside?!");
                 }
             }
             throw errors.error({
@@ -305,21 +306,6 @@ function evaluatePartialApplication(
                 code: "T1008",
             });
     }
-    // if (isLambda(proc)) {
-    //     result = partialApplyProcedure(proc, evaluatedArgs);
-    // } else if (proc && proc._jsonata_function === true) {
-    //     result = partialApplyNativeFunction(proc.implementation, evaluatedArgs);
-    // } else if (typeof proc === "function") {
-    //     result = partialApplyNativeFunction(proc, evaluatedArgs);
-    // } else {
-    //     throw {
-    //         code: "T1008",
-    //         stack: new Error().stack,
-    //         position: expr.position,
-    //         token: expr.procedure.type === "path" ? expr.procedure.steps[0].value : expr.procedure.value,
-    //     };
-    // }
-    // return result;
 }
 
 function evaluateName(expr: ast.NameNode, input: Box, environment: JEnv): Box {

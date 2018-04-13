@@ -1,7 +1,7 @@
 import { doEval } from "./eval2";
 import { EvaluationOptions } from "./options";
 import { ProcedureDetails } from "./procs";
-import { unbox, boxValue, BoxType, Box, boxLambda, ubox, boxArray } from "./box";
+import { unbox, boxValue, BoxType, Box, boxLambda, ubox, boxArray, boxFunction } from "./box";
 import { JEnv } from "./environment";
 import { Signature } from "../signatures";
 import { unexpectedValue } from "../utils";
@@ -189,19 +189,41 @@ export function partialApplyNativeFunction(
     // get the list of declared arguments from the native function
     // this has to be picked out from the toString() value
 
-    const sigArgs = getNativeFunctionArguments(f);
+    // const sigArgs = getNativeFunctionArguments(f);
 
-    let proc: ProcedureDetails = {
-        body: (f as any) as ast.ASTNode,
-        input: input,
-        arguments: sigArgs.map((arg): ast.VariableNode => ({ type: "variable", value: arg, position: 0 })),
-        signature: undefined,
-        environment: environment,
-        options: options,
-        thunk: false,
+    // let proc: ProcedureDetails = {
+    //     body: (f as any) as ast.ASTNode,
+    //     input: input,
+    //     arguments: sigArgs.map((arg): ast.VariableNode => ({ type: "variable", value: arg, position: 0 })),
+    //     signature: undefined,
+    //     environment: environment,
+    //     options: options,
+    //     thunk: false,
+    // };
+
+    let rest = (...pargs: any[]) => {
+        let pos = 0;
+        let fargs: any[] = [];
+        args.forEach(arg => {
+            if (arg.type === "operator") {
+                fargs.push(pargs[pos]);
+                pos++;
+            } else {
+                let bval = doEval(arg, input, environment, options);
+                fargs.push(unbox(bval));
+            }
+        });
+        let ret = f(...fargs);
+        return ret;
     };
 
-    return partialApplyProcedure(proc, args, input, environment, options);
+    return boxFunction({
+        implementation: rest,
+        signature: undefined,
+    });
+    // TODO: Craft a closure that evaluates everything and just return that as a function
+    // that takes positional arguments?!?
+    // return partialApplyProcedure(proc, args, input, environment, options);
 }
 
 /**

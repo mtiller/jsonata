@@ -2,6 +2,5 @@
     "expr": "($product := $reduce(?, $power); $product([2, 3, 4]))",
     "dataset": null,
     "bindings": {},
-    "only": true,
     "result": 4096
 }
