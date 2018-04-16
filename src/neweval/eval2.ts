@@ -24,10 +24,8 @@ import {
     fragmentBox,
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
-import { isNumber } from "util";
 import { apply, partialApplyProcedure, partialApplyNativeFunction } from "./apply";
-import { parseSignature /* Signature */ } from "../signatures";
-import { functionString } from "../functions";
+import { parseSignature } from "../signatures";
 import { EvaluationOptions, normalizeOptions } from "./options";
 
 export function eval2(
@@ -105,7 +103,10 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return cur;
         }
         case "binary": {
-            return evaluateBinaryOperation(expr, input, environment, options);
+            let lhs = doEval(expr.lhs, input, environment, options);
+            let rhs = doEval(expr.rhs, input, environment, options);
+            let op = expr.value;
+            return semantics.evaluateBinaryOperation(lhs, rhs, op);
         }
         case "lambda": {
             return evaluateLambda(expr, input, environment, options);
@@ -232,176 +233,6 @@ function evaluatePartialApplication(
             throw errors.error({
                 code: "T1008",
             });
-    }
-}
-
-function evaluateBinaryOperation(
-    expr: ast.BinaryOperationNode,
-    input: Box,
-    environment: JEnv,
-    options: EvaluationOptions,
-): Box {
-    let lhs = unbox(doEval(expr.lhs, input, environment, options)) as any;
-    let rhs = unbox(doEval(expr.rhs, input, environment, options)) as any;
-    let value = expr.value;
-    switch (value) {
-        case "+":
-        case "-":
-        case "*":
-        case "/":
-        case "%": {
-            if (lhs === undefined || rhs === undefined) return ubox;
-            if (!isNumeric(lhs)) {
-                throw errors.error({
-                    code: "T2001",
-                    token: value,
-                });
-            }
-            if (!isNumeric(rhs)) {
-                throw errors.error({
-                    code: "T2002",
-                    token: value,
-                });
-            }
-            switch (value) {
-                case "+":
-                    return boxValue(lhs + rhs);
-                case "-":
-                    return boxValue(lhs - rhs);
-                case "*":
-                    return boxValue(lhs * rhs);
-                case "/":
-                    return boxValue(lhs / rhs);
-                case "%":
-                    return boxValue(lhs % rhs);
-                default:
-                    return unexpectedValue<string>(
-                        value,
-                        value,
-                        v => "Evaluate failed to handle case where binary operation was " + v,
-                    );
-            }
-        }
-        case "and":
-        case "or": {
-            if (lhs === undefined || rhs === undefined) return boxValue(false);
-            switch (value) {
-                case "and":
-                    return boxValue(!!lhs && !!rhs);
-                case "or":
-                    return boxValue(!!lhs || !!rhs);
-                default:
-                    return unexpectedValue<string>(
-                        value,
-                        value,
-                        v => "Evaluate failed to handle case where binary operation was " + v,
-                    );
-            }
-        }
-        case "=":
-        case "!=":
-        case "<":
-        case "<=":
-        case ">":
-        case ">=": {
-            if (lhs === undefined || rhs === undefined) return boxValue(false);
-            let ltype = typeof lhs;
-            let rtype = typeof rhs;
-
-            let validate = () => {
-                // if aa or bb are not string or numeric values, then throw an error
-                if (!(ltype === "string" || ltype === "number") || !(rtype === "string" || rtype === "number")) {
-                    throw {
-                        code: "T2010",
-                        stack: new Error().stack,
-                        value: !(ltype === "string" || ltype === "number") ? lhs : rhs,
-                    };
-                }
-
-                //if aa and bb are not of the same type
-                if (ltype !== rtype) {
-                    throw {
-                        code: "T2009",
-                        stack: new Error().stack,
-                        value: lhs,
-                        value2: rhs,
-                    };
-                }
-            };
-            switch (value) {
-                case "=":
-                    return boxValue(lhs === rhs);
-                case "!=":
-                    return boxValue(lhs !== rhs);
-                case "<":
-                    validate();
-                    return boxValue(lhs < rhs);
-                case "<=":
-                    validate();
-                    return boxValue(lhs <= rhs);
-                case ">":
-                    validate();
-                    return boxValue(lhs > rhs);
-                case ">=":
-                    validate();
-                    return boxValue(lhs >= rhs);
-                default:
-                    return unexpectedValue<string>(
-                        value,
-                        value,
-                        v => "Evaluate failed to handle case where binary operation was " + v,
-                    );
-            }
-        }
-        case "&": {
-            let lstr = lhs == undefined ? "" : functionString(lhs);
-            let rstr = rhs == undefined ? "" : functionString(rhs);
-            return boxValue(lstr + rstr);
-        }
-        case "..": {
-            if (lhs === undefined || rhs === undefined) return ubox;
-            if (!isNumber(lhs))
-                throw new Error("Invalid operand for LHS of " + value + " operator: " + JSON.stringify(lhs));
-            if (!isNumber(rhs))
-                throw new Error("Invalid operand for RHS of " + value + " operator: " + JSON.stringify(rhs));
-            if (!Number.isInteger(lhs)) {
-                throw {
-                    code: "T2003",
-                    stack: new Error().stack,
-                    value: lhs,
-                };
-            }
-            if (!Number.isInteger(rhs)) {
-                throw {
-                    code: "T2004",
-                    stack: new Error().stack,
-                    value: rhs,
-                };
-            }
-            let lhsv = lhs as number;
-            let rhsv = rhs as number;
-
-            // if the lhs is greater than the rhs, return undefined
-            if (lhsv > rhsv) return ubox;
-
-            let result = new Array(rhs - lhs + 1);
-            for (var item = lhs, index = 0; item <= rhs; item++, index++) {
-                result[index] = item;
-            }
-            return boxValue(result);
-        }
-        case "in": {
-            if (lhs === undefined || rhs === undefined) return boxValue(false);
-            if (!Array.isArray(rhs)) return boxValue(rhs === lhs);
-            return boxValue(rhs.some(x => x === lhs));
-        }
-        default:
-            /* istanbul ignore next */
-            return unexpectedValue<string>(
-                value,
-                value,
-                v => "Evaluate failed to handle case where binary operation was " + v,
-            );
     }
 }
 
