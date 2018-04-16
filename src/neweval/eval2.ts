@@ -1,13 +1,13 @@
 import * as ast from "../ast";
 import { ProcedureDetails, FunctionDetails } from "./procs";
-import { unexpectedValue, isArrayOfNumbers, flatten, isArrayOfStrings, isNumeric } from "../utils";
+import { unexpectedValue, isArrayOfNumbers, isArrayOfStrings, isNumeric } from "../utils";
 import { JEnv } from "./environment";
 import * as errors from "../errors";
+import * as semantics from "../semantics";
 import {
     JSValue,
     Box,
     ubox,
-    boxmap,
     boxValue,
     unbox,
     forEachValue,
@@ -22,6 +22,7 @@ import {
     boxArray,
     unboxArray,
     sortBox,
+    // fragmentBox,
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber } from "util";
@@ -51,19 +52,29 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return boxValue(expr.value);
         }
         case "variable": {
-            return evaluateVariable(expr, input, environment);
+            /* Get the variable name */
+            const varname = expr.value;
+            /* If the variable name is empty, then just return the input */
+            if (varname == "") return input;
+            /* Otherwise, lookup the variable in the environment */
+            return environment.lookup(varname);
         }
         case "name": {
-            return evaluateName(expr, input, environment);
+            return semantics.evaluateName(expr.value, input);
         }
         case "wildcard": {
-            return evaluateWildcard(expr, input, environment);
+            return semantics.evaluateWildcard(input);
         }
         /* These are all operator nodes of some kind (they have children) */
         case "array": {
-            return evaluateArray(expr, input, environment, options);
+            let vals = expr.expressions.map(c => doEval(c, input, environment, options));
+            return defragmentBox(vals, true);
         }
         case "predicate": {
+            // let lhs = doEval(expr.lhs, input, environment, options);
+            // let vals = fragmentBox(lhs);
+            // let conditions = vals.map(item => doEval(expr.condition, lhs, environment, options), false);
+            // return semantics.evaluatePredicate(lhs, conditions);
             return evaluatePredicate(expr, input, environment, options);
         }
         case "bind": {
@@ -158,20 +169,6 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
     }
 }
 
-function evaluateVariable(expr: ast.VariableNode, input: Box, environment: JEnv): Box {
-    /* Get the variable name */
-    const varname = expr.value;
-    /* If the variable name is empty, then just return the input */
-    if (varname == "") return input;
-    /* Otherwise, lookup the variable in the environment */
-    return environment.lookup(varname);
-}
-
-// function isVariable(expr: ast.ASTNode): boolean {
-//     if (expr.type == "predicate") return isVariable(expr.lhs);
-//     return expr.type == "variable";
-// }
-
 interface Path {
     head: Box;
     path: ast.ASTNode[];
@@ -253,19 +250,6 @@ function evaluatePartialApplication(
     environment: JEnv,
     options: EvaluationOptions,
 ): Box {
-    // let part = partition(expr.arguments, arg => arg.type === "operator" && arg.value === "?");
-    // let unevaluatedArgs = part.matched;
-    // let evaluatedArgs = part.unmatched;
-    // // evaluate the arguments
-    // var evaluatedArgs = [];
-    // for (var ii = 0; ii < expr.arguments.length; ii++) {
-    //     var arg = expr.arguments[ii];
-    //     if (arg.type === "operator" && arg.value === "?") {
-    //         evaluatedArgs.push(arg);
-    //     } else {
-    //         evaluatedArgs.push(yield * evaluate(arg, input, environment));
-    //     }
-    // }
     // lookup the procedure
     let proc = doEval(expr.procedure, input, environment, options);
     let uproc = unbox(proc);
@@ -308,19 +292,12 @@ function evaluatePartialApplication(
     }
 }
 
-function evaluateName(expr: ast.NameNode, input: Box, environment: JEnv): Box {
-    if (input.type === BoxType.Void) return ubox;
-    return boxmap(input, elem => (elem !== null && typeof elem === "object" ? elem[expr.value] : undefined));
-}
-
-function evaluateWildcard(expr: ast.WildcardNode, input: Box, environment: JEnv): Box {
-    if (input.type === BoxType.Void) return ubox;
-    let val = unbox(input);
-    if (val !== null && typeof val === "object") return boxValue(flatten(Object.keys(val).map((k, i) => val[k])));
-    return ubox;
-}
-
-function evaluatePredicate(expr: ast.PredicateNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
+export function evaluatePredicate(
+    expr: ast.PredicateNode,
+    input: Box,
+    environment: JEnv,
+    options: EvaluationOptions,
+): Box {
     /* First, fragement all values in the left and side into their own box */
     let lhs = doEval(expr.lhs, input, environment, options);
     /* Construct a predicate function that we can filter this list based on */
@@ -549,13 +526,6 @@ export function evaluateBinaryOperation(
                 v => "Evaluate failed to handle case where binary operation was " + v,
             );
     }
-}
-
-function evaluateArray(expr: ast.ArrayConstructorNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
-    // Evaluate every expression and reconstitute them by flattening (where
-    // allowed) but mark this result of all this as an array (preserve=true).
-    let vals = expr.expressions.map(c => doEval(c, input, environment, options));
-    return defragmentBox(vals, true);
 }
 
 function evaluateLambda(
