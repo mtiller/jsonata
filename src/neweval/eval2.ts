@@ -120,7 +120,14 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             });
         }
         case "function": {
-            return evaluateFunction(expr, input, environment, options);
+            // create the procedure
+            // can't assume that expr.procedure is a lambda type directly
+            // could be an expression that evaluates to a function (e.g. variable reference, parens expr etc.
+            // evaluate it generically first, then check that it is a function.  Throw error if not.
+            let proc = doEval(expr.procedure, input, environment, options);
+            let evaluatedArgs = expr.arguments.map(arg => doEval(arg, input, environment, options));
+
+            return evaluateFunction(proc, evaluatedArgs, expr, input, environment, options);
         }
         case "unary": {
             switch (expr.value) {
@@ -253,48 +260,39 @@ function evaluatePartialApplication(
  * @returns {*} Evaluated input data
  */
 function evaluateFunction(
+    proc: Box,
+    evaluatedArgs: Box[],
     expr: ast.FunctionInvocationNode,
     input: Box,
     environment: JEnv,
     options: EvaluationOptions,
 ): Box {
-    // create the procedure
-    // can't assume that expr.procedure is a lambda type directly
-    // could be an expression that evaluates to a function (e.g. variable reference, parens expr etc.
-    // evaluate it generically first, then check that it is a function.  Throw error if not.
-    let proc = doEval(expr.procedure, input, environment, options);
-
     let uproc = unbox(proc);
+    let headName: string | null = expr.procedure.type === "path" ? expr.procedure.steps[0].value : null;
 
     // If a) we couldn't evaluate the procedure expressiona and b) the procedure
     // was specified by a path and c) the first step in the path does exist, then
     // perhaps the user meant for the procedure to be a variable dereference and
     // simply forgot the leading $
-    if (
-        typeof uproc === "undefined" &&
-        expr.procedure.type === "path" &&
-        environment.lookup(expr.procedure.steps[0].value).type != BoxType.Void
-    ) {
+    if (typeof uproc === "undefined" && headName !== null && environment.lookup(headName).type != BoxType.Void) {
         // help the user out here if they simply forgot the leading $
-        throw {
+        throw errors.error({
             code: "T1005",
-            stack: new Error().stack,
-            position: expr.position,
-            token: expr.procedure.steps[0].value,
-        };
+            token: headName,
+        });
     }
-
-    let evaluatedArgs = expr.arguments.map(arg => doEval(arg, input, environment, options));
 
     // apply the procedure
     try {
+        // TODO: Refactor function types so we return closures that call apply
+        // rather than calling apply ourselves.
         let ret = apply(proc, evaluatedArgs, input, options);
         return ret;
     } catch (err) {
         // add the position field to the error
         err.position = expr.position;
         // and the function identifier
-        err.token = expr.procedure.type === "path" ? expr.procedure.steps[0].value : expr.procedure.value;
+        err.token = headName || expr.procedure.value;
         throw err;
     }
 }
