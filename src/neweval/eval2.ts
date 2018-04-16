@@ -76,10 +76,13 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return semantics.evaluatePredicate(lhs, preds);
         }
         case "bind": {
-            return evaluateBinding(expr, input, environment, options);
+            let val = doEval(expr.rhs, input, environment, options);
+            environment.bindBox(expr.lhs.value, val);
+            return val;
         }
         case "block": {
-            return evaluateBlock(expr, input, environment, options);
+            let nested = new JEnv(options, environment);
+            return expr.expressions.reduce((prev, e) => doEval(e, input, nested, options), ubox);
         }
         case "path": {
             return evaluatePathCompat(expr, input, environment, options);
@@ -290,20 +293,7 @@ function evaluatePartialApplication(
     }
 }
 
-function evaluateBinding(expr: ast.BindNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
-    let lhs = expr.lhs;
-    let x = lhs;
-    let val = doEval(expr.rhs, input, environment, options);
-    environment.bindBox(x.value, val);
-    return val;
-}
-
-export function evaluateBlock(expr: ast.BlockNode, input: Box, enclosing: JEnv, options: EvaluationOptions): Box {
-    let environment = new JEnv(options, enclosing);
-    return expr.expressions.reduce((prev, e) => doEval(e, input, environment, options), ubox);
-}
-
-export function evaluateBinaryOperation(
+function evaluateBinaryOperation(
     expr: ast.BinaryOperationNode,
     input: Box,
     environment: JEnv,
