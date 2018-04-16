@@ -1,5 +1,5 @@
 import * as ast from "../ast";
-import { ProcedureDetails, FunctionDetails } from "./procs";
+import { FunctionDetails } from "./procs";
 import { unexpectedValue, isArrayOfStrings, isNumeric } from "../utils";
 import { JEnv } from "./environment";
 import * as errors from "../errors";
@@ -109,7 +109,15 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return semantics.evaluateBinaryOperation(lhs, rhs, op);
         }
         case "lambda": {
-            return evaluateLambda(expr, input, environment, options);
+            return boxLambda({
+                input: input,
+                environment: environment,
+                options: options,
+                arguments: expr.arguments,
+                signature: expr.signature,
+                body: expr.body,
+                thunk: expr.thunk === true,
+            });
         }
         case "function": {
             return evaluateFunction(expr, input, environment, options);
@@ -234,27 +242,6 @@ function evaluatePartialApplication(
                 code: "T1008",
             });
     }
-}
-
-function evaluateLambda(
-    expr: ast.LambdaDefinitionNode,
-    input: Box,
-    environment: JEnv,
-    options: EvaluationOptions,
-): Box {
-    let procedure: ProcedureDetails = {
-        input: input,
-        environment: environment,
-        options: options,
-        arguments: expr.arguments,
-        signature: expr.signature,
-        body: expr.body,
-        thunk: false,
-    };
-    if (expr.thunk === true) {
-        procedure.thunk = true;
-    }
-    return boxLambda(procedure);
 }
 
 /**
