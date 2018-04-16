@@ -1,6 +1,6 @@
 import * as ast from "../ast";
 import { ProcedureDetails, FunctionDetails } from "./procs";
-import { unexpectedValue, isArrayOfNumbers, isArrayOfStrings, isNumeric } from "../utils";
+import { unexpectedValue, isArrayOfStrings, isNumeric } from "../utils";
 import { JEnv } from "./environment";
 import * as errors from "../errors";
 import * as semantics from "../semantics";
@@ -12,7 +12,6 @@ import {
     unbox,
     forEachValue,
     mapOverValues,
-    filterOverValues,
     boxContainsFunction,
     defragmentBox,
     boxLambda,
@@ -22,7 +21,7 @@ import {
     boxArray,
     unboxArray,
     sortBox,
-    // fragmentBox,
+    fragmentBox,
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { isNumber } from "util";
@@ -71,11 +70,10 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return defragmentBox(vals, true);
         }
         case "predicate": {
-            // let lhs = doEval(expr.lhs, input, environment, options);
-            // let vals = fragmentBox(lhs);
-            // let conditions = vals.map(item => doEval(expr.condition, lhs, environment, options), false);
-            // return semantics.evaluatePredicate(lhs, conditions);
-            return evaluatePredicate(expr, input, environment, options);
+            let lhs = doEval(expr.lhs, input, environment, options);
+            let vals = fragmentBox(lhs);
+            let preds = vals.map(val => doEval(expr.condition, val, environment, options));
+            return semantics.evaluatePredicate(lhs, preds);
         }
         case "bind": {
             return evaluateBinding(expr, input, environment, options);
@@ -290,59 +288,6 @@ function evaluatePartialApplication(
                 code: "T1008",
             });
     }
-}
-
-export function evaluatePredicate(
-    expr: ast.PredicateNode,
-    input: Box,
-    environment: JEnv,
-    options: EvaluationOptions,
-): Box {
-    /* First, fragement all values in the left and side into their own box */
-    let lhs = doEval(expr.lhs, input, environment, options);
-    /* Construct a predicate function that we can filter this list based on */
-    let predicate = filterPredicate(expr.condition, environment, options);
-    /* Use the predicate closure to filter the values in LHS */
-    return filterOverValues(lhs, predicate);
-}
-
-/**
- * This function returns a closure that we can use to filter a Box[].
- * @param predicate The AST node for the predicate expression
- * @param environment The environment in which the evaluation is done.
- */
-function filterPredicate(predicate: ast.ASTNode, environment: JEnv, options: EvaluationOptions) {
-    return (item: Box, ind: number, lhs: Box[]) => {
-        // Perform the evaluation of the predicate in the context of the value
-        // it applies to
-        let pv = doEval(predicate, item, environment, options);
-        // Get the array of JS values associated with the predicate evaluation
-        let res: JSValue[] = [];
-        switch (pv.type) {
-            case BoxType.Value: {
-                res = pv.values;
-                break;
-            }
-            case BoxType.Array: {
-                res = pv.values;
-                break;
-            }
-            default:
-                break;
-        }
-        // Compute the reverse index (negative number) for the item we evaluated
-        let rev = ind - lhs.length;
-        // Check if the predicate evaluated to an array of numbers?
-        if (isArrayOfNumbers(res)) {
-            // If so, floor all numbers and see our index or reverse index is in
-            // the list of values.
-            return res.map(Math.floor).some(n => n === ind || n === rev);
-        } else {
-            // If this isn't an array of numbers, treat the result of the predicate
-            // evaluation as truthy in deciding whether we include the item or not.
-            return !!unbox(pv);
-        }
-    };
 }
 
 function evaluateBinding(expr: ast.BindNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {

@@ -1,9 +1,9 @@
 import { Box, filterOverValues, BoxType, JSValue, unbox } from "../neweval/box";
 import { isArrayOfNumbers } from "../utils";
 
-export function evaluatePredicate(lhs: Box, conditions: Box[]): Box {
+export function evaluatePredicate(lhs: Box, preds: Box[]): Box {
     /* Construct a predicate function that we can filter this list based on */
-    let predicate = filterPredicate(conditions);
+    let predicate = filterPredicate(preds);
     /* Use the predicate closure to filter the values in LHS */
     return filterOverValues(lhs, predicate);
 }
@@ -13,11 +13,12 @@ export function evaluatePredicate(lhs: Box, conditions: Box[]): Box {
  * @param predicate The AST node for the predicate expression
  * @param environment The environment in which the evaluation is done.
  */
-function filterPredicate(conditions: Box[]) {
+function filterPredicate(vals: Box[]) {
     return (item: Box, ind: number, lhs: Box[]) => {
         // Perform the evaluation of the predicate in the context of the value
         // it applies to
-        let pv = conditions[ind];
+        //let pv = doEval(predicate, item, environment, options);
+        let pv = vals[ind];
         // Get the array of JS values associated with the predicate evaluation
         let res: JSValue[] = [];
         switch (pv.type) {
