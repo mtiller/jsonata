@@ -39,3 +39,10 @@ export type ASTNode =
     | opt.PathNode
     | opt.ApplyNode
     | opt.PredicateNode;
+
+export function nonpredicateNode(node: ASTNode): ASTNode {
+    if (node.type === "predicate") {
+        return nonpredicateNode(node.lhs);
+    }
+    return node;
+}

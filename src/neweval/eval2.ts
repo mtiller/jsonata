@@ -44,6 +44,7 @@ export function eval2(
     return unbox(result);
 }
 
+// TODO: Do not export!
 export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
     switch (expr.type) {
         /* These are all leaf node types (have no children) */
@@ -85,7 +86,23 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return expr.expressions.reduce((prev, e) => doEval(e, input, nested, options), ubox);
         }
         case "path": {
-            return evaluatePathCompat(expr, input, environment, options);
+            let first = doEval(expr.steps[0], input, environment, options);
+            let nonpred = ast.nonpredicateNode(expr.steps[0]);
+            let path = semantics.extractSteps(expr, input, first, nonpred, options.legacyMode);
+
+            let cur = path.path.reduce((prev, step, index) => {
+                let last = step.type !== "array" && index == path.path.length - 1;
+                // If the "head" is a ubox, then we still do a "map over".  But if
+                // any subsequent step yields a ubox, we are done because there is
+                // nothing to map over (see object-constructor case0007 for an example).
+                if (index > 0 && prev === ubox) return prev;
+                return mapOverValues(prev, c => doEval(step, c, environment, options), last);
+            }, path.head);
+
+            if (expr.keepSingletonArray) {
+                cur = boxArray(unboxArray(cur));
+            }
+            return cur;
         }
         case "binary": {
             return evaluateBinaryOperation(expr, input, environment, options);
@@ -168,81 +185,6 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
                 v => "Evaluate failed to handle case where expression type was " + v.type,
             );
     }
-}
-
-interface Path {
-    head: Box;
-    path: ast.ASTNode[];
-}
-
-function nonpredicateNode(node: ast.ASTNode): ast.ASTNode {
-    if (node.type === "predicate") {
-        return nonpredicateNode(node.lhs);
-    }
-    return node;
-}
-
-function extractSteps(expr: ast.PathNode, input: Box, environment: JEnv, options: EvaluationOptions): Path {
-    let first = expr.steps[0];
-    let rest = expr.steps.slice(1);
-    if (options.legacyMode) {
-        let nonpred = nonpredicateNode(first);
-        // If first node is an array (constructor), then we should treat the array
-        // as the effective input
-        if (nonpred.type === "array" && nonpred.consarray) {
-            return {
-                head: doEval(first, input, environment, options),
-                path: rest,
-            };
-        }
-        // If the first is a variable, then we need to start our path with a
-        // scalar input vector...
-        if (nonpred.type === "variable") {
-            return {
-                head: boxArray([unbox(input)]),
-                path: expr.steps,
-            };
-        }
-        switch (input.type) {
-            case BoxType.Void:
-                return { head: boxArray([unbox(input)]), path: expr.steps };
-            case BoxType.Array:
-                return { head: input, path: expr.steps };
-            case BoxType.Value: {
-                if (input.values.length == 0) return { head: boxArray([unbox(input)]), path: expr.steps };
-                return { head: input, path: expr.steps };
-            }
-            // ???
-            default:
-                return { head: input, path: expr.steps };
-        }
-    }
-
-    throw new Error("Cannot evaluate non-legacy paths (yet)");
-}
-
-function evaluatePathCompat(expr: ast.PathNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
-    let path = extractSteps(expr, input, environment, options);
-
-    let result = path.path.reduce(
-        (prev, step, index) =>
-            // If the "head" is a ubox, then we still do a "map over".  But if
-            // any subsequent step yields a ubox, we are done because there is
-            // nothing to map over (see object-constructor case0007 for an example).
-            index > 0 && prev === ubox
-                ? ubox
-                : mapOverValues(
-                      prev,
-                      c => doEval(step, c, environment, options),
-                      step.type !== "array" && index == path.path.length - 1,
-                  ),
-        path.head,
-    );
-
-    if (expr.keepSingletonArray) {
-        result = boxArray(unboxArray(result));
-    }
-    return result;
 }
 
 function evaluatePartialApplication(
