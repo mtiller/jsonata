@@ -17,26 +17,18 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
             break;
         case "unary": {
             let expr1 = expr;
-            switch (expr1.value) {
-                case "-":
-                    expr = {
-                        ...base(expr1),
-                        expression: elaboratePredicates(expr1.expression),
-                    } as ast.UnaryMinusNode;
-                    break;
-                case "{":
-                    expr = {
-                        ...base(expr1),
-                        lhs: expr1.lhs.map(x1 => x1.map(x2 => elaboratePredicates(x2))),
-                    } as ast.UnaryObjectNode;
-                    break;
-                default:
-                    return unexpectedValue<ast.ASTNode>(
-                        expr,
-                        expr1,
-                        v => "Evaluate failed to handle case where expression type was " + v.type,
-                    );
-            }
+            expr = {
+                ...base(expr1),
+                expression: elaboratePredicates(expr1.expression),
+            } as ast.UnaryMinusNode;
+            break;
+        }
+        case "unary-group": {
+            let expr1 = expr;
+            expr = {
+                ...base(expr1),
+                groupings: expr1.groupings.map(x1 => x1.map(x2 => elaboratePredicates(x2))),
+            } as ast.UnaryObjectNode;
             break;
         }
         case "array": {

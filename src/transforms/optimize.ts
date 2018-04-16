@@ -167,33 +167,30 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 expressions: expressions,
             };
         }
-        case "unary":
-            switch (expr.value) {
-                case "{": {
-                    let lhs = expr.lhs.map(pair => {
-                        return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
-                    });
-                    return {
-                        ...expr,
-                        lhs: lhs,
-                    };
-                }
-                default: {
-                    // all other unary expressions - just process the expression
-                    let expression = ast_optimize(expr.expression, collect);
-                    // if unary minus on a number, then pre-process
-                    if (expr.value === "-" && expression.type === "literal" && isNumeric(expression.value)) {
-                        return {
-                            ...expression,
-                            value: -expression.value,
-                        };
-                    }
-                    return {
-                        ...expr,
-                        expression: expression,
-                    };
-                }
+        case "unary": {
+            // all other unary expressions - just process the expression
+            let expression = ast_optimize(expr.expression, collect);
+            // if unary minus on a number, then pre-process
+            if (expr.value === "-" && expression.type === "literal" && isNumeric(expression.value)) {
+                return {
+                    ...expression,
+                    value: -expression.value,
+                };
             }
+            return {
+                ...expr,
+                expression: expression,
+            };
+        }
+        case "unary-group": {
+            let groupings = expr.groupings.map(pair => {
+                return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
+            });
+            return {
+                ...expr,
+                groupings: groupings,
+            };
+        }
         case "function":
         case "partial": {
             let args = expr.arguments.map(arg => {

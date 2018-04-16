@@ -130,21 +130,13 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return evaluateFunction(proc, evaluatedArgs, expr, input, environment, options);
         }
         case "unary": {
-            switch (expr.value) {
-                case "-":
-                    return evaluateUnaryMinus(expr, input, environment, options);
-                case "{":
-                    return evaluateGroup(expr.lhs, input, environment, options);
-                default:
-                    return unexpectedValue<ast.UnaryMinusNode | ast.UnaryObjectNode>(
-                        expr,
-                        expr,
-                        v => "Unknown unary operators " + v.value,
-                    );
-            }
+            return evaluateUnaryMinus(expr, input, environment, options);
+        }
+        case "unary-group": {
+            return evaluateGroup(expr.groupings, input, environment, options);
         }
         case "group": {
-            let lhs = doEval(expr.lhs, input, environment, options);
+            let lhs = expr.lhs === null ? input : doEval(expr.lhs, input, environment, options);
             return evaluateGroup(expr.groupings, lhs, environment, options);
         }
         case "condition": {

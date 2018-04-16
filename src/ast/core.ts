@@ -29,7 +29,7 @@ export interface DescendantNode extends BaseNode {
 
 export interface GroupNode extends BaseNode {
     type: "group";
-    lhs: ASTNode;
+    lhs: ASTNode | null;
     groupings: ASTNode[][];
 }
 
@@ -48,9 +48,9 @@ export interface UnaryMinusNode extends BaseNode {
 }
 
 export interface UnaryObjectNode extends BaseNode {
-    type: "unary";
+    type: "unary-group";
     value: "{";
-    lhs: ASTNode[][];
+    groupings: ASTNode[][];
 }
 
 export interface BinaryOperationNode extends BaseNode {

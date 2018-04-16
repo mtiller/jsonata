@@ -176,8 +176,8 @@ export const objectParserNUD: NUD = (state: ParserState): ast.ASTNode => {
     return {
         value: initialToken.value,
         position: initialToken.position,
-        type: "unary",
-        lhs: a, // TODO: use expression
+        type: "unary-group",
+        groupings: a, // TODO: use expression
     };
 };
 

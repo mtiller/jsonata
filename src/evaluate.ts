@@ -49,6 +49,9 @@ export function* evaluate(expr: ast.ASTNode, input: any, environment: Environmen
         case "unary":
             result = yield* evaluateUnary(expr, input, environment);
             break;
+        case "unary-group":
+            result = yield* evaluateUnaryGroup(expr, input, environment);
+            break;
         case "name":
             result = evaluateName(expr, input, environment);
             break;
@@ -417,31 +420,34 @@ function* evaluateArray(expr: ast.ArrayConstructorNode, input: any, environment:
  * @param {Object} environment - Environment
  * @returns {*} Evaluated input data
  */
-function* evaluateUnary(expr: ast.UnaryMinusNode | ast.UnaryObjectNode, input: any, environment: Environment) {
-    var result;
-
-    switch (expr.value) {
-        case "-":
-            result = yield* evaluate(expr.expression, input, environment);
-            if (typeof result === "undefined") {
-                result = undefined;
-            } else if (isNumeric(result)) {
-                result = -result;
-            } else {
-                throw {
-                    code: "D1002",
-                    stack: new Error().stack,
-                    position: expr.position,
-                    token: expr.value,
-                    value: result,
-                };
-            }
-            break;
-        case "{":
-            // object constructor - apply grouping
-            result = yield* evaluateGroupExpression(expr, input, environment);
-            break;
+function* evaluateUnary(expr: ast.UnaryMinusNode, input: any, environment: Environment) {
+    let result = yield* evaluate(expr.expression, input, environment);
+    if (typeof result === "undefined") {
+        result = undefined;
+    } else if (isNumeric(result)) {
+        result = -result;
+    } else {
+        throw {
+            code: "D1002",
+            stack: new Error().stack,
+            position: expr.position,
+            token: expr.value,
+            value: result,
+        };
     }
+    return result;
+}
+
+/**
+ * Evaluate unary expression against input data
+ * @param {Object} expr - JSONata expression
+ * @param {Object} input - Input data to evaluate against
+ * @param {Object} environment - Environment
+ * @returns {*} Evaluated input data
+ */
+function* evaluateUnaryGroup(expr: ast.UnaryObjectNode, input: any, environment: Environment) {
+    // object constructor - apply grouping
+    let result = yield* evaluateGroupExpression({ lhs: expr.groupings, position: expr.position }, input, environment);
     return result;
 }
 
