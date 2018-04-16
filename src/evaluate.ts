@@ -96,11 +96,7 @@ export function* evaluate(expr: ast.ASTNode, input: any, environment: Environmen
             break;
         case "group":
             result = yield* evaluate(expr.lhs, input, environment);
-            result = yield* evaluateGroupExpression(
-                { lhs: expr.groupings, position: expr.position },
-                result,
-                environment,
-            );
+            result = yield* evaluateGroupExpression(expr, result, environment);
             break;
         case "transform":
             result = evaluateTransformExpression(expr, input, environment);
@@ -447,7 +443,7 @@ function* evaluateUnary(expr: ast.UnaryMinusNode, input: any, environment: Envir
  */
 function* evaluateUnaryGroup(expr: ast.UnaryObjectNode, input: any, environment: Environment) {
     // object constructor - apply grouping
-    let result = yield* evaluateGroupExpression({ lhs: expr.groupings, position: expr.position }, input, environment);
+    let result = yield* evaluateGroupExpression(expr, input, environment);
     return result;
 }
 
@@ -746,7 +742,7 @@ function evaluateStringConcat(lhs, rhs) {
  * @returns {{}} Evaluated input data
  */
 function* evaluateGroupExpression(
-    grouping: { lhs: ast.ASTNode[][]; position: number },
+    grouping: { groupings: ast.Groupings; position: number },
     input: any,
     environment: Environment,
 ) {
@@ -761,11 +757,11 @@ function* evaluateGroupExpression(
         // Extract the value for each
         var item = input[itemIndex];
         // Now loop over groupings
-        for (var pairIndex = 0; pairIndex < grouping.lhs.length; pairIndex++) {
+        for (var pairIndex = 0; pairIndex < grouping.groupings.length; pairIndex++) {
             // Get the pair that includes the key expression and the value expression
-            var pair = grouping.lhs[pairIndex];
+            var pair = grouping.groupings[pairIndex];
             // Evaluate the key
-            var key = yield* evaluate(pair[0], item, environment);
+            var key = yield* evaluate(pair.key, item, environment);
             // key has to be a string
             if (typeof key !== "string") {
                 throw {
@@ -784,7 +780,7 @@ function* evaluateGroupExpression(
                     throw {
                         code: "D1009",
                         stack: new Error().stack,
-                        position: pair[0].position,
+                        position: pair.key.position,
                         value: key,
                     };
                 }
@@ -794,7 +790,7 @@ function* evaluateGroupExpression(
             } else {
                 // If note, create an entry associated with this key.  The entry
                 // includes the input value and the expression
-                groups[key] = { data: item, expr: pair[1], pairIndex: pairIndex };
+                groups[key] = { data: item, expr: pair.value, pairIndex: pairIndex };
             }
         }
     }

@@ -40,6 +40,8 @@ export type ASTNode =
     | opt.ApplyNode
     | opt.PredicateNode;
 
+export type Groupings = core.Groupings;
+
 export function nonpredicateNode(node: ASTNode): ASTNode {
     if (node.type === "predicate") {
         return nonpredicateNode(node.lhs);

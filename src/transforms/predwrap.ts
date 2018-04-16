@@ -24,10 +24,12 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
             break;
         }
         case "unary-group": {
-            let expr1 = expr;
             expr = {
-                ...base(expr1),
-                groupings: expr1.groupings.map(x1 => x1.map(x2 => elaboratePredicates(x2))),
+                ...base(expr),
+                groupings: expr.groupings.map(grouping => ({
+                    key: elaboratePredicates(grouping.key),
+                    value: elaboratePredicates(grouping.value),
+                })),
             } as ast.UnaryObjectNode;
             break;
         }
@@ -43,7 +45,10 @@ export function elaboratePredicates(orig: ast.ASTNode): ast.ASTNode {
             expr = {
                 ...base(expr),
                 lhs: elaboratePredicates(expr.lhs),
-                groupings: expr.groupings.map(x1 => x1.map(x2 => elaboratePredicates(x2))),
+                groupings: expr.groupings.map(grouping => ({
+                    key: elaboratePredicates(grouping.key),
+                    value: elaboratePredicates(grouping.value),
+                })),
             };
             break;
         case "binary":

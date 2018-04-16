@@ -1,6 +1,5 @@
 import { isNumeric } from "../utils";
 import { tail_call_optimize } from "./tail_call";
-// import { ErrorCollector } from "../types";
 import * as ast from "../ast";
 
 export type ErrorCollector = (err: any) => void;
@@ -24,8 +23,8 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
                 };
             }
 
-            let lhs = expr.rhs.map(pair => {
-                return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
+            let lhs: ast.Groupings = expr.rhs.map(pair => {
+                return { key: ast_optimize(pair[0], collect), value: ast_optimize(pair[1], collect) };
             });
 
             return {
@@ -184,7 +183,7 @@ export function ast_optimize(expr: ast.ASTNode, collect: undefined | ErrorCollec
         }
         case "unary-group": {
             let groupings = expr.groupings.map(pair => {
-                return [ast_optimize(pair[0], collect), ast_optimize(pair[1], collect)];
+                return { key: ast_optimize(pair.key, collect), value: ast_optimize(pair.value, collect) };
             });
             return {
                 ...expr,

@@ -314,7 +314,7 @@ interface KeyData {
     groupIndex: number;
 }
 
-function evaluateGroup(groupings: ast.ASTNode[][], input: Box, environment: JEnv, options: EvaluationOptions): Box {
+function evaluateGroup(groupings: ast.Groupings, input: Box, environment: JEnv, options: EvaluationOptions): Box {
     let result: { [key: string]: KeyData } = {};
 
     // TODO: More odd semantics from v1.5+
@@ -322,18 +322,20 @@ function evaluateGroup(groupings: ast.ASTNode[][], input: Box, environment: JEnv
         input = boxValue(null);
     }
 
+    let items = fragmentBox(input);
+
     // We loop first over all inputs and for each input we evaluate the expression
     // for the keys in the object constructor.  Then, we make a record of all input
     // values associated with each key and the value expression we will use to
     // evaluate them.
-    forEachValue(input, item => {
+    items.forEach(item => {
         let val = unbox(item);
         // Next, we loop over the pairs of key and value
         groupings.forEach((grouping, groupIndex) => {
             // TODO: Convert this array to an object so we can refer to this by
             // rather than by index.
-            let keyExpr = grouping[0];
-            let valueExpr = grouping[1];
+            let keyExpr = grouping.key;
+            let valueExpr = grouping.value;
 
             // Now, evaluate the key expression.
             let keyBox = doEval(keyExpr, item, environment, options);
@@ -344,7 +346,7 @@ function evaluateGroup(groupings: ast.ASTNode[][], input: Box, environment: JEnv
                 throw {
                     code: "T1003",
                     stack: new Error().stack,
-                    position: grouping[0].position,
+                    position: grouping.key.position,
                     value: keyBox,
                 };
             }

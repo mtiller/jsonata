@@ -2,6 +2,8 @@ import { BaseNode } from "./base";
 import { ASTNode } from "./index";
 import { Signature } from "../signatures";
 
+export type Groupings = Array<{ key: ASTNode; value: ASTNode }>;
+
 export interface LiteralNode extends BaseNode {
     type: "literal";
 }
@@ -30,7 +32,7 @@ export interface DescendantNode extends BaseNode {
 export interface GroupNode extends BaseNode {
     type: "group";
     lhs: ASTNode | null;
-    groupings: ASTNode[][];
+    groupings: Groupings;
 }
 
 export interface ArrayConstructorNode extends BaseNode {
@@ -50,7 +52,7 @@ export interface UnaryMinusNode extends BaseNode {
 export interface UnaryObjectNode extends BaseNode {
     type: "unary-group";
     value: "{";
-    groupings: ASTNode[][];
+    groupings: Groupings;
 }
 
 export interface BinaryOperationNode extends BaseNode {

@@ -37,5 +37,6 @@ export interface GroupedObjectNode extends BaseNode {
     type: "grouped-object";
     value: "{";
     lhs: ASTNode;
-    rhs: ASTNode[];
+    // TODO: Changing to Groupings type
+    rhs: ASTNode[][];
 }
