@@ -5,3 +5,4 @@ export * from "./path";
 export * from "./binary";
 export * from "./group";
 export * from "./unary";
+export * from "./descendant";

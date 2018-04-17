@@ -183,7 +183,7 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return evaluateTransform(expr, input, environment, options);
         }
         case "descendant": {
-            return evaluateDescendant(expr, input, environment);
+            return semantics.evaluateDescendant(input);
         }
         case "partial": {
             return evaluatePartialApplication(expr, input, environment, options);
@@ -444,29 +444,6 @@ function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEn
         implementation: transformFunction,
         signature: signature,
     });
-}
-
-function evaluateDescendant(expr: ast.DescendantNode, input: Box, environment: JEnv): Box {
-    switch (input.type) {
-        case BoxType.Void:
-        case BoxType.Lambda:
-        case BoxType.Function:
-            return ubox;
-        case BoxType.Array:
-        case BoxType.Value:
-            let val = unbox(input);
-            return boxValue(descendants(val));
-    }
-}
-
-function descendants(val: any): Array<any> {
-    if (Array.isArray(val)) {
-        return val.reduce((prev, x) => [...prev, ...descendants(x)], []);
-    } else {
-        if (typeof val != "object") return [val];
-        if (val === null) return [null];
-        return Object.keys(val).reduce((prev, x) => [...prev, ...descendants(val[x])], [val]);
-    }
 }
 
 function comparator(rhs: ast.SortTerm[], environment: JEnv, options: EvaluationOptions) {
