@@ -1,7 +1,7 @@
 // import { apply } from "./apply";
 // import { EvaluationOptions } from "./options";
 import { createSequence, isArrayOfNumbers, isArrayOfStrings } from "../utils";
-import { apply } from "../neweval/apply";
+import { apply } from "../sync/apply";
 import { functionBoolean } from "./base";
 import * as errors from "../errors";
 import { FunctionDetails, ProcedureDetails } from "../semantics";

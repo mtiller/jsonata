@@ -1,8 +1,0 @@
-import { JEnv } from "../neweval/environment";
-import { EvaluationOptions } from "../neweval/options";
-
-export class AsyncEnv extends JEnv {
-    constructor(options: EvaluationOptions, enclosing?: JEnv) {
-        super(options, enclosing);
-    }
-}
