@@ -81,8 +81,8 @@ export type T2007 = PlainError<"T2007"> & ValueError & SecondValueError;
 export type T2008 = PlainError<"T2008"> & ValueError;
 export type T2009 = PlainError<"T2009"> & ValueError & SecondValueError;
 export type T2010 = TokenError<"T2010">;
-export type T2011 = PlainError<"T2011"> & ValueError;
-export type T2012 = PlainError<"T2012"> & ValueError;
+export type T2011 = PlainError<"T2011"> & ValueError & PositionError;
+export type T2012 = PlainError<"T2012"> & ValueError & PositionError;
 export type T2013 = PlainError<"T2013">;
 
 export type D3001 = PlainError<"D3001">;

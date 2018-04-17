@@ -107,6 +107,7 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return semantics.evaluateBinaryOperation(lhs, rhs, op);
         }
         case "lambda": {
+            // TODO: Change to a boxFunction?
             return boxLambda({
                 input: input,
                 environment: environment,
@@ -125,7 +126,33 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             let proc = doEval(expr.procedure, input, environment, options);
             let evaluatedArgs = expr.arguments.map(arg => doEval(arg, input, environment, options));
 
-            return evaluateFunction(proc, evaluatedArgs, expr, input, environment, options);
+            let headName: string | null = semantics.functionName(expr);
+
+            // If a) we couldn't evaluate the procedure expressiona and b) the procedure
+            // was specified by a path and c) the first step in the path does exist, then
+            // perhaps the user meant for the procedure to be a variable dereference and
+            // simply forgot the leading $
+            if (proc === ubox && headName !== null && environment.lookup(headName).type != BoxType.Void) {
+                // help the user out here if they simply forgot the leading $
+                throw errors.error({
+                    code: "T1005",
+                    token: headName,
+                });
+            }
+
+            // apply the procedure
+            try {
+                // TODO: Refactor function types so we return closures that call apply
+                // rather than calling apply ourselves.
+                let ret = apply(proc, evaluatedArgs, input, options);
+                return ret;
+            } catch (err) {
+                // add the position field to the error
+                err.position = expr.position;
+                // and the function identifier
+                err.token = headName || expr.procedure.value;
+                throw err;
+            }
         }
         case "unary": {
             let lhs = doEval(expr.expression, input, environment, options);
@@ -282,66 +309,12 @@ function evaluatePartialApplication(
     }
 }
 
-/**
- * Evaluate function against input data
- * @param {Object} expr - JSONata expression
- * @param {Object} input - Input data to evaluate against
- * @param {Object} environment - Environment
- * @param {Object} [applyto] - LHS of ~> operator
- * @returns {*} Evaluated input data
- */
-function evaluateFunction(
-    proc: Box,
-    evaluatedArgs: Box[],
-    expr: ast.FunctionInvocationNode,
-    input: Box,
-    environment: JEnv,
-    options: EvaluationOptions,
-): Box {
-    let uproc = unbox(proc);
-    let headName: string | null = expr.procedure.type === "path" ? expr.procedure.steps[0].value : null;
-
-    // If a) we couldn't evaluate the procedure expressiona and b) the procedure
-    // was specified by a path and c) the first step in the path does exist, then
-    // perhaps the user meant for the procedure to be a variable dereference and
-    // simply forgot the leading $
-    if (typeof uproc === "undefined" && headName !== null && environment.lookup(headName).type != BoxType.Void) {
-        // help the user out here if they simply forgot the leading $
-        throw errors.error({
-            code: "T1005",
-            token: headName,
-        });
-    }
-
-    // apply the procedure
-    try {
-        // TODO: Refactor function types so we return closures that call apply
-        // rather than calling apply ourselves.
-        let ret = apply(proc, evaluatedArgs, input, options);
-        return ret;
-    } catch (err) {
-        // add the position field to the error
-        err.position = expr.position;
-        // and the function identifier
-        err.token = headName || expr.procedure.value;
-        throw err;
-    }
-}
-
 function evaluateApplyExpression(expr: ast.ApplyNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
     // If rhs is a function invocation, invoke it with the lhs as the first argument
     if (expr.rhs.type == "function") {
         // Construct a function with the LHS expression inserted as the first
         // argument and then return the result of evaluating it.
-        let f: ast.FunctionInvocationNode = {
-            type: "function",
-            value: expr.rhs.value,
-            position: expr.rhs.position,
-            procedure: expr.rhs.procedure,
-            arguments: [expr.lhs, ...expr.rhs.arguments],
-            nextFunction: expr.rhs.nextFunction,
-        };
-        return doEval(f, input, environment, options);
+        return doEval(semantics.prependArgument(expr.rhs, expr.lhs), input, environment, options);
     }
 
     // If we get here, we expect the rhs to evaluate to a function (vs. being a
@@ -401,7 +374,7 @@ function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEn
                 // Extract the matching object
                 let match = unbox(matchbox);
 
-                // Ensure the match is an object (this ch)
+                // Ensure the match is an object
                 if (typeof match != "object") {
                     // This check and associated exception don't appear in v1.5
                     // and yet the exerciser detects the error.  I don't understand
@@ -414,12 +387,11 @@ function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEn
                 if (update) {
                     if (typeof update != "object") {
                         // throw type error
-                        throw {
+                        throw errors.error({
                             code: "T2011",
-                            stack: new Error().stack,
-                            position: expr.update.position,
                             value: update,
-                        };
+                            position: expr.update.position,
+                        });
                     }
                     Object.keys(update).forEach(key => (match[key] = update[key]));
                 }
@@ -428,12 +400,11 @@ function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEn
                     if (del) {
                         if (typeof del == "string") del = [del];
                         if (!isArrayOfStrings(del)) {
-                            throw {
+                            throw errors.error({
                                 code: "T2012",
-                                stack: new Error().stack,
-                                position: expr.delete.position,
                                 value: del,
-                            };
+                                position: expr.delete.position,
+                            });
                         }
                         del.forEach(str => {
                             delete match[str];

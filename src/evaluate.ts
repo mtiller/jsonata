@@ -908,9 +908,8 @@ function* evaluateBlock(expr: ast.BlockNode, input: any, environment: Environmen
  * @returns {Function} Higher order function representing prepared regex
  */
 function evaluateRegex(expr: ast.RegexNode, input: any, environment: Environment) {
-    expr.value.lastIndex = 0;
+    let re = new RegExp(expr.value);
     var closure = function(str) {
-        var re = expr.value;
         var result;
         var match = re.exec(str);
         if (match !== null) {
@@ -930,7 +929,7 @@ function evaluateRegex(expr: ast.RegexNode, input: any, environment: Environment
                     return undefined;
                 } else {
                     var next = closure(str);
-                    if (next && next.match === "" && re.lastIndex === expr.value.lastIndex) {
+                    if (next && next.match === "") {
                         // matches zero length string; this will never progress
                         throw {
                             code: "D1004",
