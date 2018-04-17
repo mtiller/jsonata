@@ -16,7 +16,7 @@ export interface VoidBox extends BoxFlags {
 
 export interface LambdaBox extends BoxFlags {
     type: BoxType.Lambda;
-    details: ProcedureDetails;
+    details: ProcedureDetails<any>;
 }
 
 export interface FunctionBox extends BoxFlags {
@@ -158,7 +158,7 @@ export function boxFunction(input: FunctionDetails): Box {
     };
 }
 
-export function boxLambda(input: ProcedureDetails): Box {
+export function boxLambda(input: ProcedureDetails<any>): Box {
     // TODO: Remove eventually
     if (isBox(input)) {
         throw new Error("Boxed value being boxed!?!");
@@ -191,7 +191,7 @@ export function boxValue(input: JSValue, options: Partial<BoxFlags> = {}): Box {
     if (input && ["input", "environment", "body"].every(prop => input.hasOwnProperty(prop))) {
         return {
             type: BoxType.Lambda,
-            details: input as ProcedureDetails,
+            details: input as ProcedureDetails<any>,
         };
     }
     if (input && input.hasOwnProperty("implementation") && input.hasOwnProperty("signature")) {

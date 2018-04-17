@@ -1,0 +1,20 @@
+import { Box } from "../semantics";
+import { AsyncEnv } from "./environment";
+import * as ast from "../ast";
+import { Signature } from "../signatures";
+import { EvaluationOptions } from "../neweval/options";
+
+export interface ProcedureDetails {
+    input: Box;
+    environment: AsyncEnv;
+    options: EvaluationOptions;
+    arguments: ast.ASTNode[];
+    signature: Signature;
+    body: ast.ASTNode | Function;
+    thunk: boolean;
+}
+
+export interface FunctionDetails {
+    implementation: Function;
+    signature: Signature;
+}

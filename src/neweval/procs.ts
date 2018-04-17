@@ -1,16 +1,17 @@
-import { Box } from "../semantics";
-import { JEnv } from "./environment";
+import { Environment } from "./environment";
 import * as ast from "../ast";
 import { Signature } from "../signatures";
-import { EvaluationOptions } from "./options";
 
-export interface ProcedureDetails {
-    input: Box;
-    environment: JEnv;
-    options: EvaluationOptions;
+export interface ProcedureDetails<V> {
+    input: V;
+    environment: Environment<V>;
+    eval: (node: ast.ASTNode, input: V, environment: Environment<V>) => V;
     arguments: ast.ASTNode[];
     signature: Signature;
+    // TODO: Fix this...how is a function getting in here?
     body: ast.ASTNode | Function;
+    // Cam from a lambda expression that contained no
+    // arguments.  Not entirely sure why this is necessary.
     thunk: boolean;
 }
 

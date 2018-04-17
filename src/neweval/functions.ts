@@ -5,10 +5,15 @@ import { apply } from "./apply";
 import { functionBoolean } from "../functions";
 import * as errors from "../errors";
 import { FunctionDetails, ProcedureDetails } from "./procs";
-import { boxValue, fragmentBox, boxFunction, unbox, boxLambda } from "../semantics";
+import { boxValue, fragmentBox, boxFunction, unbox, boxLambda, Box } from "../semantics";
 import { EvaluationOptions } from "./options";
 
-function applySurrogate(func: Function | ProcedureDetails, args: Array<any>, context: any, options: EvaluationOptions) {
+function applySurrogate(
+    func: Function | ProcedureDetails<Box>,
+    args: Array<any>,
+    context: any,
+    options: EvaluationOptions,
+) {
     let boxedArgs = fragmentBox(boxValue(args));
     let boxedContext = boxValue(context);
     if (typeof func === "function") {

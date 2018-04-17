@@ -4,9 +4,13 @@ import { defineFunction, FunctionDefinition } from "../signatures";
 import * as sync from "./functions";
 import { EvaluationOptions } from "./options";
 
-export class JEnv {
+export interface Environment<L> {
+    lookup(name: string): L;
+}
+
+export class JEnv implements Environment<Box> {
     protected bindings: { [key: string]: Box } = {};
-    constructor(protected options: EvaluationOptions, public enclosing?: JEnv) {
+    constructor(protected options: EvaluationOptions, public enclosing?: Environment<Box>) {
         if (!enclosing) {
             // Functions are only bound at the root level (this allows them to
             // be redefined in enclosing scopes)
