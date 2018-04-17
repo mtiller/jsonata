@@ -1,7 +1,7 @@
 import { Box, boxValue, JSValue, ubox, boxFunction } from "../semantics";
-import * as funcs from "../functions";
+import * as funcs from "../functions/base";
 import { defineFunction, FunctionDefinition } from "../signatures";
-import * as sync from "./functions";
+import * as sync from "../functions/sync";
 import { EvaluationOptions } from "./options";
 
 export interface Environment<L> {

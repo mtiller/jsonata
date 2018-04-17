@@ -12,7 +12,7 @@ import {
 } from "./utils";
 import { defineFunction } from "./signatures";
 import { parser } from "./parser";
-import { functionBoolean, functionAppend, functionString, functionSort, createStandardFrame } from "./functions";
+import { functionBoolean, functionAppend, functionString, functionSort, createStandardFrame } from "./functions/base";
 import * as ast from "./ast";
 
 export interface Environment {

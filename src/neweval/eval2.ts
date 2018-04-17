@@ -1,7 +1,5 @@
 import * as ast from "../ast";
-import { FunctionDetails } from "./procs";
 import { unexpectedValue, isArrayOfStrings } from "../utils";
-import { JEnv } from "./environment";
 import * as errors from "../errors";
 import * as semantics from "../semantics";
 import {
@@ -20,11 +18,14 @@ import {
     boxArray,
     unboxArray,
     fragmentBox,
+    JEnv,
+    FunctionDetails,
+    EvaluationOptions,
+    normalizeOptions,
 } from "../semantics";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { apply, partialApplyProcedure, partialApplyNativeFunction } from "./apply";
 import { parseSignature } from "../signatures";
-import { EvaluationOptions, normalizeOptions } from "./options";
 
 export function eval2(
     expr: ast.ASTNode,

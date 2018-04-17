@@ -1,6 +1,14 @@
-import { isFunction, isNumeric, createSequence, isLambda, isArrayOfNumbers, isArrayOfStrings, createFrame } from './utils';
-import { defineFunction } from './signatures';
-import { apply, evaluateName } from './evaluate';
+import {
+    isFunction,
+    isNumeric,
+    createSequence,
+    isLambda,
+    isArrayOfNumbers,
+    isArrayOfStrings,
+    createFrame,
+} from "../utils";
+import { defineFunction } from "../signatures";
+import { apply, evaluateName } from "../evaluate";
 
 /**
  * Sum function
@@ -109,7 +117,9 @@ export function functionString(arg) {
         str = JSON.stringify(arg, function(key, val) {
             return typeof val !== "undefined" && val !== null && val.toPrecision && isNumeric(val)
                 ? Number(val.toPrecision(13))
-                : val && isFunction(val) ? "" : val;
+                : val && isFunction(val)
+                    ? ""
+                    : val;
         });
     return str;
 }
@@ -1323,7 +1333,9 @@ function* functionMap(arr, func) {
         var length =
             typeof func === "function"
                 ? func.length
-                : func._jsonata_function === true ? func.implementation.length : func.arguments.length;
+                : func._jsonata_function === true
+                    ? func.implementation.length
+                    : func.arguments.length;
         if (length >= 2) {
             func_args.push(i);
         }
@@ -1537,7 +1549,7 @@ export function functionExists(arg) {
  * @returns {*} - the array
  */
 export function functionSpread(arg) {
-    // TODO: Either make this a pure JavaScript function that doesn't depend on 
+    // TODO: Either make this a pure JavaScript function that doesn't depend on
     // functions/types from JSONata or provide Box values and return Box values.
     // Ultimately, I think when users bind functions, they should pick which
     // approach to apply to each function.
@@ -1831,62 +1843,60 @@ export function functionClone(arg) {
 export function createStandardFrame() {
     const staticFrame = createFrame(null);
     bindStandardFunctions(staticFrame);
-    return staticFrame;    
+    return staticFrame;
 }
 
 export function bindStandardFunctions(frame) {
-        // Function registration
-        frame.bind('sum', defineFunction(functionSum, '<a<n>:n>'));
-        frame.bind('count', defineFunction(functionCount, '<a:n>'));
-        frame.bind('max', defineFunction(functionMax, '<a<n>:n>'));
-        frame.bind('min', defineFunction(functionMin, '<a<n>:n>'));
-        frame.bind('average', defineFunction(functionAverage, '<a<n>:n>'));
-        frame.bind('string', defineFunction(functionString, '<x-:s>'));
-        frame.bind('substring', defineFunction(functionSubstring, '<s-nn?:s>'));
-        frame.bind('substringBefore', defineFunction(functionSubstringBefore, '<s-s:s>'));
-        frame.bind('substringAfter', defineFunction(functionSubstringAfter, '<s-s:s>'));
-        frame.bind('lowercase', defineFunction(functionLowercase, '<s-:s>'));
-        frame.bind('uppercase', defineFunction(functionUppercase, '<s-:s>'));
-        frame.bind('length', defineFunction(functionLength, '<s-:n>'));
-        frame.bind('trim', defineFunction(functionTrim, '<s-:s>'));
-        frame.bind('pad', defineFunction(functionPad, '<s-ns?:s>'));
-        frame.bind('match', defineFunction(functionMatch, '<s-f<s:o>n?:a<o>>'));
-        frame.bind('contains', defineFunction(functionContains, '<s-(sf):b>')); // TODO <s-(sf<s:o>):b>
-        frame.bind('replace', defineFunction(functionReplace, '<s-(sf)(sf)n?:s>')); // TODO <s-(sf<s:o>)(sf<o:s>)n?:s>
-        frame.bind('split', defineFunction(functionSplit, '<s-(sf)n?:a<s>>')); // TODO <s-(sf<s:o>)n?:a<s>>
-        frame.bind('join', defineFunction(functionJoin, '<a<s>s?:s>'));
-        frame.bind('formatNumber', defineFunction(functionFormatNumber, '<n-so?:s>'));
-        frame.bind('formatBase', defineFunction(functionFormatBase, '<n-n?:s>'));
-        frame.bind('number', defineFunction(functionNumber, '<(ns)-:n>'));
-        frame.bind('floor', defineFunction(functionFloor, '<n-:n>'));
-        frame.bind('ceil', defineFunction(functionCeil, '<n-:n>'));
-        frame.bind('round', defineFunction(functionRound, '<n-n?:n>'));
-        frame.bind('abs', defineFunction(functionAbs, '<n-:n>'));
-        frame.bind('sqrt', defineFunction(functionSqrt, '<n-:n>'));
-        frame.bind('power', defineFunction(functionPower, '<n-n:n>'));
-        frame.bind('random', defineFunction(functionRandom, '<:n>'));
-        frame.bind('boolean', defineFunction(functionBoolean, '<x-:b>'));
-        frame.bind('not', defineFunction(functionNot, '<x-:b>'));
-        frame.bind('map', defineFunction(functionMap, '<af>'));
-        frame.bind('zip', defineFunction(functionZip, '<a+>'));
-        frame.bind('filter', defineFunction(functionFilter, '<af>'));
-        frame.bind('reduce', defineFunction(functionFoldLeft, '<afj?:j>')); // TODO <f<jj:j>a<j>j?:j>
-        frame.bind('sift', defineFunction(functionSift, '<o-f?:o>'));
-        frame.bind('keys', defineFunction(functionKeys, '<x-:a<s>>'));
-        frame.bind('lookup', defineFunction(functionLookup, '<x-s:x>'));
-        frame.bind('append', defineFunction(functionAppend, '<xx:a>'));
-        frame.bind('exists', defineFunction(functionExists, '<x:b>'));
-        frame.bind('spread', defineFunction(functionSpread, '<x-:a<o>>'));
-        frame.bind('merge', defineFunction(functionMerge, '<a<o>:o>'));
-        frame.bind('reverse', defineFunction(functionReverse, '<a:a>'));
-        frame.bind('each', defineFunction(functionEach, '<o-f:a>'));
-        frame.bind('sort', defineFunction(functionSort, '<af?:a>'));
-        frame.bind('shuffle', defineFunction(functionShuffle, '<a:a>'));
-        frame.bind('base64encode', defineFunction(functionBase64encode, '<s-:s>'));
-        frame.bind('base64decode', defineFunction(functionBase64decode, '<s-:s>'));
-        frame.bind('toMillis', defineFunction(functionToMillis, '<s-:n>'));
-        frame.bind('fromMillis', defineFunction(functionFromMillis, '<n-:s>'));
-        frame.bind('clone', defineFunction(functionClone, '<(oa)-:o>'));
-    
-    
+    // Function registration
+    frame.bind("sum", defineFunction(functionSum, "<a<n>:n>"));
+    frame.bind("count", defineFunction(functionCount, "<a:n>"));
+    frame.bind("max", defineFunction(functionMax, "<a<n>:n>"));
+    frame.bind("min", defineFunction(functionMin, "<a<n>:n>"));
+    frame.bind("average", defineFunction(functionAverage, "<a<n>:n>"));
+    frame.bind("string", defineFunction(functionString, "<x-:s>"));
+    frame.bind("substring", defineFunction(functionSubstring, "<s-nn?:s>"));
+    frame.bind("substringBefore", defineFunction(functionSubstringBefore, "<s-s:s>"));
+    frame.bind("substringAfter", defineFunction(functionSubstringAfter, "<s-s:s>"));
+    frame.bind("lowercase", defineFunction(functionLowercase, "<s-:s>"));
+    frame.bind("uppercase", defineFunction(functionUppercase, "<s-:s>"));
+    frame.bind("length", defineFunction(functionLength, "<s-:n>"));
+    frame.bind("trim", defineFunction(functionTrim, "<s-:s>"));
+    frame.bind("pad", defineFunction(functionPad, "<s-ns?:s>"));
+    frame.bind("match", defineFunction(functionMatch, "<s-f<s:o>n?:a<o>>"));
+    frame.bind("contains", defineFunction(functionContains, "<s-(sf):b>")); // TODO <s-(sf<s:o>):b>
+    frame.bind("replace", defineFunction(functionReplace, "<s-(sf)(sf)n?:s>")); // TODO <s-(sf<s:o>)(sf<o:s>)n?:s>
+    frame.bind("split", defineFunction(functionSplit, "<s-(sf)n?:a<s>>")); // TODO <s-(sf<s:o>)n?:a<s>>
+    frame.bind("join", defineFunction(functionJoin, "<a<s>s?:s>"));
+    frame.bind("formatNumber", defineFunction(functionFormatNumber, "<n-so?:s>"));
+    frame.bind("formatBase", defineFunction(functionFormatBase, "<n-n?:s>"));
+    frame.bind("number", defineFunction(functionNumber, "<(ns)-:n>"));
+    frame.bind("floor", defineFunction(functionFloor, "<n-:n>"));
+    frame.bind("ceil", defineFunction(functionCeil, "<n-:n>"));
+    frame.bind("round", defineFunction(functionRound, "<n-n?:n>"));
+    frame.bind("abs", defineFunction(functionAbs, "<n-:n>"));
+    frame.bind("sqrt", defineFunction(functionSqrt, "<n-:n>"));
+    frame.bind("power", defineFunction(functionPower, "<n-n:n>"));
+    frame.bind("random", defineFunction(functionRandom, "<:n>"));
+    frame.bind("boolean", defineFunction(functionBoolean, "<x-:b>"));
+    frame.bind("not", defineFunction(functionNot, "<x-:b>"));
+    frame.bind("map", defineFunction(functionMap, "<af>"));
+    frame.bind("zip", defineFunction(functionZip, "<a+>"));
+    frame.bind("filter", defineFunction(functionFilter, "<af>"));
+    frame.bind("reduce", defineFunction(functionFoldLeft, "<afj?:j>")); // TODO <f<jj:j>a<j>j?:j>
+    frame.bind("sift", defineFunction(functionSift, "<o-f?:o>"));
+    frame.bind("keys", defineFunction(functionKeys, "<x-:a<s>>"));
+    frame.bind("lookup", defineFunction(functionLookup, "<x-s:x>"));
+    frame.bind("append", defineFunction(functionAppend, "<xx:a>"));
+    frame.bind("exists", defineFunction(functionExists, "<x:b>"));
+    frame.bind("spread", defineFunction(functionSpread, "<x-:a<o>>"));
+    frame.bind("merge", defineFunction(functionMerge, "<a<o>:o>"));
+    frame.bind("reverse", defineFunction(functionReverse, "<a:a>"));
+    frame.bind("each", defineFunction(functionEach, "<o-f:a>"));
+    frame.bind("sort", defineFunction(functionSort, "<af?:a>"));
+    frame.bind("shuffle", defineFunction(functionShuffle, "<a:a>"));
+    frame.bind("base64encode", defineFunction(functionBase64encode, "<s-:s>"));
+    frame.bind("base64decode", defineFunction(functionBase64decode, "<s-:s>"));
+    frame.bind("toMillis", defineFunction(functionToMillis, "<s-:n>"));
+    frame.bind("fromMillis", defineFunction(functionFromMillis, "<n-:s>"));
+    frame.bind("clone", defineFunction(functionClone, "<(oa)-:o>"));
 }

@@ -1,12 +1,12 @@
 // import { apply } from "./apply";
 // import { EvaluationOptions } from "./options";
 import { createSequence, isArrayOfNumbers, isArrayOfStrings } from "../utils";
-import { apply } from "./apply";
-import { functionBoolean } from "../functions";
+import { apply } from "../neweval/apply";
+import { functionBoolean } from "./base";
 import * as errors from "../errors";
-import { FunctionDetails, ProcedureDetails } from "./procs";
+import { FunctionDetails, ProcedureDetails } from "../semantics";
 import { boxValue, fragmentBox, boxFunction, unbox, boxLambda, Box } from "../semantics";
-import { EvaluationOptions } from "./options";
+import { EvaluationOptions } from "../semantics";
 
 function applySurrogate(
     func: Function | ProcedureDetails<Box>,

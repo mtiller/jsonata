@@ -3,7 +3,7 @@ import { BinaryOperationNode } from "../ast";
 import { isNumeric, unexpectedValue } from "../utils";
 
 // TODO: Don't depend on standard functions
-import { functionString } from "../functions";
+import { functionString } from "../functions/base";
 import * as errors from "../errors";
 
 function isNumber(x: any): x is number {

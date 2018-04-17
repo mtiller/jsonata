@@ -10,3 +10,6 @@ export * from "./sort";
 export * from "./regex";
 export * from "./function";
 export * from "./box";
+export * from "./procs";
+export * from "./options";
+export * from "./environment";

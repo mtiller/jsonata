@@ -1,8 +1,6 @@
 import { doEval } from "./eval2";
-import { EvaluationOptions } from "./options";
-import { ProcedureDetails } from "./procs";
+import { EvaluationOptions, ProcedureDetails, JEnv } from "../semantics";
 import { unbox, boxValue, BoxType, Box, boxLambda, ubox, boxArray, boxFunction } from "../semantics";
-import { JEnv } from "./environment";
 import { Signature } from "../signatures";
 import { unexpectedValue } from "../utils";
 import * as ast from "../ast";
