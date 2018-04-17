@@ -1,6 +1,6 @@
 import * as ast from "../ast";
 import { FunctionDetails } from "./procs";
-import { unexpectedValue, isArrayOfStrings, isNumeric } from "../utils";
+import { unexpectedValue, isArrayOfStrings } from "../utils";
 import { JEnv } from "./environment";
 import * as errors from "../errors";
 import * as semantics from "../semantics";
@@ -129,7 +129,8 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return evaluateFunction(proc, evaluatedArgs, expr, input, environment, options);
         }
         case "unary": {
-            return evaluateUnaryMinus(expr, input, environment, options);
+            let lhs = doEval(expr.expression, input, environment, options);
+            return semantics.evaluateUnaryMinus(lhs, expr);
         }
         case "unary-group":
         case "group": {
@@ -313,25 +314,6 @@ function evaluateFunction(
         // and the function identifier
         err.token = headName || expr.procedure.value;
         throw err;
-    }
-}
-
-function evaluateUnaryMinus(expr: ast.UnaryMinusNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
-    let lhs = doEval(expr.expression, input, environment, options);
-    if (lhs.type == BoxType.Void) return ubox;
-    let v = unbox(lhs);
-    // This happens if v was boxed as an empty array
-    // (see note in boxValue function about this)
-    if (v === undefined) return ubox;
-    if (isNumeric(v)) {
-        return boxValue(-v);
-    } else {
-        throw errors.error({
-            code: "D1002",
-            position: expr.position,
-            token: expr.value,
-            value: unbox(lhs),
-        });
     }
 }
 

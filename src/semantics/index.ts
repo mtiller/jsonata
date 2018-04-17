@@ -4,3 +4,4 @@ export * from "./predicate";
 export * from "./path";
 export * from "./binary";
 export * from "./group";
+export * from "./unary";
