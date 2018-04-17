@@ -203,7 +203,7 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return defragmentBox(sorted.map(e => e.value));
         }
         case "regex": {
-            return evaluateRegex(expr, input, environment);
+            return semantics.evaluateRegex(expr.value, expr.position);
         }
         /* istanbul ignore next */
         case "grouped-object":
@@ -454,50 +454,5 @@ function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEn
     return boxFunction({
         implementation: transformFunction,
         signature: signature,
-    });
-}
-
-function evaluateRegex(expr: ast.RegexNode, input: Box, environment: JEnv): Box {
-    expr.value.lastIndex = 0;
-    const closure = (str: string) => {
-        var re = expr.value;
-        var result;
-        var match = re.exec(str);
-        if (match !== null) {
-            result = {
-                match: match[0],
-                start: match.index,
-                end: match.index + match[0].length,
-                groups: [],
-            };
-            if (match.length > 1) {
-                for (var i = 1; i < match.length; i++) {
-                    result.groups.push(match[i]);
-                }
-            }
-            result.next = () => {
-                if (re.lastIndex >= str.length) {
-                    return undefined;
-                } else {
-                    var next = closure(str);
-                    if (next && next.match === "" && re.lastIndex === expr.value.lastIndex) {
-                        // matches zero length string; this will never progress
-                        throw {
-                            code: "D1004",
-                            stack: new Error().stack,
-                            position: expr.position,
-                            value: expr.value.source,
-                        };
-                    }
-                    return next;
-                }
-            };
-        }
-
-        return result;
-    };
-    return boxFunction({
-        implementation: closure,
-        signature: undefined,
     });
 }

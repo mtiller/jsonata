@@ -7,3 +7,4 @@ export * from "./group";
 export * from "./unary";
 export * from "./descendant";
 export * from "./sort";
+export * from "./regex";
