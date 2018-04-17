@@ -19,7 +19,6 @@ import {
     BoxType,
     boxArray,
     unboxArray,
-    sortBox,
     fragmentBox,
 } from "./box";
 import { elaboratePredicates } from "../transforms/predwrap";
@@ -189,7 +188,19 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return evaluatePartialApplication(expr, input, environment, options);
         }
         case "sort": {
-            return evaluateSort(expr, input, environment, options);
+            let lhs = doEval(expr.lhs, input, environment, options);
+            let entries = fragmentBox(lhs);
+            let ranked: semantics.Ranked = {
+                terms: expr.rhs.length,
+                descending: expr.rhs.map(rhs => rhs.descending),
+                entries: entries.map((entry, entryIndex) => ({
+                    values: expr.rhs.map(rhs => doEval(rhs.expression, entry, environment, options)),
+                })),
+            };
+            let indexed = entries.map((e, index) => ({ index: index, value: e }));
+            let comp = semantics.comparator(ranked);
+            let sorted = indexed.sort(comp);
+            return defragmentBox(sorted.map(e => e.value));
         }
         case "regex": {
             return evaluateRegex(expr, input, environment);
@@ -444,54 +455,6 @@ function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEn
         implementation: transformFunction,
         signature: signature,
     });
-}
-
-function comparator(rhs: ast.SortTerm[], environment: JEnv, options: EvaluationOptions) {
-    return (a: Box, b: Box): number => {
-        for (let i = 0; i < rhs.length; i++) {
-            let term = rhs[i];
-            let aval = unbox(doEval(term.expression, a, environment, options));
-            let bval = unbox(doEval(term.expression, b, environment, options));
-
-            let atype = typeof aval;
-            let btype = typeof bval;
-
-            if (atype === "undefined") {
-                if (btype === "undefined") continue;
-                return 1;
-            }
-            if (btype === "undefined") return -1;
-
-            // if aa or bb are not string or numeric values, then throw an error
-            if (!(atype === "string" || atype === "number") || !(btype === "string" || btype === "number")) {
-                throw errors.error({
-                    code: "T2008",
-                    value: !(atype === "string" || atype === "number") ? aval : bval,
-                });
-            }
-
-            let scale = term.descending ? -1 : 1;
-            //if aa and bb are not of the same type
-            if (atype !== btype) {
-                throw errors.error({
-                    code: "T2007",
-                    value: aval,
-                    value2: bval,
-                });
-            }
-            // both the same - move on to next term
-            if (aval === bval) continue;
-            return aval < bval ? -scale : scale;
-        }
-        // If no RHS terms, everything is equal
-        return 0;
-    };
-}
-
-function evaluateSort(expr: ast.SortNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
-    let lhs = doEval(expr.lhs, input, environment, options);
-    let comp = comparator(expr.rhs, environment, options);
-    return sortBox(lhs, comp);
 }
 
 function evaluateRegex(expr: ast.RegexNode, input: Box, environment: JEnv): Box {
