@@ -107,7 +107,14 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return semantics.evaluateBinaryOperation(lhs, rhs, op);
         }
         case "lambda": {
-            // TODO: Change to a boxFunction?
+            // TODO: Change to a boxFunction?  I tried this once and one issue I ran
+            // into is that function invocations are wrapped in a thunk (argumentless
+            // lambda).  I'm not sure why, but this is why apply(...) has a loop
+            // and an applyInner call.  Ideally, we will need to keep lambda nodes,
+            // but I'd like to get rid of lambda boxes and replace them with Javascript
+            // closures so they can be invoked just like native functions with
+            // all eval and validation stuff encapsulated in them.  But for now,
+            // we get this... :-)
             return boxLambda({
                 input: input,
                 environment: environment,
