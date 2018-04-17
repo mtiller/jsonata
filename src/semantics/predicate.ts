@@ -1,4 +1,4 @@
-import { Box, filterOverValues, BoxType, JSValue, unbox } from "../neweval/box";
+import { Box, filterOverValues, BoxType, JSValue, unbox } from "./box";
 import { isArrayOfNumbers } from "../utils";
 
 export function evaluatePredicate(lhs: Box, preds: Box[]): Box {

@@ -1,5 +1,5 @@
 import * as ast from "../ast";
-import { Box, boxType, unbox } from "../neweval/box";
+import { Box, boxType, unbox } from "./box";
 
 export interface KeyData {
     itemIndices: number[];

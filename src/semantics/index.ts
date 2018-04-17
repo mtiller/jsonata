@@ -9,3 +9,4 @@ export * from "./descendant";
 export * from "./sort";
 export * from "./regex";
 export * from "./function";
+export * from "./box";

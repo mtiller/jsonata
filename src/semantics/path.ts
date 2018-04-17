@@ -1,4 +1,4 @@
-import { Box, boxArray, BoxType, unbox } from "../neweval/box";
+import { Box, boxArray, BoxType, unbox } from "./box";
 import * as ast from "../ast";
 
 export interface Path {

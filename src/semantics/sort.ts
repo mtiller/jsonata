@@ -1,4 +1,4 @@
-import { Box, unbox } from "../neweval/box";
+import { Box, unbox } from "./box";
 import * as errors from "../errors";
 
 export interface IndexedBox {

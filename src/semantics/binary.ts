@@ -1,4 +1,4 @@
-import { Box, unbox, ubox, boxValue } from "../neweval/box";
+import { Box, unbox, ubox, boxValue } from "./box";
 import { BinaryOperationNode } from "../ast";
 import { isNumeric, unexpectedValue } from "../utils";
 

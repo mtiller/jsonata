@@ -1,4 +1,4 @@
-import { Box, boxFunction } from "../neweval/box";
+import { Box, boxFunction } from "./box";
 
 export function evaluateRegex(regexp: RegExp, position: number): Box {
     // Create a new RegExp instance here since it has internal state

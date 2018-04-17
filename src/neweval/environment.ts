@@ -1,4 +1,4 @@
-import { Box, boxValue, JSValue, ubox, boxFunction } from "./box";
+import { Box, boxValue, JSValue, ubox, boxFunction } from "../semantics";
 import * as funcs from "../functions";
 import { defineFunction, FunctionDefinition } from "../signatures";
 import * as sync from "./functions";

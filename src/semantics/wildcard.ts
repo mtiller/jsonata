@@ -1,4 +1,4 @@
-import { Box, BoxType, ubox, unbox, boxValue } from "../neweval/box";
+import { Box, BoxType, ubox, unbox, boxValue } from "./box";
 import { flatten } from "../utils";
 
 export function evaluateWildcard(input: Box): Box {

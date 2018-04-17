@@ -1,5 +1,5 @@
 export type JSValue = number | string | boolean | object | Function;
-import { ProcedureDetails, FunctionDetails } from "./procs";
+import { ProcedureDetails, FunctionDetails } from "../neweval/procs";
 import { unexpectedValue } from "../utils";
 
 export enum BoxType {

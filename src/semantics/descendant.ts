@@ -1,4 +1,4 @@
-import { Box, BoxType, ubox, unbox, boxValue } from "../neweval/box";
+import { Box, BoxType, ubox, unbox, boxValue } from "./box";
 
 export function evaluateDescendant(input: Box): Box {
     switch (input.type) {

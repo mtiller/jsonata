@@ -20,7 +20,7 @@ import {
     boxArray,
     unboxArray,
     fragmentBox,
-} from "./box";
+} from "../semantics";
 import { elaboratePredicates } from "../transforms/predwrap";
 import { apply, partialApplyProcedure, partialApplyNativeFunction } from "./apply";
 import { parseSignature } from "../signatures";

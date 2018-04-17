@@ -1,4 +1,4 @@
-import { Box, BoxType, unbox, ubox, boxValue } from "../neweval/box";
+import { Box, BoxType, unbox, ubox, boxValue } from "./box";
 import * as errors from "../errors";
 import * as ast from "../ast";
 import { isNumeric } from "../utils";

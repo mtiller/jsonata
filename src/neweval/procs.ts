@@ -1,4 +1,4 @@
-import { Box } from "./box";
+import { Box } from "../semantics";
 import { JEnv } from "./environment";
 import * as ast from "../ast";
 import { Signature } from "../signatures";

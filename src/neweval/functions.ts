@@ -5,7 +5,7 @@ import { apply } from "./apply";
 import { functionBoolean } from "../functions";
 import * as errors from "../errors";
 import { FunctionDetails, ProcedureDetails } from "./procs";
-import { boxValue, fragmentBox, boxFunction, unbox, boxLambda } from "./box";
+import { boxValue, fragmentBox, boxFunction, unbox, boxLambda } from "../semantics";
 import { EvaluationOptions } from "./options";
 
 function applySurrogate(func: Function | ProcedureDetails, args: Array<any>, context: any, options: EvaluationOptions) {
