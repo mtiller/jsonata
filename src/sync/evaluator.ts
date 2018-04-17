@@ -2,6 +2,7 @@ import * as ast from "../ast";
 import { unexpectedValue, isArrayOfStrings } from "../utils";
 import * as errors from "../errors";
 import * as semantics from "../semantics";
+import { JEnv } from "./environment";
 import {
     JSValue,
     Box,
@@ -18,7 +19,6 @@ import {
     boxArray,
     unboxArray,
     fragmentBox,
-    JEnv,
     FunctionDetails,
     EvaluationOptions,
     normalizeOptions,

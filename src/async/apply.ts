@@ -1,6 +1,7 @@
 import { doEval } from "./evaluator";
-import { EvaluationOptions, ProcedureDetails, JEnv } from "../semantics";
+import { EvaluationOptions, ProcedureDetails } from "../semantics";
 import { unbox, boxValue, BoxType, Box, boxLambda, ubox, boxArray, boxFunction } from "../semantics";
+import { AsyncEnv } from "./environment";
 import { Signature } from "../signatures";
 import { unexpectedValue } from "../utils";
 import * as ast from "../ast";
@@ -142,11 +143,11 @@ export function partialApplyProcedure(
     details: ProcedureDetails<Box>,
     args: Array<ast.ASTNode>,
     input: Box,
-    environment: JEnv,
+    environment: AsyncEnv,
     options: EvaluationOptions,
 ) {
     // create a closure, bind the supplied parameters and return a function that takes the remaining (?) parameters
-    let env = new JEnv(options, details.environment);
+    let env = new AsyncEnv(options, details.environment);
     //var env = createFrame(proc.environment);
     let unevaluated: Array<ast.ASTNode> = [];
 
@@ -167,7 +168,7 @@ export function partialApplyProcedure(
     return boxLambda({
         input: details.input,
         environment: env,
-        eval: (node: ast.ASTNode, input: Box, enclosing: JEnv) => doEval(node, input, enclosing, options),
+        eval: (node: ast.ASTNode, input: Box, enclosing: AsyncEnv) => doEval(node, input, enclosing, options),
         arguments: unevaluated,
         body: details.body,
         signature: undefined,
@@ -185,7 +186,7 @@ export function partialApplyNativeFunction(
     f: Function,
     args: ast.ASTNode[],
     input: Box,
-    environment: JEnv,
+    environment: AsyncEnv,
     options: EvaluationOptions,
 ): Box {
     // This method is called when we a native function is partially evaluated.
@@ -241,7 +242,7 @@ export function partialApplyNativeFunction(
  * @returns {*} Result of procedure
  */
 function applyProcedure(details: ProcedureDetails<Box>, args: Box[], options: EvaluationOptions): Box {
-    let env = new JEnv(options, details.environment);
+    let env = new AsyncEnv(options, details.environment);
 
     details.arguments.forEach((param, index) => {
         if (index >= args.length) {
@@ -266,7 +267,7 @@ function applyProcedure(details: ProcedureDetails<Box>, args: Box[], options: Ev
  * @param {Object} env - Environment
  * @returns {*} Result of applying native function
  */
-function applyNativeFunction(f: Function, env: JEnv, options: EvaluationOptions): Box {
+function applyNativeFunction(f: Function, env: AsyncEnv, options: EvaluationOptions): Box {
     var sigArgs = getNativeFunctionArguments(f);
     // generate the array of arguments for invoking the function - look them up in the environment
     let args = sigArgs.map(sigArg => unbox(env.lookup(sigArg.trim())));

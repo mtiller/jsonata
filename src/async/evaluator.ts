@@ -2,6 +2,7 @@ import * as ast from "../ast";
 import { unexpectedValue, isArrayOfStrings } from "../utils";
 import * as errors from "../errors";
 import * as semantics from "../semantics";
+import { AsyncEnv } from "./environment";
 import {
     JSValue,
     Box,
@@ -18,7 +19,6 @@ import {
     boxArray,
     unboxArray,
     fragmentBox,
-    JEnv,
     FunctionDetails,
     EvaluationOptions,
     normalizeOptions,
@@ -30,7 +30,7 @@ import { parseSignature } from "../signatures";
 export function eval2(
     expr: ast.ASTNode,
     input: JSValue,
-    environment: JEnv,
+    environment: AsyncEnv,
     opts: Partial<EvaluationOptions> = {},
 ): JSValue {
     let options = normalizeOptions(opts);
@@ -42,7 +42,7 @@ export function eval2(
 }
 
 // TODO: Do not export!
-export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
+export function doEval(expr: ast.ASTNode, input: Box, environment: AsyncEnv, options: EvaluationOptions): Box {
     switch (expr.type) {
         /* These are all leaf node types (have no children) */
         case "literal": {
@@ -79,7 +79,7 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return val;
         }
         case "block": {
-            let nested = new JEnv(options, environment);
+            let nested = new AsyncEnv(options, environment);
             return expr.expressions.reduce((prev, e) => doEval(e, input, nested, options), ubox);
         }
         case "path": {
@@ -119,7 +119,7 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
             return boxLambda({
                 input: input,
                 environment: environment,
-                eval: (node: ast.ASTNode, input: Box, enclosing: JEnv) => doEval(node, input, enclosing, options),
+                eval: (node: ast.ASTNode, input: Box, enclosing: AsyncEnv) => doEval(node, input, enclosing, options),
                 arguments: expr.arguments,
                 signature: expr.signature,
                 body: expr.body,
@@ -272,7 +272,7 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
 function evaluatePartialApplication(
     expr: ast.FunctionInvocationNode,
     input: any,
-    environment: JEnv,
+    environment: AsyncEnv,
     options: EvaluationOptions,
 ): Box {
     // lookup the procedure
@@ -317,7 +317,12 @@ function evaluatePartialApplication(
     }
 }
 
-function evaluateApplyExpression(expr: ast.ApplyNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
+function evaluateApplyExpression(
+    expr: ast.ApplyNode,
+    input: Box,
+    environment: AsyncEnv,
+    options: EvaluationOptions,
+): Box {
     // If rhs is a function invocation, invoke it with the lhs as the first argument
     if (expr.rhs.type == "function") {
         // Construct a function with the LHS expression inserted as the first
@@ -361,7 +366,12 @@ function evaluateApplyExpression(expr: ast.ApplyNode, input: Box, environment: J
     }
 }
 
-function evaluateTransform(expr: ast.TransformNode, input: Box, environment: JEnv, options: EvaluationOptions): Box {
+function evaluateTransform(
+    expr: ast.TransformNode,
+    input: Box,
+    environment: AsyncEnv,
+    options: EvaluationOptions,
+): Box {
     let transformFunction = (args: Array<{}>): Array<{}> | {} => {
         if (args === undefined) return undefined;
         if (!Array.isArray(args)) args = [args];
