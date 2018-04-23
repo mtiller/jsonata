@@ -271,7 +271,7 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: JEnv, options
 
 function evaluatePartialApplication(
     expr: ast.FunctionInvocationNode,
-    input: any,
+    input: Box,
     environment: JEnv,
     options: EvaluationOptions,
 ): Box {

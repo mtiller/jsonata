@@ -1,11 +1,17 @@
 import { Env, EvaluationOptions, Environment } from "../semantics";
 import * as funcs from "../functions/base";
 import * as sync from "../functions/sync";
-import { Box, boxValue, JSValue, ubox, boxFunction } from "../semantics";
 import { defineFunction, FunctionDefinition } from "../signatures";
 
-export class AsyncEnv extends Env<Box> {
-    constructor(options: EvaluationOptions, enclosing?: Environment<Box>) {
+export type NonPromiseValue = string | number | Function | boolean | (object & { then?: never; type?: never });
+
+// These declares a "Future" as a promise to a native JavaScript value that
+// is NOT a promise.  This avoids us accidentally passing a promise when we
+// really intended to
+export type Future = Promise<NonPromiseValue>;
+
+export class AsyncEnv extends Env<Future> {
+    constructor(options: EvaluationOptions, enclosing?: Environment<Future>) {
         super(options, enclosing);
 
         if (!enclosing) {
@@ -79,25 +85,24 @@ export class AsyncEnv extends Env<Box> {
         }
     }
     bindFunction(name: string, f: FunctionDefinition) {
-        this.bindings[name] = boxFunction({
+        this.bindings[name] = Promise.resolve({
             implementation: f.implementation,
             signature: f.signature,
         });
     }
-    bind(name: string, value: JSValue) {
-        this.bindings[name] = boxValue(value);
+    bindFuture(name: string, value: Future) {
+        this.bindings[name] = value;
     }
-    merge(bindings: { [key: string]: JSValue }) {
-        Object.keys(bindings).forEach(key => (this.bindings[key] = boxValue(bindings[key])));
+    merge(bindings: { [key: string]: Future }) {
+        Object.keys(bindings).forEach(key => (this.bindings[key] = bindings[key]));
     }
-    lookup(name: string): Box {
+    lookup(name: string): Future {
         if (this.bindings.hasOwnProperty(name)) {
             return this.bindings[name];
         }
         if (this.enclosing) {
             return this.enclosing.lookup(name);
         }
-        // TODO: Throw exception instead?!?
-        return ubox;
+        return Promise.resolve(undefined);
     }
 }

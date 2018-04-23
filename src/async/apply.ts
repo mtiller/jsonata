@@ -1,7 +1,7 @@
 import { doEval } from "./evaluator";
 import { EvaluationOptions, ProcedureDetails } from "../semantics";
 import { unbox, boxValue, BoxType, Box, boxLambda, ubox, boxArray, boxFunction } from "../semantics";
-import { AsyncEnv } from "./environment";
+import { AsyncEnv, Future } from "./environment";
 import { Signature } from "../signatures";
 import { unexpectedValue } from "../utils";
 import * as ast from "../ast";
@@ -140,9 +140,9 @@ function validateArguments(signature: Signature, args: Box[], context: Box, opti
  * @returns {{lambda: boolean, input: *, environment: {bind, lookup}, arguments: Array, body: *}} Result of partially applied procedure
  */
 export function partialApplyProcedure(
-    details: ProcedureDetails<Box>,
+    details: ProcedureDetails<Future>,
     args: Array<ast.ASTNode>,
-    input: Box,
+    input: Future,
     environment: AsyncEnv,
     options: EvaluationOptions,
 ) {
@@ -158,9 +158,9 @@ export function partialApplyProcedure(
         } else {
             if (arg) {
                 let val = doEval(arg, input, environment, options);
-                env.bindBox(param.value, val);
+                env.bindFuture(param.value, val);
             } else {
-                env.bindBox(param.value, ubox);
+                env.bindFuture(param.value, undefined);
             }
         }
     });
@@ -168,7 +168,7 @@ export function partialApplyProcedure(
     return boxLambda({
         input: details.input,
         environment: env,
-        eval: (node: ast.ASTNode, input: Box, enclosing: AsyncEnv) => doEval(node, input, enclosing, options),
+        eval: (node: ast.ASTNode, input: Future, enclosing: AsyncEnv) => doEval(node, input, enclosing, options),
         arguments: unevaluated,
         body: details.body,
         signature: undefined,
@@ -185,7 +185,7 @@ export function partialApplyProcedure(
 export function partialApplyNativeFunction(
     f: Function,
     args: ast.ASTNode[],
-    input: Box,
+    input: Future,
     environment: AsyncEnv,
     options: EvaluationOptions,
 ): Box {
@@ -205,26 +205,28 @@ export function partialApplyNativeFunction(
     // will shortly match up with the unbound variables.  Internally, we construct
     // the full set of arguments, 'fargs', that we will pass to the underlying
     // native function, 'f', by iterating over the 'args' and either
-    let rest = (...pargs: any[]) => {
+    let rest = async (...pargs: any[]): Future => {
         let pos = 0;
-        let fargs = args.map(arg => {
+        let pfargs: Array<Future> = args.map(arg => {
             if (arg.type === "operator") {
-                return pargs[pos++];
+                return Promise.resolve(pargs[pos++]);
             } else {
                 let bval = doEval(arg, input, environment, options);
                 // TODO: Use special FFI unbox?
-                return unbox(bval);
+                return bval;
             }
         });
         args.forEach(arg => {
             if (arg.type === "operator") {
-                fargs.push(pargs[pos]);
+                pfargs.push(Promise.resolve(pargs[pos]));
                 pos++;
             } else {
                 let bval = doEval(arg, input, environment, options);
-                fargs.push(unbox(bval));
+                pfargs.push(bval);
             }
         });
+
+        let fargs = await Promise.all(pfargs);
         let ret = f(...fargs);
         return ret;
     };
@@ -241,16 +243,16 @@ export function partialApplyNativeFunction(
  * @param {Array} args - Arguments
  * @returns {*} Result of procedure
  */
-function applyProcedure(details: ProcedureDetails<Box>, args: Box[], options: EvaluationOptions): Box {
+function applyProcedure(details: ProcedureDetails<Future>, args: Box[], options: EvaluationOptions): Box {
     let env = new AsyncEnv(options, details.environment);
 
     details.arguments.forEach((param, index) => {
         if (index >= args.length) {
             // This happens if not enough arguments are provided
             // In this case, we just assume the unprovided arguments are undefined
-            env.bindBox(param.value, ubox);
+            env.bindFuture(param.value, undefined);
         } else {
-            env.bindBox(param.value, args[index]);
+            env.bindFuture(param.value, args[index]);
         }
     });
     if (typeof details.body === "function") {
@@ -267,10 +269,10 @@ function applyProcedure(details: ProcedureDetails<Box>, args: Box[], options: Ev
  * @param {Object} env - Environment
  * @returns {*} Result of applying native function
  */
-function applyNativeFunction(f: Function, env: AsyncEnv, options: EvaluationOptions): Box {
+async function applyNativeFunction(f: Function, env: AsyncEnv, options: EvaluationOptions): Future {
     var sigArgs = getNativeFunctionArguments(f);
     // generate the array of arguments for invoking the function - look them up in the environment
-    let args = sigArgs.map(sigArg => unbox(env.lookup(sigArg.trim())));
+    let args = await Promise.all(sigArgs.map(sigArg => env.lookup(sigArg.trim())));
 
     return boxReturn(f.apply(null, args), options);
 }

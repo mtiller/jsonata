@@ -87,6 +87,9 @@ export class JEnv extends Env<Box> {
     bind(name: string, value: JSValue) {
         this.bindings[name] = boxValue(value);
     }
+    bindBox(name: string, box: Box) {
+        this.bindings[name] = box;
+    }
     merge(bindings: { [key: string]: JSValue }) {
         Object.keys(bindings).forEach(key => (this.bindings[key] = boxValue(bindings[key])));
     }

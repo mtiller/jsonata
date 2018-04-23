@@ -2,15 +2,13 @@ import * as ast from "../ast";
 import { unexpectedValue, isArrayOfStrings } from "../utils";
 import * as errors from "../errors";
 import * as semantics from "../semantics";
-import { AsyncEnv } from "./environment";
+import { AsyncEnv, Future } from "./environment";
 import {
-    JSValue,
     Box,
     ubox,
     boxValue,
     unbox,
-    forEachValue,
-    mapOverValues,
+    asyncMapOverValues,
     boxContainsFunction,
     defragmentBox,
     boxLambda,
@@ -27,26 +25,30 @@ import { elaboratePredicates } from "../transforms/predwrap";
 import { apply, partialApplyProcedure, partialApplyNativeFunction } from "./apply";
 import { parseSignature } from "../signatures";
 
-export function eval2(
+export async function asyncEval(
     expr: ast.ASTNode,
-    input: JSValue,
+    input: Future,
     environment: AsyncEnv,
     opts: Partial<EvaluationOptions> = {},
-): JSValue {
+): Future {
     let options = normalizeOptions(opts);
-    let box = boxValue(input);
     let nexpr = elaboratePredicates(expr);
-    environment.bind("$", input);
-    let result = doEval(nexpr, box, environment, options);
-    return unbox(result);
+    environment.bindFuture("$", input);
+    let result = await doEval(nexpr, input, environment, options);
+    return result;
 }
 
 // TODO: Do not export!
-export function doEval(expr: ast.ASTNode, input: Box, environment: AsyncEnv, options: EvaluationOptions): Box {
+export async function doEval(
+    expr: ast.ASTNode,
+    input: Future,
+    environment: AsyncEnv,
+    options: EvaluationOptions,
+): Future {
     switch (expr.type) {
         /* These are all leaf node types (have no children) */
         case "literal": {
-            return boxValue(expr.value);
+            return expr.value;
         }
         case "variable": {
             /* Get the variable name */
@@ -57,55 +59,72 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: AsyncEnv, opt
             return environment.lookup(varname);
         }
         case "name": {
-            return semantics.evaluateName(expr.value, input);
+            return unbox(semantics.evaluateName(expr.value, boxValue(await input)));
         }
         case "wildcard": {
-            return semantics.evaluateWildcard(input);
+            return unbox(semantics.evaluateWildcard(boxValue(await input)));
         }
         /* These are all operator nodes of some kind (they have children) */
         case "array": {
-            let vals = expr.expressions.map(c => doEval(c, input, environment, options));
-            return defragmentBox(vals, true);
+            let vals = await Promise.all(expr.expressions.map(c => doEval(c, input, environment, options)));
+            return unbox(defragmentBox(vals.map(boxValue), true));
         }
         case "predicate": {
             let lhs = doEval(expr.lhs, input, environment, options);
-            let vals = fragmentBox(lhs);
-            let preds = vals.map(val => doEval(expr.condition, val, environment, options));
-            return semantics.evaluatePredicate(lhs, preds);
+            let vals = fragmentBox(boxValue(await lhs));
+            let preds = await Promise.all(
+                vals.map(val => doEval(expr.condition, Promise.resolve(unbox(val)), environment, options)),
+            );
+            return unbox(semantics.evaluatePredicate(boxValue(await lhs), preds.map(boxValue)));
         }
         case "bind": {
             let val = doEval(expr.rhs, input, environment, options);
-            environment.bindBox(expr.lhs.value, val);
+            environment.bindFuture(expr.lhs.value, val);
             return val;
         }
         case "block": {
             let nested = new AsyncEnv(options, environment);
-            return expr.expressions.reduce((prev, e) => doEval(e, input, nested, options), ubox);
+            return expr.expressions.reduce((prev, e) => doEval(e, input, nested, options), Promise.resolve(undefined));
         }
         case "path": {
             let first = doEval(expr.steps[0], input, environment, options);
             let nonpred = ast.nonpredicateNode(expr.steps[0]);
-            let path = semantics.extractSteps(expr, input, first, nonpred, options.legacyMode);
+            let path = semantics.extractSteps(
+                expr,
+                boxValue(await input),
+                boxValue(await first),
+                nonpred,
+                options.legacyMode,
+            );
 
-            let cur = path.path.reduce((prev, step, index) => {
+            let pcur = path.path.reduce(async (prev, step, index) => {
+                let p = await prev;
                 let last = step.type !== "array" && index == path.path.length - 1;
                 // If the "head" is a ubox, then we still do a "map over".  But if
                 // any subsequent step yields a ubox, we are done because there is
                 // nothing to map over (see object-constructor case0007 for an example).
-                if (index > 0 && prev === ubox) return prev;
-                return mapOverValues(prev, c => doEval(step, c, environment, options), last);
-            }, path.head);
+                if (index > 0 && p === ubox) return prev;
+                return asyncMapOverValues(
+                    p,
+                    async c => {
+                        let v = await doEval(step, Promise.resolve(unbox(c)), environment, options);
+                        return boxValue(v);
+                    },
+                    last,
+                );
+            }, Promise.resolve(path.head));
 
+            let cur = await pcur;
             if (expr.keepSingletonArray) {
                 cur = boxArray(unboxArray(cur));
             }
-            return cur;
+            return unbox(cur);
         }
         case "binary": {
             let lhs = doEval(expr.lhs, input, environment, options);
             let rhs = doEval(expr.rhs, input, environment, options);
             let op = expr.value;
-            return semantics.evaluateBinaryOperation(lhs, rhs, op);
+            return unbox(semantics.evaluateBinaryOperation(boxValue(await lhs), boxValue(await rhs), op));
         }
         case "lambda": {
             // TODO: Change to a boxFunction?  I tried this once and one issue I ran
@@ -119,7 +138,8 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: AsyncEnv, opt
             return boxLambda({
                 input: input,
                 environment: environment,
-                eval: (node: ast.ASTNode, input: Box, enclosing: AsyncEnv) => doEval(node, input, enclosing, options),
+                eval: (node: ast.ASTNode, input: Future, enclosing: AsyncEnv) =>
+                    doEval(node, input, enclosing, options),
                 arguments: expr.arguments,
                 signature: expr.signature,
                 body: expr.body,
@@ -131,8 +151,8 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: AsyncEnv, opt
             // can't assume that expr.procedure is a lambda type directly
             // could be an expression that evaluates to a function (e.g. variable reference, parens expr etc.
             // evaluate it generically first, then check that it is a function.  Throw error if not.
-            let proc = doEval(expr.procedure, input, environment, options);
-            let evaluatedArgs = expr.arguments.map(arg => doEval(arg, input, environment, options));
+            let proc = boxValue(await doEval(expr.procedure, input, environment, options));
+            let evaluatedArgs = await Promise.all(expr.arguments.map(arg => doEval(arg, input, environment, options)));
 
             let headName: string | null = semantics.functionName(expr);
 
@@ -140,19 +160,22 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: AsyncEnv, opt
             // was specified by a path and c) the first step in the path does exist, then
             // perhaps the user meant for the procedure to be a variable dereference and
             // simply forgot the leading $
-            if (proc === ubox && headName !== null && environment.lookup(headName).type != BoxType.Void) {
-                // help the user out here if they simply forgot the leading $
-                throw errors.error({
-                    code: "T1005",
-                    token: headName,
-                });
+            if (proc === ubox && headName !== null) {
+                let fval = await environment.lookup(headName);
+                if (fval === undefined) {
+                    // help the user out here if they simply forgot the leading $
+                    throw errors.error({
+                        code: "T1005",
+                        token: headName,
+                    });
+                }
             }
 
             // apply the procedure
             try {
                 // TODO: Refactor function types so we return closures that call apply
                 // rather than calling apply ourselves.
-                let ret = apply(proc, evaluatedArgs, input, options);
+                let ret = apply(proc, evaluatedArgs.map(boxValue), boxValue(await input), options);
                 return ret;
             } catch (err) {
                 // add the position field to the error
@@ -164,15 +187,16 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: AsyncEnv, opt
         }
         case "unary": {
             let lhs = doEval(expr.expression, input, environment, options);
-            return semantics.evaluateUnaryMinus(lhs, expr);
+            return semantics.evaluateUnaryMinus(boxValue(await lhs), expr);
         }
         case "unary-group":
         case "group": {
             // Determine what the "input" value should be.
-            let lhs =
+            let lhs = boxValue(
                 expr.type !== "unary-group" && expr.lhs !== null
-                    ? doEval(expr.lhs, input, environment, options)
-                    : input;
+                    ? await doEval(expr.lhs, input, environment, options)
+                    : await input,
+            );
 
             // TODO: Hold over from from v1.5+ (legacyMode?)
             if (lhs.type == BoxType.Void) {
@@ -183,27 +207,37 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: AsyncEnv, opt
             let items = fragmentBox(lhs);
 
             // Evaluate all keys
-            let data = items.map(item => ({
-                item: item,
-                keys: expr.groupings.map(grouping => doEval(grouping.key, item, environment, options)),
-            }));
+            let data = await Promise.all(
+                items.map(async item => ({
+                    item: item,
+                    keys: (await Promise.all(
+                        expr.groupings.map(grouping =>
+                            doEval(grouping.key, Promise.resolve(unbox(item)), environment, options),
+                        ),
+                    )).map(boxValue),
+                })),
+            );
 
             let result = semantics.evaluateGroup(expr.groupings, data);
 
-            let ret = Object.keys(result).reduce((prev, key) => {
+            let ret = Object.keys(result).reduce(async (prev, key) => {
                 let entry = result[key];
                 let inputs = defragmentBox(entry.itemIndices.map(i => data[i].item), true);
-                let val = doEval(expr.groupings[entry.groupIndex].value, inputs, environment, options);
-                prev[key] = unbox(val);
+                let val = await doEval(
+                    expr.groupings[entry.groupIndex].value,
+                    Promise.resolve(unbox(inputs)),
+                    environment,
+                    options,
+                );
+                prev[key] = val;
                 return prev;
-            }, {});
+            }, Promise.resolve({}));
 
             // Take the resulting object and return it.
-            return boxValue(ret);
+            return boxValue(await ret);
         }
         case "condition": {
-            let cond = doEval(expr.condition, input, environment, options);
-            let c = unbox(cond);
+            let c = await doEval(expr.condition, input, environment, options);
             if (!!c) {
                 return doEval(expr.then, input, environment, options);
             } else {
@@ -217,22 +251,32 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: AsyncEnv, opt
             return evaluateTransform(expr, input, environment, options);
         }
         case "descendant": {
-            return semantics.evaluateDescendant(input);
+            return semantics.evaluateDescendant(boxValue(await input));
         }
         case "partial": {
             return evaluatePartialApplication(expr, input, environment, options);
         }
         case "sort": {
-            let lhs = doEval(expr.lhs, input, environment, options);
-            let entries = fragmentBox(lhs);
+            let lhs = boxValue(await doEval(expr.lhs, input, environment, options));
+            let fragments = fragmentBox(lhs);
+
+            let entries: semantics.Ranking[] = [];
+            for (let i = 0; i < fragments.length; i++) {
+                let entry = fragments[i];
+                let values: Box[] = [];
+                for (let j = 0; j < expr.rhs.length; j++) {
+                    let rhs = expr.rhs[j];
+                    let val = doEval(rhs.expression, Promise.resolve(unbox(entry)), environment, options);
+                    values.push(boxValue(await val));
+                }
+                entries.push({ values: values });
+            }
             let ranked: semantics.Ranked = {
                 terms: expr.rhs.length,
                 descending: expr.rhs.map(rhs => rhs.descending),
-                entries: entries.map((entry, entryIndex) => ({
-                    values: expr.rhs.map(rhs => doEval(rhs.expression, entry, environment, options)),
-                })),
+                entries: entries,
             };
-            let indexed = entries.map((e, index) => ({ index: index, value: e }));
+            let indexed = fragments.map((e, index) => ({ index: index, value: e }));
             let comp = semantics.comparator(ranked);
             let sorted = indexed.sort(comp);
             return defragmentBox(sorted.map(e => e.value));
@@ -269,31 +313,30 @@ export function doEval(expr: ast.ASTNode, input: Box, environment: AsyncEnv, opt
     }
 }
 
-function evaluatePartialApplication(
+async function evaluatePartialApplication(
     expr: ast.FunctionInvocationNode,
-    input: any,
+    input: Future,
     environment: AsyncEnv,
     options: EvaluationOptions,
-): Box {
+): Future {
     // lookup the procedure
-    let proc = doEval(expr.procedure, input, environment, options);
-    let uproc = unbox(proc);
+    let uproc = await doEval(expr.procedure, input, environment, options);
 
     //var proc = yield * evaluate(expr.procedure, input, environment);
-    if (
-        typeof uproc === "undefined" &&
-        expr.procedure.type === "path" &&
-        environment.lookup(expr.procedure.steps[0].value).type != BoxType.Void
-    ) {
-        // help the user out here if they simply forgot the leading $
-        throw {
-            code: "T1007",
-            stack: new Error().stack,
-            position: expr.position,
-            token: expr.procedure.steps[0].value,
-        };
+    if (typeof uproc === "undefined" && expr.procedure.type === "path") {
+        let fval = await environment.lookup(expr.procedure.steps[0].value);
+        if (fval === undefined) {
+            // help the user out here if they simply forgot the leading $
+            throw {
+                code: "T1007",
+                stack: new Error().stack,
+                position: expr.position,
+                token: expr.procedure.steps[0].value,
+            };
+        }
     }
 
+    let proc = boxValue(uproc);
     switch (proc.type) {
         case BoxType.Lambda:
             return partialApplyProcedure(proc.details, expr.arguments, input, environment, options);
@@ -317,12 +360,12 @@ function evaluatePartialApplication(
     }
 }
 
-function evaluateApplyExpression(
+async function evaluateApplyExpression(
     expr: ast.ApplyNode,
-    input: Box,
+    input: Future,
     environment: AsyncEnv,
     options: EvaluationOptions,
-): Box {
+): Future {
     // If rhs is a function invocation, invoke it with the lhs as the first argument
     if (expr.rhs.type == "function") {
         // Construct a function with the LHS expression inserted as the first
@@ -335,9 +378,12 @@ function evaluateApplyExpression(
     // see what we get.
     let lhs = doEval(expr.lhs, input, environment, options);
     let func = doEval(expr.rhs, input, environment, options);
+    let bfunc = boxValue(await func);
+    let blhs = boxValue(await lhs);
+    let binput = boxValue(await input);
 
     // The value of func must be a function, if it isn't, we thrown an exception
-    if (!boxContainsFunction(func)) {
+    if (!boxContainsFunction(bfunc)) {
         throw {
             code: "T2006",
             stack: new Error().stack,
@@ -346,13 +392,13 @@ function evaluateApplyExpression(
         };
     }
 
-    if (boxContainsFunction(lhs)) {
+    if (boxContainsFunction(blhs)) {
         // Needs to be equivalent to: function($f, $g) { function($x){ $g($f($x)) } }
 
         let details: FunctionDetails = {
             implementation: x => {
-                let inner = apply(lhs, [boxValue(x)], input, options);
-                let ret = apply(func, [inner], input, options);
+                let inner = apply(blhs, [boxValue(x)], binput, options);
+                let ret = apply(bfunc, [inner], binput, options);
                 // TODO: We need to handle arrays a funny way? (FFI related)
                 // Should be done in apply(...)?
                 return unbox(ret);
@@ -362,36 +408,35 @@ function evaluateApplyExpression(
         return boxFunction(details);
     } else {
         // TODO: In v1.5, the third argument here is environment?!?
-        return apply(func, [lhs], input, options);
+        return apply(bfunc, [blhs], binput, options);
     }
 }
 
-function evaluateTransform(
+async function evaluateTransform(
     expr: ast.TransformNode,
-    input: Box,
+    input: Future,
     environment: AsyncEnv,
     options: EvaluationOptions,
-): Box {
-    let transformFunction = (args: Array<{}>): Array<{}> | {} => {
+): Future {
+    let transformFunction = async (args: Array<{}>): Promise<Array<{}> | {}> => {
         if (args === undefined) return undefined;
         if (!Array.isArray(args)) args = [args];
         // We know, from the signature, that args will contain an array of objects.
         // So now we loop over each one.
 
-        let ret = args.map(obj => {
+        let ret: Future[] = args.map(async (obj: {}) => {
             // Rebox a copy of the value.  We do this because we will mutate the object.
-            let clone = boxValue(JSON.parse(JSON.stringify(obj)));
+            let clone = JSON.parse(JSON.stringify(obj));
 
             // Find subobjects of obj that match our pattern in **the clone**
-            let matches = doEval(expr.pattern, clone, environment, options);
+            let matches = boxValue(await doEval(expr.pattern, Promise.resolve(clone), environment, options));
 
             // Loop over each match.  Note that this part requires that the sub-object
             // contained in the matchbox is a **reference** to the matching portion
             // of the object in the clone variable.  This is because we **mutate this in place**.
-            forEachValue(matches, (matchbox: Box) => {
-                // Extract the matching object
-                let match = unbox(matchbox);
-
+            let fragments = fragmentBox(matches);
+            for (let i = 0; i < fragments.length; i++) {
+                let match = fragments[i];
                 // Ensure the match is an object
                 if (typeof match != "object") {
                     // This check and associated exception don't appear in v1.5
@@ -401,7 +446,7 @@ function evaluateTransform(
                 }
 
                 // Evaluate the update "patch" we want to apply
-                let update = unbox(doEval(expr.update, matchbox, environment, options));
+                let update = await doEval(expr.update, Promise.resolve(match), environment, options);
                 if (update) {
                     if (typeof update != "object") {
                         // throw type error
@@ -414,7 +459,7 @@ function evaluateTransform(
                     Object.keys(update).forEach(key => (match[key] = update[key]));
                 }
                 if (expr.delete) {
-                    let del = unbox(doEval(expr.delete, matchbox, environment, options)) as string[];
+                    let del = (await doEval(expr.delete, Promise.resolve(match), environment, options)) as string[];
                     if (del) {
                         if (typeof del == "string") del = [del];
                         if (!isArrayOfStrings(del)) {
@@ -429,11 +474,11 @@ function evaluateTransform(
                         });
                     }
                 }
-            });
+            }
+
             // Remember that this has been mutated in place so we are returning
             // the mutated value.
-            let ret = unbox(clone);
-            return ret;
+            return clone;
         });
         // TODO: This is to be consistent with how
         if (ret.length == 1) return ret[0];

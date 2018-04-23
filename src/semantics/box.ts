@@ -10,32 +10,30 @@ export enum BoxType {
     Array = "array",
 }
 
-export interface VoidBox extends BoxFlags {
+export interface VoidBox {
     type: BoxType.Void;
 }
 
-export interface LambdaBox extends BoxFlags {
+export interface LambdaBox {
     type: BoxType.Lambda;
     details: ProcedureDetails<any>;
 }
 
-export interface FunctionBox extends BoxFlags {
+export interface FunctionBox {
     type: BoxType.Function;
     details: FunctionDetails;
 }
 
-export interface ValueBox extends BoxFlags {
+export interface ValueBox {
     type: BoxType.Value;
     scalar: boolean; // Started life as a scalar (for cases when `1` and `[1]` should be treated differently)
     values: JSValue[];
 }
 
-export interface ArrayBox extends BoxFlags {
+export interface ArrayBox {
     type: BoxType.Array;
     values: JSValue[];
 }
-
-export interface BoxFlags {}
 
 export type Box = ValueBox | FunctionBox | LambdaBox | ArrayBox | VoidBox;
 
@@ -182,7 +180,7 @@ export function boxArray(input: JSValue[]): ArrayBox {
     };
 }
 
-export function boxValue(input: JSValue, options: Partial<BoxFlags> = {}): Box {
+export function boxValue(input: JSValue): Box {
     // TODO: Remove eventually
     if (isBox(input)) {
         throw new Error("Boxed value being boxed!?!");
@@ -216,14 +214,12 @@ export function boxValue(input: JSValue, options: Partial<BoxFlags> = {}): Box {
             values: values, // Remove any undefined values
             scalar: false,
             type: BoxType.Value,
-            ...options,
         };
     } else {
         return {
             values: [input],
             scalar: true,
             type: BoxType.Value,
-            ...options,
         };
     }
 }
