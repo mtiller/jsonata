@@ -114,7 +114,7 @@ function applyInner(proc: Box, args: Box[], context: Box, options: EvaluationOpt
  * @returns {Array} - validated arguments
  */
 function validateArguments(signature: Signature, args: Box[], context: Box, options: EvaluationOptions): Box[] {
-    if (typeof signature === "undefined") {
+    if (typeof signature === "undefined" || signature === null) {
         // nothing to validate
         return args;
     }
